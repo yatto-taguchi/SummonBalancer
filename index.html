@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1024, initial-scale=1.0">
+  <meta name="description" content="Summon Balancer - 美容室向けアシスタント自動振り分けアプリ">
+  <title>Summon Balancer</title>
+
+  <script>
+    // エラーログをサーバーに送信する関数
+    function logToServer(msg) {
+      fetch('/log?msg=' + encodeURIComponent(msg)).catch(() => {});
+    }
+
+    // グローバルエラーキャッチ
+    window.onerror = function(message, source, lineno, colno, error) {
+      logToServer('ERROR: ' + message + ' at ' + source + ':' + lineno + ':' + colno);
+      return false;
+    };
+
+    window.addEventListener('unhandledrejection', function(event) {
+      logToServer('UNHANDLED REJECTION: ' + event.reason);
+    });
+
+    // ドラッグ＆ドロップのイベント診断
+    document.addEventListener('dragstart', function(e) {
+      logToServer('DRAGSTART on ' + e.target.className + ' (draggable=' + e.target.draggable + ')');
+    }, true);
+
+    document.addEventListener('dragover', function(e) {
+      // 頻繁にログが出すぎるのを防ぐため、 reservation-block の上を通った時だけログ
+      if (e.target.closest('.reservation-block')) {
+        const block = e.target.closest('.reservation-block');
+        const pe = window.getComputedStyle(block).pointerEvents;
+        logToServer('DRAGOVER on reservation-block (pointer-events: ' + pe + ')');
+      }
+    }, true);
+
+    document.addEventListener('drop', function(e) {
+      logToServer('DROP on ' + e.target.className + ' id=' + e.target.id);
+    }, true);
+  </script>
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- スタイルシート -->
+  <link rel="stylesheet" href="css/style.css?v=14">
+
+  <!-- ファビコン（インライン SVG） -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='80'>⚡</text></svg>">
+</head>
+<body>
+  <!-- ──────────────────────────────────────────
+       アプリケーションコンテナ
+       ────────────────────────────────────────── -->
+  <div class="app-container">
+
+    <!-- ═══════════════════════════════════════
+         ヘッダー
+         ═══════════════════════════════════════ -->
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="logo-date-wrapper" style="display: flex; align-items: center; gap: 24px;">
+          <!-- ロゴ -->
+          <div class="app-logo">
+            <span class="logo-text">Summon Balancer</span>
+          </div>
+
+          <!-- 日付ナビゲーション -->
+          <div class="date-nav" aria-label="日付選択">
+            <button class="date-nav-btn" id="date-prev" title="前日" aria-label="前日">‹</button>
+            <div class="date-display-wrapper" style="display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
+              <span class="date-display" id="date-display">読込中...</span>
+              <span class="calendar-icon" style="font-size: 1.1rem; opacity: 0.8; transition: opacity 0.2s;">📅</span>
+            </div>
+            <input type="date" class="date-picker-input" id="date-picker" aria-label="日付を選択" style="opacity: 0; width: 0; height: 0; border: none; padding: 0; margin: 0; position: absolute; pointer-events: none;">
+            <button class="date-nav-btn" id="date-next" title="翌日" aria-label="翌日">›</button>
+          </div>
+
+          <!-- サロン稼働率の表示エリア -->
+          <div class="header-salon-fatigue" style="display: flex; align-items: center; gap: 8px; border-left: 1px solid var(--border-glass); padding-left: 20px;">
+            <span style="font-size: 11px; color: var(--text-muted); font-weight: 500; white-space: nowrap;">サロン稼働率:</span>
+            <div id="fatigue-container" style="width: 220px; margin-bottom: 0;"></div>
+          </div>
+        </div>
+
+        <!-- ナビゲーションタブ -->
+        <nav aria-label="メインナビゲーション">
+          <ul class="nav-tabs" role="tablist">
+            <li>
+              <button class="nav-tab active"
+                      data-view="reservation"
+                      role="tab"
+                      aria-selected="true"
+                      aria-controls="view-reservation"
+                      tabindex="0">
+                📅 予約表
+              </button>
+            </li>
+            <li>
+              <button class="nav-tab"
+                      data-view="staff"
+                      role="tab"
+                      aria-selected="false"
+                      aria-controls="view-staff"
+                      tabindex="0">
+                👤 スタッフ設定
+              </button>
+            </li>
+            <li>
+              <button class="nav-tab"
+                      data-view="menu"
+                      role="tab"
+                      aria-selected="false"
+                      aria-controls="view-menu"
+                      tabindex="0">
+                📋 メニュー設定
+              </button>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ═══════════════════════════════════════
+         メニューバー（ドラッグ元のメニューボタン群）— ヘッダー直下
+         ═══════════════════════════════════════ -->
+    <div id="menu-bar" role="toolbar" aria-label="メニュー選択">
+      <div class="menu-bar-inner">
+        <div class="menu-bar-left">
+          <span class="menu-bar-title">📌 メニュー</span>
+          <div class="menu-bar-content">
+            <!-- app.js から動的に描画される -->
+          </div>
+        </div>
+        <div class="menu-bar-right" id="menu-bar-toolbar">
+          <!-- mainView.js から動的に描画される（固定モード・更新・アラート等） -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         メインレイアウト
+         ═══════════════════════════════════════ -->
+    <div class="main-layout">
+
+      <!-- メインコンテンツエリア -->
+      <main id="main-content" role="main">
+        <!-- 予約表ビュー -->
+        <section class="view-section active"
+                 id="view-reservation"
+                 role="tabpanel"
+                 aria-labelledby="tab-reservation">
+          <!-- app.js から動的に描画される -->
+        </section>
+
+        <!-- スタッフ設定ビュー -->
+        <section class="view-section"
+                 id="view-staff"
+                 role="tabpanel"
+                 aria-labelledby="tab-staff"
+                 hidden>
+          <!-- app.js から動的に描画される -->
+        </section>
+
+        <!-- メニュー設定ビュー -->
+        <section class="view-section"
+                 id="view-menu"
+                 role="tabpanel"
+                 aria-labelledby="tab-menu"
+                 hidden>
+          <!-- app.js から動的に描画される -->
+        </section>
+      </main>
+
+    </div><!-- /.main-layout -->
+
+  </div><!-- /.app-container -->
+
+  <!-- ═══════════════════════════════════════
+       JavaScript モジュール
+       ═══════════════════════════════════════ -->
+  <!-- メインエントリポイント（他の全モジュールをimportする） -->
+  <script type="module" src="js/app.js?v=97"></script>
+</body>
+</html>

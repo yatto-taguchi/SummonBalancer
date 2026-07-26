@@ -1,0 +1,181 @@
+{
+  "skills": [
+    { "id": "shampoo",     "label": "シャンプー" },
+    { "id": "color",       "label": "カラー" },
+    { "id": "treatment",   "label": "トリートメント" },
+    { "id": "spa",         "label": "スパ" },
+    { "id": "perm_liquid", "label": "1.2液" },
+    { "id": "straight_1",  "label": "1液" },
+    { "id": "iron",        "label": "アイロン" },
+    { "id": "straight_2",  "label": "2液" }
+  ],
+  "menus": [
+    {
+      "id": "cut_only",
+      "name": "カットのみ",
+      "shortName": "C",
+      "duration": 60,
+      "colorCode": "#6366f1",
+      "assistantSlots": [
+        { "startMinute": 0, "endMinute": 20, "requiredSkill": "shampoo", "requiredProficiency": 3 }
+      ]
+    },
+    {
+      "id": "cut_only_mens",
+      "name": "カットのみ（メンズ）",
+      "shortName": "CM",
+      "duration": 60,
+      "colorCode": "#6366f1",
+      "assistantSlots": [
+        { "startMinute": 0,  "endMinute": 20, "requiredSkill": "shampoo", "requiredProficiency": 3 },
+        { "startMinute": 35, "endMinute": 55, "requiredSkill": "shampoo", "requiredProficiency": 3 }
+      ]
+    },
+    {
+      "id": "front_cut",
+      "name": "フロントカット",
+      "shortName": "FC",
+      "duration": 10,
+      "colorCode": "#6366f1",
+      "assistantSlots": []
+    },
+    {
+      "id": "color_only",
+      "name": "カラーのみ",
+      "shortName": "H",
+      "duration": 90,
+      "colorCode": "#ec4899",
+      "assistantSlots": [
+        { "startMinute": 0,  "endMinute": 30, "requiredSkill": "color",   "requiredProficiency": 3 },
+        { "startMinute": 40, "endMinute": 80, "requiredSkill": "shampoo", "requiredProficiency": 3 }
+      ]
+    },
+    {
+      "id": "highlight",
+      "name": "ハイライト",
+      "shortName": "HL",
+      "duration": 150,
+      "colorCode": "#ec4899",
+      "assistantSlots": [
+        { "startMinute": 0,   "endMinute": 60,  "requiredSkill": "color",   "requiredProficiency": 3 },
+        { "startMinute": 80,  "endMinute": 100, "requiredSkill": "shampoo", "requiredProficiency": 3 },
+        { "startMinute": 100, "endMinute": 120, "requiredSkill": "color",   "requiredProficiency": 3 },
+        { "startMinute": 130, "endMinute": 150, "requiredSkill": "shampoo", "requiredProficiency": 3 }
+      ]
+    },
+    {
+      "id": "cut_color_cut_first",
+      "name": "カットカラー（先カット）",
+      "shortName": "CH",
+      "duration": 120,
+      "colorCode": "#ec4899",
+      "assistantSlots": [
+        { "startMinute": 0,  "endMinute": 15,  "requiredSkill": "shampoo", "requiredProficiency": 3 },
+        { "startMinute": 40, "endMinute": 75,  "requiredSkill": "color",   "requiredProficiency": 3 },
+        { "startMinute": 75, "endMinute": 120, "requiredSkill": "shampoo", "requiredProficiency": 3 }
+      ]
+    },
+    {
+      "id": "cut_color_color_first",
+      "name": "カットカラー（先カラー）",
+      "shortName": "HC",
+      "duration": 120,
+      "colorCode": "#ec4899",
+      "assistantSlots": [
+        { "startMinute": 0,  "endMinute": 40, "requiredSkill": "color",   "requiredProficiency": 3 },
+        { "startMinute": 40, "endMinute": 60, "requiredSkill": "shampoo", "requiredProficiency": 3 }
+      ]
+    },
+    {
+      "id": "double_color",
+      "name": "ダブルカラー",
+      "shortName": "DH",
+      "duration": 180,
+      "colorCode": "#ec4899",
+      "assistantSlots": [
+        { "startMinute": 0,   "endMinute": 60,  "requiredSkill": "color",   "requiredProficiency": 3 },
+        { "startMinute": 60,  "endMinute": 90,  "requiredSkill": "shampoo", "requiredProficiency": 3 },
+        { "startMinute": 90,  "endMinute": 120, "requiredSkill": "color",   "requiredProficiency": 3 },
+        { "startMinute": 120, "endMinute": 180, "requiredSkill": "shampoo", "requiredProficiency": 3 }
+      ]
+    },
+    {
+      "id": "head_spa",
+      "name": "ヘッドスパ",
+      "shortName": "Spa",
+      "duration": 30,
+      "colorCode": "#10b981",
+      "assistantSlots": [
+        { "startMinute": 0, "endMinute": 30, "requiredSkill": "spa", "requiredProficiency": 3 }
+      ]
+    },
+    {
+      "id": "treatment",
+      "name": "トリートメント",
+      "shortName": "Tr",
+      "duration": 30,
+      "colorCode": "#10b981",
+      "assistantSlots": [
+        { "startMinute": 0, "endMinute": 30, "requiredSkill": "treatment", "requiredProficiency": 3 }
+      ]
+    },
+    {
+      "id": "other",
+      "name": "その他",
+      "shortName": "OTH",
+      "duration": 30,
+      "colorCode": "#6b7280",
+      "assistantSlots": [
+        { "startMinute": 0, "endMinute": 30, "requiredSkill": "shampoo", "requiredProficiency": 3 }
+      ]
+    },
+    {
+      "id": "perm_cut",
+      "name": "パーマカット",
+      "shortName": "PC",
+      "duration": 120,
+      "colorCode": "#f59e0b",
+      "assistantSlots": [
+        { "startMinute": 0,  "endMinute": 20,  "requiredSkill": "shampoo",     "requiredProficiency": 3 },
+        { "startMinute": 50, "endMinute": 70,  "requiredSkill": "perm_liquid",  "requiredProficiency": 3 },
+        { "startMinute": 70, "endMinute": 120, "requiredSkill": "shampoo",      "requiredProficiency": 3 }
+      ]
+    },
+    {
+      "id": "perm_only",
+      "name": "パーマのみ",
+      "shortName": "P",
+      "duration": 90,
+      "colorCode": "#f59e0b",
+      "assistantSlots": [
+        { "startMinute": 0,  "endMinute": 20, "requiredSkill": "shampoo",     "requiredProficiency": 3 },
+        { "startMinute": 40, "endMinute": 60, "requiredSkill": "perm_liquid",  "requiredProficiency": 3 },
+        { "startMinute": 60, "endMinute": 90, "requiredSkill": "shampoo",      "requiredProficiency": 3 }
+      ]
+    },
+    {
+      "id": "straight_cut",
+      "name": "縮毛矯正カット",
+      "shortName": "STC",
+      "duration": 210,
+      "colorCode": "#0ea5e9",
+      "assistantSlots": [
+        { "startMinute": 0,   "endMinute": 60,  "requiredSkill": "straight_1", "requiredProficiency": 3 },
+        { "startMinute": 60,  "endMinute": 120, "requiredSkill": "iron",       "requiredProficiency": 3 },
+        { "startMinute": 120, "endMinute": 180, "requiredSkill": "straight_2", "requiredProficiency": 3 }
+      ]
+    },
+    {
+      "id": "straight_only",
+      "name": "縮毛矯正",
+      "shortName": "ST",
+      "duration": 180,
+      "colorCode": "#0ea5e9",
+      "assistantSlots": [
+        { "startMinute": 0,   "endMinute": 60,  "requiredSkill": "straight_1", "requiredProficiency": 3 },
+        { "startMinute": 60,  "endMinute": 120, "requiredSkill": "iron",       "requiredProficiency": 3 },
+        { "startMinute": 120, "endMinute": 180, "requiredSkill": "straight_2", "requiredProficiency": 3 }
+      ]
+    }
+  ]
+}
