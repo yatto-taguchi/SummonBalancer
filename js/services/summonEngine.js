@@ -36,6 +36,8 @@ export class SummonEngine {
   constructor() {
     /** @type {Object.<string, number>} アシスタントごとの配置回数 */
     this._assignmentCounts = {};
+    /** @type {Object.<string, Array<{stylistId: string, start: number, end: number}>>} アシスタントごとのマンセル拘束時間 */
+    this._manncellConstraints = {};
   }
 
   /**
@@ -48,6 +50,69 @@ export class SummonEngine {
   _toTimestamp(time) {
     if (typeof time === 'number') return time;
     return new Date(time).getTime();
+  }
+
+  /**
+   * 対象のアシスタントが、指定した時間帯に別のスタイリストのマンセルに所属しているかチェックする
+   * @param {string} assistantId
+   * @param {string} stylistId
+   * @param {number|string|Date} startTime
+   * @param {number|string|Date} endTime
+   * @returns {boolean}
+   */
+  _hasManncellConflict(assistantId, stylistId, startTime, endTime) {
+    if (!this._manncellConstraints || !this._manncellConstraints[assistantId]) return false;
+    const start = this._toTimestamp(startTime);
+    const end = this._toTimestamp(endTime);
+
+    for (const constraint of this._manncellConstraints[assistantId]) {
+      // 別のスタイリストのマンセルブロックと重なっているか
+      if (constraint.stylistId !== stylistId) {
+        if (start < constraint.end && constraint.start < end) {
+          console.warn(`[DEBUG Manncell] CONFLICT DETECTED! assistant=${assistantId} cannot join stylist=${stylistId} (${start}-${end}) because locked to stylist=${constraint.stylistId} (${constraint.start}-${constraint.end})`);
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * アシスタントにマンセル拘束時間を追加・マージする
+   * @param {string} assistantId
+   * @param {string} stylistId
+   * @param {number|string|Date} startTime
+   * @param {number|string|Date} endTime
+   */
+  _addManncellConstraint(assistantId, stylistId, startTime, endTime) {
+    if (!this._manncellConstraints) this._manncellConstraints = {};
+    if (!this._manncellConstraints[assistantId]) this._manncellConstraints[assistantId] = [];
+
+    const start = this._toTimestamp(startTime);
+    const end = this._toTimestamp(endTime);
+    console.log(`[DEBUG Manncell] ADD CONSTRAINT: assistant=${assistantId} locked to stylist=${stylistId} (${start}-${end})`);
+
+    const constraints = this._manncellConstraints[assistantId];
+    
+    // 同じスタイリストの拘束と重なる・または隣接する場合は結合（マージ）する
+    let merged = false;
+    for (let i = 0; i < constraints.length; i++) {
+      const c = constraints[i];
+      if (c.stylistId === stylistId) {
+        if (start <= c.end && c.start <= end) {
+          c.start = Math.min(c.start, start);
+          c.end = Math.max(c.end, end);
+          merged = true;
+          break;
+        }
+      }
+    }
+
+    if (!merged) {
+      constraints.push({ stylistId, start, end });
+    }
+    
+    constraints.sort((a, b) => a.start - b.start);
   }
 
   // ──────────────────────────────────────────────
@@ -172,11 +237,6 @@ export class SummonEngine {
    * @returns {SummonResult} 配置結果
    */
   calculate(reservations, stylists, assistants, menus, lunchOverrides = {}, restOverrides = {}) {
-    // 配置カウントをリセット
-    this._assignmentCounts = {};
-    assistants.forEach(a => { this._assignmentCounts[a.id] = 0; });
-    stylists.forEach(s => { this._assignmentCounts[s.id] = 0; });
-
     // メニューをIDで索引化
     const menuMap = new Map();
     menus.forEach(m => menuMap.set(m.id, m));
@@ -185,30 +245,48 @@ export class SummonEngine {
     this._reservationStylistMap = new Map(reservations.map(r => [r.id, r.stylistId]));
     this._allReservations = reservations;
 
-    // [Step 3追加] 当日全予約からスタイリストの予定稼働率を事前計算
+    // 当日全予約からスタイリストの予定稼働率を事前計算
     const stylistRates = this._getStylistUtilizationRates(stylists, reservations);
 
-    // Step 1 & 2: 必要スロットを抽出し、掛け持ち箇所を特定して優先順位付け
+    // 必要スロットを抽出し、掛け持ち箇所を特定して優先順位付け
     const overlapRegionsMap = this._getOverlapRegions(reservations);
     const requiredSlots = this._getRequiredSlots(
       reservations, menuMap, overlapRegionsMap, stylists, assistants, stylistRates
     );
     this._allRequiredSlots = requiredSlots;
 
-    // Step 3-5: アシスタントを配置
     // 掛け持ち不可のスタイリストの予約には自動配置しない（固定モードのみ可）
     const stylistMap = new Map(stylists.map(s => [s.id, s]));
     const filteredSlots = requiredSlots.filter(slot => {
-      // 非掛け持ちスロットで召喚不要と判定された場合は除外
       if (slot.skipSummon) return false;
-      if (slot.fixedAssistantId) return true; // 固定モードは常に許可
+      if (slot.fixedAssistantId) return true;
       const stylist = stylistMap.get(slot.stylistId);
       return !stylist || stylist.canDoubleBook !== false;
     });
-    // Greedy配置はアシスタントのみで実行（スタイリストは最適化パスでのみ候補になる）
-    let { assignments, concurrentAssignments, unfilledSlots, autoSlots } = this._assignAssistants(filteredSlots, assistants);
 
-    // --- グローバル最適化パス（兼任解消リバランス） ---
+    // マンセル化対象のブロック群を準備
+    const overlappingPairs = new Set();
+    requiredSlots.forEach(slot => {
+      if (slot.isOverlapping) {
+        overlappingPairs.add(slot.reservationId);
+      }
+    });
+    const allBlocks = this._groupSlotsByStylistBlock(requiredSlots, overlappingPairs);
+    
+    // 【反復シミュレーション用変数】
+    const activeManncellBlockIds = new Set();
+    const getBlockId = (b) => `${b.stylistId}_${b.startTime}_${b.endTime}`;
+    
+    let finalAssignments = {};
+    let finalConcurrentAssignments = {};
+    let finalUnfilledSlots = [];
+    let finalAutoSlots = [];
+    let finalManncells = [];
+    let finalStylistSummons = [];
+
+    const MAX_ITERATIONS = allBlocks.length + 1;
+    let iteration = 0;
+
     // スタイリストは全スキルを実行可能なので、スキル未設定の場合は全スキルをMAXで注入
     const allSkillIds = menus.flatMap(m => (m.assistantSlots || []).map(s => s.requiredSkill)).filter(Boolean);
     const uniqueSkillIds = [...new Set(allSkillIds)];
@@ -218,78 +296,161 @@ export class SummonEngine {
       }
     });
 
-    // スタイリストの自予約時間帯を _assignedSlotTimes に登録（競合チェック用）
-    // これにより _hasTimeConflict で「自分の予約と重複する時間帯」が検出される
-    reservations.forEach(res => {
-      const stId = res.stylistId;
-      if (!this._assignedSlotTimes[stId]) {
-        this._assignedSlotTimes[stId] = [];
-      }
-      this._assignedSlotTimes[stId].push({
-        start: this._toTimestamp(res.startTime),
-        end: this._toTimestamp(res.endTime)
+    while (iteration < MAX_ITERATIONS) {
+      iteration++;
+
+      // 1. 各イテレーションの初期化（状態リセット）
+      this._assignmentCounts = {};
+      assistants.forEach(a => { this._assignmentCounts[a.id] = 0; });
+      stylists.forEach(s => { this._assignmentCounts[s.id] = 0; });
+
+      this._assignedSlotTimes = {};
+      assistants.forEach(a => { this._assignedSlotTimes[a.id] = []; });
+      stylists.forEach(s => { this._assignedSlotTimes[s.id] = []; });
+
+      // スタイリストの自予約時間帯を登録
+      reservations.forEach(res => {
+        const stId = res.stylistId;
+        if (!this._assignedSlotTimes[stId]) this._assignedSlotTimes[stId] = [];
+        this._assignedSlotTimes[stId].push({
+          start: this._toTimestamp(res.startTime),
+          end: this._toTimestamp(res.endTime)
+        });
       });
-    });
 
-    // 最適化パス: アシスタントのみで実行（スタイリスト配置は従来のフォールバック経由のみ）
-    this._optimizeAssignments(assignments, autoSlots, assistants);
+      const currentAssignments = {};
+      reservations.forEach(r => currentAssignments[r.id] = {});
 
-    // Step 5.5: マンセル制フォールバック（掛け持ちブロックの不足解消）
-    const overlappingPairs = new Set();
-    requiredSlots.forEach(slot => {
-      if (slot.isOverlapping) {
-        overlappingPairs.add(slot.reservationId);
-      }
-    });
-
-    const manncells = this._applyManncellFallback(
-      assignments, unfilledSlots, autoSlots, requiredSlots, assistants, reservations, overlappingPairs
-    );
-
-    // Step 6: スタイリスト召喚フォールバック
-    const stylistSummons = this._handleStylistFallback(
-      unfilledSlots, stylists, reservations, menuMap, assignments
-    );
-
-    // 手動固定（fixedAssistantId）でスタイリストが指定されている場合も特殊召喚として集計
-    const stylistIdSet = new Set(stylists.map(s => s.id));
-    requiredSlots.forEach(slot => {
-      if (slot.fixedAssistantId && stylistIdSet.has(slot.fixedAssistantId)) {
-        const exists = stylistSummons.some(
-          s => s.reservationId === slot.reservationId && s.slotIndex === slot.slotIndex
-        );
-        if (!exists) {
-          stylistSummons.push({
-            stylistId: slot.fixedAssistantId,
-            reservationId: slot.reservationId,
-            slotIndex: slot.slotIndex,
-            startTime: slot.startTime,
-            endTime: slot.endTime,
-            badge: true,
-            isSpecialSummon: true,
-            specialSummonReason: 'manual'
+      // 2. 固定アサインの適用 (Manncellの前に処理して競合を防ぐ)
+      requiredSlots.forEach(slot => {
+        if (slot.fixedAssistantId) {
+          if (slot.fixedAssistantId === '__none__') {
+            currentAssignments[slot.reservationId][slot.slotIndex] = '__none__';
+            return;
+          }
+          currentAssignments[slot.reservationId][slot.slotIndex] = slot.fixedAssistantId;
+          const assistant = assistants.find(a => a.id === slot.fixedAssistantId) || stylists.find(s => s.id === slot.fixedAssistantId);
+          if (assistant) {
+            this._assignmentCounts[assistant.id] = (this._assignmentCounts[assistant.id] || 0) + 1;
+          }
+          if (!this._assignedSlotTimes[slot.fixedAssistantId]) {
+            this._assignedSlotTimes[slot.fixedAssistantId] = [];
+          }
+          this._assignedSlotTimes[slot.fixedAssistantId].push({
+            start: this._toTimestamp(slot.startTime),
+            end: this._toTimestamp(slot.endTime)
           });
         }
-      }
-    });
+      });
 
-    // ゴースト不足対策：実際に assignments にアサインされているスロットは unfilledSlots から確実に除外する
-    unfilledSlots = unfilledSlots.filter(slot => {
-      return !(assignments[slot.reservationId] && assignments[slot.reservationId][slot.slotIndex]);
-    });
+      // 3. 発動決定済みのマンセルチームを結成
+      const manncells = this._applyManncellFallback(
+        currentAssignments, [], [], requiredSlots, assistants, reservations, overlappingPairs, activeManncellBlockIds, menuMap, stylists
+      );
+
+      // マンセルに確保されたスロットをGreedy対象から外す
+      const manncellReservationIds = new Set();
+      for (const block of allBlocks) {
+        if (activeManncellBlockIds.has(getBlockId(block))) {
+          const blockSlots = requiredSlots.filter(s => s.stylistId === block.stylistId && s.startTime >= block.startTime && s.endTime <= block.endTime);
+          blockSlots.forEach(s => manncellReservationIds.add(s.reservationId));
+        }
+      }
+      const remainingSlots = filteredSlots.filter(s => !manncellReservationIds.has(s.reservationId));
+
+      // 4. 残りのスロットをGreedy配置
+      const { assignments, concurrentAssignments, unfilledSlots, autoSlots } = this._assignAssistants(remainingSlots, assistants, currentAssignments);
+
+      // 5. グローバル最適化パス
+      this._optimizeAssignments(assignments, autoSlots, assistants);
+
+      // 6. 新たに破綻した掛け持ちブロックを探す（※優先度の高いスタイリストから先に救済する）
+      let newFailedBlock = null;
+
+      const rankPriorityMap = { 'owner': 1, 'top_stylist': 2, 'stylist': 3, 'junior': 4 };
+      const sortedBlocks = [...allBlocks].sort((a, b) => {
+         const stylistA = stylists.find(s => s.id === a.stylistId);
+         const stylistB = stylists.find(s => s.id === b.stylistId);
+         
+         const priorityA = stylistA && stylistA.prioritySummon ? 1 : 0;
+         const priorityB = stylistB && stylistB.prioritySummon ? 1 : 0;
+         if (priorityA !== priorityB) return priorityB - priorityA;
+         
+         const rankA = stylistA ? (rankPriorityMap[stylistA.rank] || 5) : 5;
+         const rankB = stylistB ? (rankPriorityMap[stylistB.rank] || 5) : 5;
+         if (rankA !== rankB) return rankA - rankB;
+         
+         return a.startTime - b.startTime;
+      });
+
+      for (const block of sortedBlocks) {
+        if (activeManncellBlockIds.has(getBlockId(block))) continue; // 既にマンセル化済み
+
+        const blockSlots = requiredSlots.filter(s => s.stylistId === block.stylistId && s.startTime >= block.startTime && s.endTime <= block.endTime);
+        const hasUnfilled = blockSlots.some(s => !assignments[s.reservationId] || !assignments[s.reservationId][s.slotIndex] || assignments[s.reservationId][s.slotIndex] === '__none__');
+        
+        // 兼任過労が発生しているかも破綻とみなす
+        const hasConcurrent = this._findConcurrentPairs(assignments, blockSlots).length > 0;
+        
+        if (hasUnfilled || hasConcurrent) {
+          newFailedBlock = block;
+          break; // 1イテレーションにつき1ブロックずつマンセル化を追加
+        }
+      }
+
+      if (!newFailedBlock) {
+        // 全ての破綻が解消された（またはこれ以上マンセル化できるブロックがない）
+        finalAssignments = assignments;
+        finalConcurrentAssignments = concurrentAssignments;
+        finalUnfilledSlots = unfilledSlots;
+        finalAutoSlots = autoSlots;
+        finalManncells = manncells;
+        
+        // ゴースト不足対策
+        finalUnfilledSlots = finalUnfilledSlots.filter(slot => {
+          return !(finalAssignments[slot.reservationId] && finalAssignments[slot.reservationId][slot.slotIndex]);
+        });
+        
+        finalStylistSummons = this._handleStylistFallback(
+          finalUnfilledSlots, stylists, reservations, menuMap, finalAssignments
+        );
+        
+        // 手動固定（fixedAssistantId）でスタイリストが指定されている場合も特殊召喚として集計
+        const stylistIdSet = new Set(stylists.map(s => s.id));
+        requiredSlots.forEach(slot => {
+          if (slot.fixedAssistantId && stylistIdSet.has(slot.fixedAssistantId)) {
+            const exists = finalStylistSummons.some(
+              s => s.reservationId === slot.reservationId && s.slotIndex === slot.slotIndex
+            );
+            if (!exists) {
+              finalStylistSummons.push({
+                stylistId: slot.fixedAssistantId,
+                reservationId: slot.reservationId,
+                slotIndex: slot.slotIndex,
+                startTime: slot.startTime,
+                endTime: slot.endTime,
+                badge: true,
+                isSpecialSummon: true,
+                specialSummonReason: 'manual'
+              });
+            }
+          }
+        });
+        
+        break;
+      } else {
+        // 新しいブロックをマンセル化対象に追加して再計算ループへ
+        activeManncellBlockIds.add(getBlockId(newFailedBlock));
+      }
+    }
 
     // Step 7: アラート生成（それでも配置できなかったスロット）
-    // ※ 掛け持ち箇所（isOverlapping=true）のみアラート対象。
-    //   掛け持ちしていない予約のアシスタント不足は「あれば配置・なければスキップ」とし、
-    //   アラートを出さない（人員不足の深刻な状況として扱わない）。
     const alerts = [];
-    unfilledSlots.forEach(slot => {
-      // スタイリスト召喚で解決したかチェック
-      const isSummoned = stylistSummons.some(
+    finalUnfilledSlots.forEach(slot => {
+      const isSummoned = finalStylistSummons.some(
         s => s.reservationId === slot.reservationId && s.slotIndex === slot.slotIndex
       );
       if (!isSummoned) {
-        // 掛け持ち箇所のみアラートを生成する
         if (slot.isOverlapping) {
           alerts.push({
             reservationId: slot.reservationId,
@@ -297,30 +458,29 @@ export class SummonEngine {
             message: '人数不足'
           });
         }
-        // 非掛け持ち予約の不足は静かにスキップ（アラートなし）
       }
     });
 
     // Step 8: 空き時間活動と稼働率の計算
     const { activities: freeTimeActivities, utilizationRates } = this._assignFreeTimeActivities(
-      assistants, stylists, reservations, menuMap, assignments, stylistSummons, lunchOverrides, restOverrides
+      assistants, stylists, reservations, menuMap, finalAssignments, finalStylistSummons, lunchOverrides, restOverrides
     );
 
     // 公平性スコア計算
-    const fairnessScores = this._calculateFairness(assignments, assistants, requiredSlots);
+    const fairnessScores = this._calculateFairness(finalAssignments, assistants, requiredSlots);
 
     // ポスト処理: 掛け持ちスタイリストの予約内で、同一アシスタントの時間重複スロットを検出し兼任フラグを付与する
-    const allConcurrentAssignments = this._detectAllConcurrentSlots(assignments, requiredSlots, menuMap, overlappingPairs, reservations);
+    const allConcurrentAssignments = this._detectAllConcurrentSlots(finalAssignments, requiredSlots, menuMap, overlappingPairs, reservations);
 
     return {
-      assignments,
+      assignments: finalAssignments,
       concurrentAssignments: allConcurrentAssignments,
-      stylistSummons,
+      stylistSummons: finalStylistSummons,
       alerts,
       freeTimeActivities,
       fairnessScores,
       utilizationRates,
-      manncells
+      manncells: finalManncells
     };
   }
 
@@ -456,15 +616,14 @@ export class SummonEngine {
   }
 
   /**
-   * カラー・パーマ・アイロン・1液・2液等の重要施術スキルまたはメニューであるかを判定する
+   * カラー・パーマ・アイロン・1液・2液等の重要施術スキルであるかを判定する
    * @param {string} skillId - スキルID
-   * @param {string} menuName - メニュー名
    * @returns {boolean}
    * @private
    */
-  _isCriticalSkillOrMenu(skillId, menuName = '') {
-    if (!skillId && !menuName) return false;
-    const target = `${skillId || ''} ${menuName || ''}`.toLowerCase();
+  _isCriticalSkillOrMenu(skillId) {
+    if (!skillId) return false;
+    const target = String(skillId).toLowerCase();
     return /color|perm|iron|fluid|カラー|パーマ|アイロン|1液|１液|2液|２液/.test(target);
   }
 
@@ -620,7 +779,7 @@ export class SummonEngine {
         }
 
         if (isCritical) {
-          priorityScore += 100; // 重要技術（Lv5）加算
+          priorityScore += 5000; // 重要技術（Lv5）は絶対に最優先でアサイン（シャンプーに枠を奪われないため）
         }
 
         const slotObj = {
@@ -751,11 +910,13 @@ export class SummonEngine {
       if (!resAssign) continue;
 
       for (const slotIdx in resAssign) {
-        const assignedId = typeof resAssign[slotIdx] === 'object' 
-          ? resAssign[slotIdx].id 
-          : resAssign[slotIdx];
-        
-        if (assignedId === assistantId) {
+          const assignedId = typeof resAssign[slotIdx] === 'object' 
+            ? resAssign[slotIdx].id 
+            : resAssign[slotIdx];
+          
+          let isInvolved = (assignedId === assistantId);
+          
+          if (isInvolved) {
           // this._allRequiredSlotsから正確な時間を取得する
           const otherSlot = this._allRequiredSlots.find(s => s.reservationId === res.id && s.slotIndex == slotIdx);
           
@@ -856,6 +1017,10 @@ export class SummonEngine {
         else score -= 15;
       }
 
+      // 高スキル者を温存するため、持っているスキルの合計レベルに比例してスコアをマイナスする
+      const totalSkillLevel = (assistant.skills || []).reduce((sum, s) => sum + (typeof s === 'object' ? (s.proficiency || 1) : 1), 0);
+      score -= totalSkillLevel * 5;
+
       if (assignedInThisReservation.has(assistant.id)) {
         const countDiff = assignedCount - avgCount;
         if (countDiff <= 2) score += 25;
@@ -908,49 +1073,23 @@ export class SummonEngine {
    * @returns {{assignments: Object.<string, Object.<number, string>>, concurrentAssignments: Object.<string, Object.<number, boolean>>, unfilledSlots: RequiredSlot[]}}
    * @private
    */
-  _assignAssistants(requiredSlots, candidates) {
-    /** @type {Object.<string, Object.<number, string>>} */
-    const assignments = {};
-    /** @type {Object.<string, Object.<number, boolean>>} */
+  _assignAssistants(requiredSlots, candidates, existingAssignments = null) {
+    const assignments = existingAssignments || {};
     const concurrentAssignments = {};
     const unfilledSlots = [];
 
-    /** @type {Object.<string, Array<{start: number, end: number}>>} */
-    this._assignedSlotTimes = {};
-    candidates.forEach(a => { this._assignedSlotTimes[a.id] = []; });
-
-    // 1. 固定アシスタントのパス
-    requiredSlots.forEach(slot => {
-      if (slot.fixedAssistantId) {
-        if (slot.fixedAssistantId === '__none__') {
-          if (!assignments[slot.reservationId]) {
-            assignments[slot.reservationId] = {};
-          }
-          assignments[slot.reservationId][slot.slotIndex] = '__none__';
-          return;
-        }
-
-        if (!assignments[slot.reservationId]) {
-          assignments[slot.reservationId] = {};
-        }
-        assignments[slot.reservationId][slot.slotIndex] = slot.fixedAssistantId;
-
-        const assistant = candidates.find(a => a.id === slot.fixedAssistantId);
-        if (assistant) {
-          this._assignmentCounts[assistant.id] = (this._assignmentCounts[assistant.id] || 0) + 1;
-        }
-        if (!this._assignedSlotTimes[slot.fixedAssistantId]) {
-          this._assignedSlotTimes[slot.fixedAssistantId] = [];
-        }
-        this._assignedSlotTimes[slot.fixedAssistantId].push({
-          start: this._toTimestamp(slot.startTime),
-          end: this._toTimestamp(slot.endTime)
-        });
-      }
-    });
+    // 固定アシスタント処理と状態初期化はループ側で実施済みのため省略
 
     // 2. 自動計算スロットのアサイン
     const autoSlots = requiredSlots.filter(s => !s.fixedAssistantId);
+
+    // アサイン処理の優先順位を適用（掛け持ち > 優先トグル > 稼働率 > 時間順）
+    autoSlots.sort((a, b) => {
+      if (b.priorityScore !== a.priorityScore) {
+        return (b.priorityScore || 0) - (a.priorityScore || 0);
+      }
+      return this._toTimestamp(a.startTime) - this._toTimestamp(b.startTime);
+    });
 
     autoSlots.forEach(slot => {
       // フェーズ1: 時間競合のない最適なフリーアシスタント
@@ -1078,15 +1217,14 @@ export class SummonEngine {
   }
 
   /**
-   * マンセル制フォールバック（掛け持ちブロックの不足解消）
+   * 掛け持ち予約をスタイリストごとのブロックにグループ化する
    * @private
    */
-  _applyManncellFallback(assignments, unfilledSlots, autoSlots, requiredSlots, assistants, reservations, overlappingPairs) {
-    const manncells = [];
-
-    // 1. スタイリストごとに予約をまとめ、重なり（ブロック）を検出
+  _groupSlotsByStylistBlock(requiredSlots, overlappingPairs) {
     const byStylist = new Map();
-    reservations.forEach(res => {
+    const overlappingReservations = this._allReservations.filter(r => overlappingPairs.has(r.id));
+    
+    overlappingReservations.forEach(res => {
       if (!byStylist.has(res.stylistId)) byStylist.set(res.stylistId, []);
       byStylist.get(res.stylistId).push(res);
     });
@@ -1103,7 +1241,6 @@ export class SummonEngine {
           const resStart = this._toTimestamp(res.startTime);
           const resEnd = this._toTimestamp(res.endTime);
           if (resStart < currentBlock.endTime) {
-            // Overlaps
             currentBlock.endTime = Math.max(currentBlock.endTime, resEnd);
             currentBlock.reservations.push(res);
           } else {
@@ -1114,23 +1251,144 @@ export class SummonEngine {
       }
       if (currentBlock) blocks.push(currentBlock);
     });
+    return blocks.filter(b => b.reservations.length > 1);
+  }
 
-    // 掛け持ち予約があるブロック（reservations.length >= 2）に絞る
-    const overlappingBlocks = blocks.filter(b => b.reservations.length > 1);
+  /**
+   * スタイリストが指定した時間帯に専有枠（カットなど）に入っていないかチェックする
+   * @param {string} stylistId 
+   * @param {number|string} startTime
+   * @param {number|string} endTime
+   * @param {import('../models/reservation.js').Reservation[]} reservations
+   * @param {Map<string, import('../models/menu.js').MenuItem>} menuMap
+   * @returns {boolean}
+   * @private
+   */
+  _isStylistOccupied(stylistId, startTime, endTime, reservations, menuMap) {
+    if (!menuMap) return false;
+    
+    const startTs = this._toTimestamp(startTime);
+    const endTs = this._toTimestamp(endTime);
+    
+    // スタイリスト自身のすべての予約を取得
+    const stylistReservations = reservations.filter(r => r.stylistId === stylistId);
+    
+    for (const res of stylistReservations) {
+      const menu = menuMap.get(res.menuItemId);
+      if (!menu || !menu.stylistSlots || menu.stylistSlots.length === 0) continue;
+      
+      const resStartTs = this._toTimestamp(res.startTime);
+      const isMinutesMode = typeof res.startTime === 'number';
+      const toUnit = (minutes) => isMinutesMode ? minutes : minutes * 60000;
+      
+      for (const slot of menu.stylistSlots) {
+        const slotStartTs = resStartTs + toUnit(slot.startMinute);
+        const slotEndTs = resStartTs + toUnit(slot.endMinute);
+        
+        // 判定時間帯とスタイリスト専有枠が少しでも被っていれば専有されている
+        if (startTs < slotEndTs && slotStartTs < endTs) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * マンセル制フォールバック（掛け持ちブロックの不足解消）
+   * @private
+   */
+  _applyManncellFallback(assignments, unfilledSlots, autoSlots, requiredSlots, assistants, reservations, overlappingPairs, activeManncellBlockIds = null, menuMap = null, stylists = []) {
+    const manncells = [];
+    const overlappingBlocks = this._groupSlotsByStylistBlock(requiredSlots, overlappingPairs);
+
+    // 【追加】スタイリストの優先度順にブロックをソート（優先トグル > ランク > 開始時間）
+    const rankPriority = {
+      'owner': 1,
+      'top_stylist': 2,
+      'stylist': 3,
+      'junior': 4
+    };
+
+    overlappingBlocks.sort((a, b) => {
+       const stylistA = stylists.find(s => s.id === a.stylistId);
+       const stylistB = stylists.find(s => s.id === b.stylistId);
+       
+       // 1. 優先召喚トグル（ONが最優先）
+       const priorityA = stylistA && stylistA.prioritySummon ? 1 : 0;
+       const priorityB = stylistB && stylistB.prioritySummon ? 1 : 0;
+       if (priorityA !== priorityB) return priorityB - priorityA;
+       
+       // 2. ランク（オーナー等の高ランク優先）
+       const rankA = stylistA ? (rankPriority[stylistA.rank] || 5) : 5;
+       const rankB = stylistB ? (rankPriority[stylistB.rank] || 5) : 5;
+       if (rankA !== rankB) return rankA - rankB;
+       
+       // 3. 開始時間（早い時間から優先）
+       return a.startTime - b.startTime;
+    });
 
     for (const block of overlappingBlocks) {
+      console.log(`[DEBUG Manncell] ========================`);
+      console.log(`[DEBUG Manncell] Start processing block for stylist: ${block.stylistId}, time: ${block.startTime} to ${block.endTime}`);
+
+      if (activeManncellBlockIds && !activeManncellBlockIds.has(`${block.stylistId}_${block.startTime}_${block.endTime}`)) {
+        continue;
+      }
+      
+
+      // マンセル発動前準備：このブロックのスタイリストに対する既存の拘束を一旦クリア
+      for (const a of assistants) {
+        if (this._manncellConstraints && this._manncellConstraints[a.id]) {
+          this._manncellConstraints[a.id] = this._manncellConstraints[a.id].filter(c => c.stylistId !== block.stylistId);
+        }
+      }
+
       // ブロック内の全スロットを取得
       const blockSlots = requiredSlots.filter(s => 
         block.reservations.some(r => r.id === s.reservationId)
       );
 
+      // このブロックで要求されるスキルとその最大レベルを収集
+      const blockRequiredSkills = {};
+      blockSlots.forEach(slot => {
+         if (slot.requiredSkill) {
+            blockRequiredSkills[slot.requiredSkill] = Math.max(
+               blockRequiredSkills[slot.requiredSkill] || 0,
+               slot.requiredProficiency || 1
+            );
+         }
+      });
+
+      // チームがブロックの要求スキルをすべてカバーしているか判定する関数
+      const checkTeamHasAllRequiredSkills = (teamSet) => {
+         const teamSkillMax = {};
+         for (const astId of teamSet) {
+            const ast = assistants.find(a => a.id === astId);
+            if (!ast || !ast.skills) continue;
+            for (const skill of ast.skills) {
+               const sId = typeof skill === 'object' ? skill.id : skill;
+               const prof = typeof skill === 'object' ? (skill.proficiency || 1) : 1;
+               teamSkillMax[sId] = Math.max(teamSkillMax[sId] || 0, prof);
+            }
+         }
+         
+         // ブロックに必要なスキルが、チームメンバーによってすべてカバーされているか
+         for (const [reqSkill, reqProf] of Object.entries(blockRequiredSkills)) {
+            if (!teamSkillMax[reqSkill] || teamSkillMax[reqSkill] < reqProf) {
+               return false; // カバーできていない
+            }
+         }
+         return true; // すべてカバーできている
+      };
+
       // 未配置スロットがあるか？
       const blockUnfilledSlots = blockSlots.filter(s => {
         const resAssign = assignments[s.reservationId];
-        return !resAssign || !resAssign[s.slotIndex];
+        return !resAssign || !resAssign[s.slotIndex] || resAssign[s.slotIndex] === '__none__';
       });
 
-      if (blockUnfilledSlots.length === 0) continue; // 不足なし → マンセル不要
+      if (!activeManncellBlockIds && blockUnfilledSlots.length === 0) continue; // 不足なし → マンセル不要
 
       // ブロック内の全スロットを一旦グローバルunfilledSlotsから除外（再計算のため）
       for (const s of blockSlots) {
@@ -1165,6 +1423,7 @@ export class SummonEngine {
       for (const s of blockSlots) {
         if (s.fixedAssistantId) {
           team.add(s.fixedAssistantId);
+          this._addManncellConstraint(s.fixedAssistantId, block.stylistId, block.startTime, block.endTime);
         }
       }
 
@@ -1178,98 +1437,173 @@ export class SummonEngine {
       let maxAssistants = 0, currentOverlap = 0;
       events.forEach(e => { currentOverlap += e.type; if(currentOverlap > maxAssistants) maxAssistants = currentOverlap; });
 
+      const idealAssistants = maxAssistants;
+      // 最低マンセル = 重なり数 - 1（最低1人）
+      const minAssistants = Math.max(1, maxAssistants - 1);
+
       let allFilled = true;
 
-      // 未配置となった全スロット（固定以外）を優先度順に並べ替えて処理
-      const targetSlots = blockSlots.filter(s => !s.fixedAssistantId).sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0));
+      // 未配置となった全スロット（固定以外）のうち、実際に掛け持ちしている箇所のみを対象とする
+      const targetSlots = blockSlots.filter(s => !s.fixedAssistantId && s.isOverlapping).sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0));
+
+      let validCandidates = assistants;
 
       for (const slot of targetSlots) {
         let assigned = false;
 
         // 1. まず現在のチーム内のメンバーで兼任可能な人がいないか？
-        for (const astId of team) {
+        // 【修正】スキルの低い人（合計レベルが低い人）から優先してアサインし、高スキル者を温存する
+        const sortedTeamIds = Array.from(team).sort((aId, bId) => {
+           const a = assistants.find(x => x.id === aId);
+           const b = assistants.find(x => x.id === bId);
+           const aScore = a ? (a.skills || []).reduce((sum, s) => sum + (typeof s === 'object' ? (s.proficiency || 1) : 1), 0) : 0;
+           const bScore = b ? (b.skills || []).reduce((sum, s) => sum + (typeof s === 'object' ? (s.proficiency || 1) : 1), 0) : 0;
+           return aScore - bScore;
+        });
+        
+        for (const astId of sortedTeamIds) {
            const candidate = assistants.find(a => a.id === astId);
            if (!candidate) continue;
            const hasSkill = this._hasSkill(candidate, slot.requiredSkill, slot.requiredProficiency);
            if (!hasSkill) continue;
            
-           // 他のスタイリストと競合していないか？（ブロック内の同スタイリストとの兼任は許容）
-           if (this._hasConflictWithOtherStylist(astId, slot, assignments)) continue;
+           // 【修正】マンセルであっても物理的な時間被りは無理なので、厳密に時間重複をチェックする
+           if (this._hasTimeConflict(astId, slot.startTime, slot.endTime, assignments)) continue;
+
+           // マンセルブロックの競合（拘束時間）チェック
+           if (this._hasManncellConflict(astId, block.stylistId, block.startTime, block.endTime)) continue;
 
            // アサイン
            this._assignAssistantToSlot(assignments, slot, astId);
+           this._addManncellConstraint(astId, block.stylistId, block.startTime, block.endTime);
            assigned = true;
            break;
         }
 
         if (assigned) continue;
 
-        // チームの上限（マンセルの制約）に達していない場合のみ、外部からの新規追加や引き抜きを試みる
-        if (team.size < maxAssistants) {
-          // 2. チーム外の空いている人を追加
-          const candidate = this._findSwapCandidate(slot, '__nobody__', assignments, assistants);
+        // 【修正】スタイリスト自身によるカバー判定（ユーザー様の指摘に基づくパラダイムシフト）
+        // もしカラー等（重要スキル）の枠で、既にチーム内にそのスキルを持つ人がいるなら、
+        // 2人目の重要スキル保持者をチームに呼ばず、スタイリスト自身が担当する（2マンセル等でのカバー）
+        if (this._isCriticalSkillOrMenu(slot.requiredSkill)) {
+          const teamHasSkill = Array.from(team).some(id => {
+            const a = assistants.find(x => x.id === id);
+            return a && this._hasSkill(a, slot.requiredSkill, slot.requiredProficiency);
+          });
+          
+          if (teamHasSkill) {
+            // 【さらに修正】スタイリストがこの時間帯、自身のカット時間等で塞がっていないかチェック
+            const isOccupiedByCut = this._isStylistOccupied(slot.stylistId, slot.startTime, slot.endTime, reservations, menuMap);
+            const isOccupiedByOtherSlot = this._hasTimeConflict(slot.stylistId, slot.startTime, slot.endTime, assignments);
+            
+            if (!isOccupiedByCut && !isOccupiedByOtherSlot) {
+              this._assignAssistantToSlot(assignments, slot, slot.stylistId);
+              assigned = true;
+              continue;
+            }
+          }
+        }
+
+          // 1. まずチーム外の「空いている人」を探す（この時点で空いている人は少ない）
+          const candidate = this._findSwapCandidate(slot, '__nobody__', assignments, validCandidates, block.stylistId, block.startTime, block.endTime);
           if (candidate) {
             this._assignAssistantToSlot(assignments, slot, candidate.id);
+            this._addManncellConstraint(candidate.id, block.stylistId, block.startTime, block.endTime);
             team.add(candidate.id);
+            validCandidates = validCandidates.filter(c => c.id !== candidate.id);
             assigned = true;
+            console.log(`[DEBUG Manncell] Added FREE assistant=${candidate.id} to stylist=${block.stylistId} team. size=${team.size}`);
             continue;
           }
 
-          // 3. 掛け持ちなしのスロットから引き抜く（スティール）
-          const donorCandidate = this._stealAssistantForManncell(slot, assignments, requiredSlots, assistants, overlappingPairs);
-          if (donorCandidate) {
-            this._assignAssistantToSlot(assignments, slot, donorCandidate);
-            team.add(donorCandidate);
-            assigned = true;
-            continue;
-          }
-        }
-
-        // 4. 外部に空きがない等でここまでにアサインできなかった場合、
-        // チーム内に適正スキルを持つメンバーがいれば、他スタイリストの予約から強制剥奪してでもアサインする
-        if (!assigned && team.size > 0) {
-          for (const astId of team) {
-            const candidate = assistants.find(a => a.id === astId);
-            if (!candidate) continue;
-            
-            // 【重要】スキルレベルが要求（Lv5等）を満たしていない場合は絶対にアサインしない
-            if (!this._hasSkill(candidate, slot.requiredSkill, slot.requiredProficiency)) continue;
-
-            // もし他スタイリストの予約と重複している場合、その他スタイリストの予約からこのアシスタントを剥奪する（マンセル専属にするため）
-            if (this._hasConflictWithOtherStylist(astId, slot, assignments)) {
-              this._forceStripAssistantFromOtherStylists(astId, slot, assignments, unfilledSlots);
-              // ロックされていて剥奪に失敗した等でまだコンフリクトが残っている場合はアサイン不可
-              if (this._hasConflictWithOtherStylist(astId, slot, assignments)) continue;
+          // 2. 空いている人がいない場合、最低マンセルの人数を満たしていない、またはスキル要件を満たしていなければ他から奪う
+          const hasSkills = checkTeamHasAllRequiredSkills(team);
+          if (team.size < minAssistants || !hasSkills) {
+            const donorCandidateId = this._stealAssistantForManncell(
+              slot, assignments, requiredSlots, validCandidates, overlappingPairs, block.stylistId, block.startTime, block.endTime
+            );
+            if (donorCandidateId) {
+              this._assignAssistantToSlot(assignments, slot, donorCandidateId);
+              this._addManncellConstraint(donorCandidateId, block.stylistId, block.startTime, block.endTime);
+              team.add(donorCandidateId);
+              validCandidates = validCandidates.filter(c => c.id !== donorCandidateId);
+              assigned = true;
+              console.log(`[DEBUG Manncell] STOLEN assistant=${donorCandidateId} for stylist=${block.stylistId} team. size=${team.size}, hasSkills=${hasSkills}`);
+              continue;
             }
-            this._assignAssistantToSlot(assignments, slot, astId);
-            assigned = true;
-            break;
           }
-        }
 
+        // 4. 無理やりアサインロジックは削除（スキル未達の場合は素直に破綻させる）
+        
         if (!assigned) {
-          allFilled = false;
-          // アサインに失敗した場合は再びグローバルのunfilledSlotsに戻す
-          unfilledSlots.push(slot);
+           allFilled = false;
         }
       }
 
       // アシスタントが1人もアサインできなかった場合はMANCELL不成立（破綻）として扱う
       if (team.size === 0) {
-        // すでに不足スロットは targetSlots ループ内で unfilledSlots に入っているため
-        // ここではブロックを描画対象(manncells)に追加せずにスキップする
         continue;
       }
 
-      // マンセル情報を記録
-      manncells.push({
-        stylistId: block.stylistId,
-        startTime: this._minutesToTime(block.startTime),
-        endTime: this._minutesToTime(block.endTime),
-        teamSize: team.size + 1, // アシスタント数 + スタイリスト1人
-        isSuccess: allFilled,
-        reservationIds: block.reservations.map(r => r.id)
-      });
+      // アサイン成功したスロットは unfilledSlots から除外、失敗したものは戻す
+      for (const slot of targetSlots) {
+         const resAssign = assignments[slot.reservationId];
+         if (resAssign && resAssign[slot.slotIndex]) {
+            const idx = unfilledSlots.indexOf(slot);
+            if (idx !== -1) unfilledSlots.splice(idx, 1);
+         } else {
+            // アサイン失敗したスロットはグローバルの unfilledSlots に戻す
+            if (!unfilledSlots.includes(slot)) {
+               unfilledSlots.push(slot);
+            }
+         }
+      }
+
+      // 実際のアシスタント稼働時間の計算（UI上の枠を実働時間に合わせるため）
+      let minTs = Infinity;
+      let maxTs = -Infinity;
+      
+      for (const slot of blockSlots) {
+         const resAssign = assignments[slot.reservationId];
+         if (resAssign && resAssign[slot.slotIndex]) {
+            const astId = resAssign[slot.slotIndex];
+            // 'X' (stylistId) や '__none__' ではない、純粋なアシスタントのアサインを抽出
+            if (astId && astId !== '__none__' && astId !== block.stylistId) {
+               const startTs = this._toTimestamp(slot.startTime);
+               const endTs = this._toTimestamp(slot.endTime);
+               if (startTs < minTs) minTs = startTs;
+               if (endTs > maxTs) maxTs = endTs;
+            }
+         }
+      }
+      
+      const actualStart = minTs !== Infinity ? minTs : block.startTime;
+      const actualEnd = maxTs !== -Infinity ? maxTs : block.endTime;
+
+      // マンセル成立判定：最低マンセルの人数を満たし、かつ必要なスキルを満たせたかどうか
+      const hasFinalSkills = checkTeamHasAllRequiredSkills(team);
+      const isManncellSuccess = team.size >= minAssistants && hasFinalSkills;
+
+      if (isManncellSuccess) {
+        // マンセル情報を記録
+        manncells.push({
+          stylistId: block.stylistId,
+          startTime: this._minutesToTime(actualStart),
+          endTime: this._minutesToTime(actualEnd),
+          teamSize: team.size + 1, // アシスタント数 + スタイリスト1人
+          team: Array.from(team), // チームに選ばれたアシスタントIDの配列
+          isSuccess: true, // 最低マンセルを満たしたので成功扱い
+          reservationIds: block.reservations.map(r => r.id)
+        });
+      } else {
+        // マンセル不成立：拘束をロールバック（入る場所のアサインはそのまま残す）
+        console.log(`[DEBUG Manncell] Block for ${block.stylistId} FAILED. Rolling back constraints. (team.size ${team.size} < min ${minAssistants})`);
+        for (const astId of team) {
+           if (this._manncellConstraints && this._manncellConstraints[astId]) {
+              this._manncellConstraints[astId] = this._manncellConstraints[astId].filter(c => c.stylistId !== block.stylistId);
+           }
+        }
+      }
     }
 
     return manncells;
@@ -1300,7 +1634,7 @@ export class SummonEngine {
     this._assignmentCounts[astId] = (this._assignmentCounts[astId] || 0) + 1;
   }
 
-  _stealAssistantForManncell(targetSlot, assignments, allSlots, assistants, overlappingPairs) {
+  _stealAssistantForManncell(targetSlot, assignments, allSlots, assistants, overlappingPairs, manncellStylistId = null, manncellStart = null, manncellEnd = null) {
      // 掛け持ちなし（overlappingPairsに含まれない）予約のスロットを探す
      const donorSlots = allSlots.filter(s => {
        if (overlappingPairs.has(s.reservationId)) return false; // 掛け持ち予約からは奪わない
@@ -1318,6 +1652,11 @@ export class SummonEngine {
        if (!this._hasSkill(candidate, targetSlot.requiredSkill, targetSlot.requiredProficiency)) continue;
        if (candidate.id === targetSlot.stylistId) continue;
        if (this._hasConflictWithOtherStylist(candidate.id, targetSlot, assignments)) continue;
+
+       // マンセル拘束チェック
+       if (manncellStylistId && manncellStart != null && manncellEnd != null) {
+         if (this._hasManncellConflict(candidate.id, manncellStylistId, manncellStart, manncellEnd)) continue;
+       }
 
        // 引き抜き実行のシミュレーション
        const donorStart = this._toTimestamp(donor.startTime);
@@ -1403,11 +1742,18 @@ export class SummonEngine {
    * @returns {import('../models/staff.js').Staff|null} 差し替え候補（なければnull）
    * @private
    */
-  _findSwapCandidate(targetSlot, currentAssistantId, assignments, candidates) {
+  _findSwapCandidate(targetSlot, currentAssistantId, assignments, candidates, manncellStylistId = null, manncellStart = null, manncellEnd = null) {
     const targetStart = this._toTimestamp(targetSlot.startTime);
     const targetEnd = this._toTimestamp(targetSlot.endTime);
 
-    for (const candidate of candidates) {
+    // スキル合計値が低い順（高スキル温存）にソートして判定する
+    const sortedCandidates = [...candidates].sort((a, b) => {
+      const aScore = (a.skills || []).reduce((sum, s) => sum + (typeof s === 'object' ? (s.proficiency || 1) : 1), 0);
+      const bScore = (b.skills || []).reduce((sum, s) => sum + (typeof s === 'object' ? (s.proficiency || 1) : 1), 0);
+      return aScore - bScore;
+    });
+
+    for (const candidate of sortedCandidates) {
       if (candidate.id === currentAssistantId) continue;
 
       // スタイリスト自身の予約にはそのスタイリストを配置しない
@@ -1436,6 +1782,13 @@ export class SummonEngine {
       // 他スタイリストとの時間重複チェック
       if (this._hasConflictWithOtherStylist(candidate.id, targetSlot, assignments)) {
         continue;
+      }
+
+      // マンセル拘束チェック
+      if (manncellStylistId && manncellStart != null && manncellEnd != null) {
+        if (this._hasManncellConflict(candidate.id, manncellStylistId, manncellStart, manncellEnd)) {
+          continue;
+        }
       }
 
       // 時間競合チェック（この候補が別のスロットと重複しないか）

@@ -560,7 +560,17 @@ export class Timeline {
         
         const badge = document.createElement('div');
         badge.className = 'manncell-badge';
-        badge.textContent = `${manncell.teamSize} MANCELL`;
+        
+        if (manncell.team && manncell.team.length > 0) {
+          const names = manncell.team.map(id => {
+            const ast = activeAssistants.find(a => a.id === id);
+            return ast ? (ast.nickname || ast.name) : id;
+          });
+          badge.textContent = `${names.join(' ＆ ')}（${manncell.teamSize}マンセル）`;
+        } else {
+          badge.textContent = `${manncell.teamSize}マンセル`;
+        }
+        
         manncellBlock.appendChild(badge);
         
         cellsContainer.appendChild(manncellBlock);

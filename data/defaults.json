@@ -18,6 +18,9 @@
       "colorCode": "#6366f1",
       "assistantSlots": [
         { "startMinute": 0, "endMinute": 20, "requiredSkill": "shampoo", "requiredProficiency": 3 }
+      ],
+      "stylistSlots": [
+        { "startMinute": 20, "endMinute": 60, "type": "cut" }
       ]
     },
     {
@@ -29,6 +32,9 @@
       "assistantSlots": [
         { "startMinute": 0,  "endMinute": 20, "requiredSkill": "shampoo", "requiredProficiency": 3 },
         { "startMinute": 35, "endMinute": 55, "requiredSkill": "shampoo", "requiredProficiency": 3 }
+      ],
+      "stylistSlots": [
+        { "startMinute": 20, "endMinute": 35, "type": "cut" }
       ]
     },
     {
@@ -37,7 +43,10 @@
       "shortName": "FC",
       "duration": 10,
       "colorCode": "#6366f1",
-      "assistantSlots": []
+      "assistantSlots": [],
+      "stylistSlots": [
+        { "startMinute": 0, "endMinute": 10, "type": "cut" }
+      ]
     },
     {
       "id": "color_only",
@@ -73,6 +82,9 @@
         { "startMinute": 0,  "endMinute": 15,  "requiredSkill": "shampoo", "requiredProficiency": 3 },
         { "startMinute": 40, "endMinute": 75,  "requiredSkill": "color",   "requiredProficiency": 3 },
         { "startMinute": 75, "endMinute": 120, "requiredSkill": "shampoo", "requiredProficiency": 3 }
+      ],
+      "stylistSlots": [
+        { "startMinute": 15, "endMinute": 40, "type": "cut" }
       ]
     },
     {
@@ -84,6 +96,9 @@
       "assistantSlots": [
         { "startMinute": 0,  "endMinute": 40, "requiredSkill": "color",   "requiredProficiency": 3 },
         { "startMinute": 40, "endMinute": 60, "requiredSkill": "shampoo", "requiredProficiency": 3 }
+      ],
+      "stylistSlots": [
+        { "startMinute": 60, "endMinute": 120, "type": "cut" }
       ]
     },
     {
@@ -139,6 +154,9 @@
         { "startMinute": 0,  "endMinute": 20,  "requiredSkill": "shampoo",     "requiredProficiency": 3 },
         { "startMinute": 50, "endMinute": 70,  "requiredSkill": "perm_liquid",  "requiredProficiency": 3 },
         { "startMinute": 70, "endMinute": 120, "requiredSkill": "shampoo",      "requiredProficiency": 3 }
+      ],
+      "stylistSlots": [
+        { "startMinute": 20, "endMinute": 50, "type": "cut" }
       ]
     },
     {
@@ -163,6 +181,9 @@
         { "startMinute": 0,   "endMinute": 60,  "requiredSkill": "straight_1", "requiredProficiency": 3 },
         { "startMinute": 60,  "endMinute": 120, "requiredSkill": "iron",       "requiredProficiency": 3 },
         { "startMinute": 120, "endMinute": 180, "requiredSkill": "straight_2", "requiredProficiency": 3 }
+      ],
+      "stylistSlots": [
+        { "startMinute": 180, "endMinute": 210, "type": "cut" }
       ]
     },
     {

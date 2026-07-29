@@ -6,9 +6,9 @@
  */
 
 import * as Storage from '../services/storage.js?v=18';
-import { SummonEngine } from '../services/summonEngine.js?v=20';
+import { summonEngine as SummonEngineInstance } from '../services/summonEngine/engineShadowRunner.js?v=32';
 import { FatigueManager } from '../services/fatigueManager.js';
-import { Timeline } from '../components/timeline.js?v=30';
+import { Timeline } from '../components/timeline.js?v=32';
 import { MenuBar } from '../components/menuBar.js?v=5';
 import { ReservationBlock } from '../components/reservation.js?v=29';
 import { StaffList } from '../components/staffList.js?v=6';
@@ -25,7 +25,7 @@ export class MainView {
     this.container = container;
 
     /** @type {SummonEngine} */
-    this.summonEngine = new SummonEngine();
+    this.summonEngine = SummonEngineInstance;
 
     /** @type {FatigueManager} */
     this.fatigueManager = new FatigueManager();
@@ -980,8 +980,49 @@ export class MainView {
     // 召喚エンジン実行（手動お昼ご飯位置・休憩オーバーライドを反映）
     const lunchOverrides = Storage.loadLunchOverrides ? Storage.loadLunchOverrides(dateStr) : {};
     const restOverrides = Storage.loadRestOverrides ? Storage.loadRestOverrides(dateStr) : {};
-    const result = this.summonEngine.calculate(reservations, stylists, assistants, menus, lunchOverrides, restOverrides);
+    
+    // タイムライン・フリーズ: 当日の場合は現在時刻を渡し、過去のアサインをロックする
+    const now = new Date();
+    const todayStr = this._formatDate(new Date());
+    const isToday = (dateStr === todayStr);
+    const currentTime = isToday ? (now.getHours() - 9) * 60 + now.getMinutes() : null;
+    
+    const result = this.summonEngine.calculate(
+      reservations, stylists, assistants, menus,
+      lunchOverrides, restOverrides,
+      { isToday, currentTime }
+    );
     this.lastSummonResult = result;
+
+    // --- DEBUG: アラートがあったらトーストまたはコンソールに出力 ---
+    if (result.alerts && result.alerts.length > 0) {
+      console.warn("[DEBUG] 人数不足アラート発生: ", result.alerts);
+      const alertMessages = result.alerts.map(a => `予約ID:${a.reservationId} (スロット${a.slotIndex}) - ${a.message}`).join("\\n");
+      console.error("【不足アラート】\\n" + alertMessages);
+    }
+    if (result.manncells && result.manncells.length > 0) {
+      console.log("[DEBUG] 成立したマンセル: ", result.manncells);
+    }
+
+    // --- DEBUG: アラートがあったらトーストまたはコンソールに出力 ---
+    if (result.alerts && result.alerts.length > 0) {
+      console.warn("[DEBUG] 人数不足アラート発生: ", result.alerts);
+      const alertMessages = result.alerts.map(a => `予約ID:${a.reservationId} (スロット${a.slotIndex}) - ${a.message}`).join("\\n");
+      console.error("【不足アラート】\\n" + alertMessages);
+    }
+    if (result.manncells && result.manncells.length > 0) {
+      console.log("[DEBUG] 成立したマンセル: ", result.manncells);
+    }
+
+    // --- DEBUG: アラートがあったらトーストまたはコンソールに出力 ---
+    if (result.alerts && result.alerts.length > 0) {
+      console.warn("[DEBUG] 人数不足アラート発生: ", result.alerts);
+      const alertMessages = result.alerts.map(a => `予約ID:${a.reservationId} (スロット${a.slotIndex}) - ${a.message}`).join("\n");
+      console.error("【不足アラート】\n" + alertMessages);
+    }
+    if (result.manncells && result.manncells.length > 0) {
+      console.log("[DEBUG] 成立したマンセル: ", result.manncells);
+    }
 
     // 全スタッフ（スタイリスト＋アシスタント）の名前マップを作成
     const staffMap = new Map();
@@ -1133,12 +1174,21 @@ export class MainView {
             return ps ? { id: ps.id, name: ps.name, nickname: ps.nickname } : { id: pid, name: pid };
           });
 
+          let displayName = staff ? staff.name : astId;
+          let displayNickname = staff ? staff.nickname : null;
+          
+          if (staff && staff.type === 'stylist') {
+            displayName = `${displayName}(ヘルプ)`;
+            displayNickname = displayNickname ? `${displayNickname}(ヘルプ)` : null;
+          }
+
           mappedAssign[slotIdx] = staff 
-            ? { name: staff.name, id: staff.id, nickname: staff.nickname, isConcurrent, partners } 
+            ? { name: displayName, id: staff.id, nickname: displayNickname, isConcurrent, partners } 
             : { name: astId, id: astId, isConcurrent, partners };
         }
       }
-      block.updateAssistants(mappedAssign, blockAlerts);
+      const isInManncell = result.manncells && block.reservation && result.manncells.some(m => m.reservationIds.includes(block.reservation.id));
+      block.updateAssistants(mappedAssign, blockAlerts, isInManncell);
     });
 
     // 既存のバーチャルブロックをクリーンアップ

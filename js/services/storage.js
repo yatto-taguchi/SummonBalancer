@@ -250,7 +250,10 @@ export function loadMenus() {
       shortName: "FC",
       duration: 10,
       colorCode: "#6366f1",
-      assistantSlots: []
+      assistantSlots: [],
+      stylistSlots: [
+        { startMinute: 0, endMinute: 10, type: "cut" }
+      ]
     },
     {
       id: "head_spa",
@@ -587,22 +590,33 @@ export async function importMenusFromDefaults() {
     saveSkills(existingSkills);
   }
 
-  // メニュー: 既存にないIDのみ追加（既存メニューは保持）
+  // メニュー: 既存にないIDのみ追加、既存メニューは保持しつつ未定義フィールドを補完
   const existingMenus = loadData(KEY_MENUS) || [];
   const existingMenuIds = new Set(existingMenus.map(m => m.id));
   let addedMenus = 0;
+  let updatedMenus = false;
   if (Array.isArray(defaults.menus)) {
     defaults.menus.forEach(m => {
       if (!existingMenuIds.has(m.id)) {
         try {
           existingMenus.push(new MenuItem(m).toJSON());
           addedMenus++;
+          updatedMenus = true;
         } catch (e) {
           console.warn('メニューの変換に失敗:', e.message, m);
         }
+      } else {
+        // 既存メニューへのマイグレーション（stylistSlotsの補完）
+        const existing = existingMenus.find(x => x.id === m.id);
+        if (existing && (!existing.stylistSlots || existing.stylistSlots.length === 0) && m.stylistSlots && m.stylistSlots.length > 0) {
+          existing.stylistSlots = m.stylistSlots;
+          updatedMenus = true;
+        }
       }
     });
-    saveData(KEY_MENUS, existingMenus);
+    if (updatedMenus) {
+      saveData(KEY_MENUS, existingMenus);
+    }
   }
 
   console.info(`スキル ${addedSkills}件、メニュー ${addedMenus}件を追加しました`);

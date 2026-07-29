@@ -102,10 +102,12 @@ export class MenuItem {
    * @param {string} params.shortName - 略称（ボタン表示用、例: "C", "CH"）
    * @param {number} params.duration - 必要時間（分）
    * @param {Array<Object|AssistantSlot>} [params.assistantSlots=[]] - アシスタントスロットの配列
+   * @param {Array<Object>} [params.stylistSlots=[]] - スタイリスト専有スロットの配列 {startMinute, endMinute, type}
    * @param {string} [params.colorCode='#6366f1'] - 表示色（HEX形式）
+   * @param {boolean} [params.canHandover=false] - 途中交代を許可するか
    * @throws {Error} 必須パラメータが不足している場合
    */
-  constructor({ id, name, shortName, duration, assistantSlots = [], colorCode = '#6366f1' }) {
+  constructor({ id, name, shortName, duration, assistantSlots = [], stylistSlots = [], colorCode = '#6366f1', canHandover = false }) {
     // 必須パラメータのバリデーション
     if (!id || typeof id !== 'string') {
       throw new Error('メニューIDは必須です');
@@ -145,8 +147,18 @@ export class MenuItem {
       }
     }).filter(slot => slot !== null);
 
+    /** @type {Object[]} スタイリスト専有スロットの配列 */
+    this.stylistSlots = Array.isArray(stylistSlots) ? stylistSlots.map(s => ({
+      startMinute: s.startMinute,
+      endMinute: s.endMinute,
+      type: s.type || 'cut'
+    })) : [];
+
     /** @type {string} 表示色（HEX形式） */
     this.colorCode = colorCode;
+
+    /** @type {boolean} アシスタントの途中交代を許可するか（デフォルト: false） */
+    this.canHandover = canHandover;
   }
 
   /**
@@ -190,7 +202,9 @@ export class MenuItem {
       shortName: this.shortName,
       duration: this.duration,
       assistantSlots: this.assistantSlots.map(slot => slot.toJSON()),
-      colorCode: this.colorCode
+      stylistSlots: this.stylistSlots,
+      colorCode: this.colorCode,
+      canHandover: this.canHandover
     };
   }
 

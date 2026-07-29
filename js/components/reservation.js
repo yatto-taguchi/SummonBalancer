@@ -769,12 +769,21 @@ export class ReservationBlock {
     const assignedAssistants = this._reservation.assignedAssistants;
     if (assignedAssistants && assignedAssistants[index]) {
       const ast = assignedAssistants[index];
+      
       const assistantEl = document.createElement('span');
       assistantEl.className = 'slot-assistant';
-      const nameStr = ast.nickname || ast.name || ast;
-      const isConcurrent = !!ast.isConcurrent;
-
-      assistantEl.textContent = nameStr;
+      
+      let isConcurrent = false;
+      
+      // 特殊ID "__manncell__" の場合はセル内に個人の名前を出さない（大きな枠で出すため）
+      if (ast === '__manncell__' || ast.id === '__manncell__') {
+        assistantEl.textContent = ''; // 完全に表示なし
+      } else {
+        const nameStr = ast.nickname || ast.name || ast;
+        isConcurrent = !!ast.isConcurrent;
+        assistantEl.textContent = nameStr;
+      }
+      
       assistantEl.style.fontSize = '9px';
       assistantEl.style.display = 'inline-block';
       assistantEl.style.transform = 'scale(0.85)';
@@ -1245,7 +1254,7 @@ export class ReservationBlock {
     }
   }
 
-  updateAssistants(assignments, alerts = []) {
+  updateAssistants(assignments, blockAlerts, isInManncell = false) {
     this._reservation.assignedAssistants = assignments;
     if (this._element) {
       const slotsContainer = this._element.querySelector('.reservation-slots');
@@ -1254,7 +1263,7 @@ export class ReservationBlock {
         slotEls.forEach((slotEl, idx) => {
           let assistantEl = slotEl.querySelector('.slot-assistant');
           const isFixed = this._reservation.fixedAssistants && this._reservation.fixedAssistants[idx];
-          const slotAlert = alerts.find(a => a.slotIndex === idx);
+          const slotAlert = blockAlerts ? blockAlerts.find(a => a.slotIndex === idx) : null;
 
           if (!assistantEl) {
             assistantEl = document.createElement('span');
@@ -1303,6 +1312,11 @@ export class ReservationBlock {
               assistantEl.textContent = '🚫 不要';
               const oldBadge = slotEl.querySelector('.slot-concurrent-badge');
               if (oldBadge) oldBadge.remove();
+            } else if (assignedId === '__manncell__') {
+              // マンセル（チーム連携）の場合は文字を出さない
+              assistantEl.textContent = '';
+              const oldBadge = slotEl.querySelector('.slot-concurrent-badge');
+              if (oldBadge) oldBadge.remove();
             } else {
               const fixedId = this._reservation.fixedAssistants ? this._reservation.fixedAssistants[idx] : null;
               const actuallyFixed = isFixed && (assignedId === fixedId);
@@ -1323,7 +1337,8 @@ export class ReservationBlock {
             const oldBadge2 = slotEl.querySelector('.slot-concurrent-badge');
             if (oldBadge2) oldBadge2.remove();
           } else {
-            assistantEl.textContent = '';
+            assistantEl.style.color = 'var(--text-tertiary)';
+            assistantEl.textContent = isInManncell ? 'X' : '';
             const oldBadge3 = slotEl.querySelector('.slot-concurrent-badge');
             if (oldBadge3) oldBadge3.remove();
           }
