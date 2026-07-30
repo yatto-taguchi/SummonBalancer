@@ -607,8 +607,11 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
   letter-spacing: 0.5px;
-  z-index: 6;
-  position: relative;
+  z-index: 25;
+  position: absolute;
+  top: 0;
+  right: 0;
+  transform: translate(50%, -50%);
 }
 
 .manncell-block.manncell-success .manncell-badge {
@@ -1880,3 +1883,53 @@ body.is-resizing .reservation-resize-handle {
               width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ═══ アコーディオン展開時：スロット実時刻ラベル ═══ */
+
+/* スロット時間ラベル（デフォルト非表示、アコーディオン展開時のみJSで表示） */
+.slot-time-label {
+  display: none;
+  font-size: 7.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  text-align: center;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  opacity: 0.85;
+  order: -1; /* flexbox内で最上部に配置 */
+  flex-shrink: 0;
+  padding: 1px 0 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 表示状態（JSで .slot-time-visible クラスをトグル） */
+.slot-time-label.slot-time-visible {
+  display: block;
+}
+
+/* マンセル枠の時間ヘッダー（デフォルト非表示） */
+.manncell-time-header {
+  display: none;
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  font-size: 8px;
+  color: var(--accent-warning);
+  text-align: center;
+  white-space: nowrap;
+  line-height: 1;
+  padding: 2px 4px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 3px 3px 0 0;
+  pointer-events: none;
+  z-index: 25;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  transform: translateY(-100%);
+}
+
+/* 表示状態（JSで .manncell-time-visible クラスをトグル） */
+.manncell-time-header.manncell-time-visible {
+  display: block;
+}

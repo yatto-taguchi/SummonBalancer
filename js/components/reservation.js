@@ -514,7 +514,7 @@ export class ReservationBlock {
       slotsContainer.style.boxSizing = 'border-box';
 
       menu.assistantSlots.forEach((slot, index) => {
-        const slotEl = this._createSlotElement(slot, durationMin, index, colorCode);
+        const slotEl = this._createSlotElement(slot, durationMin, index, colorCode, startMin);
         slotsContainer.appendChild(slotEl);
       });
 
@@ -719,7 +719,7 @@ export class ReservationBlock {
    * @returns {HTMLElement}
    * @private
    */
-  _createSlotElement(slot, totalDuration, index, colorCode) {
+  _createSlotElement(slot, totalDuration, index, colorCode, resStartMin = 0) {
     const slotEl = document.createElement('div');
     slotEl.className = 'assistant-slot';
     slotEl.style.flex = '1';
@@ -742,6 +742,15 @@ export class ReservationBlock {
     slotEl.style.overflow = 'visible';
     slotEl.style.cursor = 'pointer';
     slotEl.style.position = 'relative';
+
+    // --- スロット実時刻ラベル（アコーディオン展開時のみ表示） ---
+    const override = this._reservation.slotTimeOverrides?.[index];
+    const actualStart = resStartMin + (override?.startMinute ?? slot.startMinute);
+    const actualEnd   = resStartMin + (override?.endMinute   ?? slot.endMinute);
+    const timeLabelEl = document.createElement('span');
+    timeLabelEl.className = 'slot-time-label';
+    timeLabelEl.textContent = `${minutesToTime(actualStart)}～${minutesToTime(actualEnd)}`;
+    slotEl.appendChild(timeLabelEl);
 
     // スロット全体のクリック: 固定モード時にアシスタント選択を開く
     slotEl.addEventListener('click', (e) => {

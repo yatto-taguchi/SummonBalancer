@@ -639,7 +639,8 @@ export class Timeline {
         manncellBlock.style.height = `${(maxLane - minLane + 1) * CELL_HEIGHT_FOR_LANE}px`;
         
         manncellBlock.style.pointerEvents = 'none';
-        manncellBlock.style.zIndex = '1'; // 予約ブロック(3)の下に配置
+        // z-indexを設定しない（スタッキングコンテキストを作らず、バッジがstickyヘッダーの上に出られるようにする）
+        // 予約ブロック(z-index:3)はDOM順で後に追加されるため自然に上に描画される
         
         const badge = document.createElement('div');
         badge.className = 'manncell-badge';
@@ -653,6 +654,22 @@ export class Timeline {
         badge.style.fontWeight = 'bold';
         
         manncellBlock.appendChild(badge);
+
+        // マンセル時間ヘッダー（アコーディオン展開時のみ表示）
+        const timeHeader = document.createElement('div');
+        timeHeader.className = 'manncell-time-header';
+        // startMin/endMinは営業開始(9:00)からの分数 → 実時刻に変換
+        const sHour = START_HOUR + Math.floor(startMin / 60);
+        const sMinute = startMin % 60;
+        const eHour = START_HOUR + Math.floor(endMin / 60);
+        const eMinute = endMin % 60;
+        const fmtTime = (h, m) => `${h}:${String(m).padStart(2, '0')}`;
+        timeHeader.textContent = `${fmtTime(sHour, sMinute)}～${fmtTime(eHour, eMinute)}`;
+        // 展開中なら表示
+        if (accordionManager.expandedSlot !== null) {
+          timeHeader.classList.add('manncell-time-visible');
+        }
+        manncellBlock.appendChild(timeHeader);
         
         cellsContainer.appendChild(manncellBlock);
       });
@@ -1186,6 +1203,17 @@ export class Timeline {
       const endPct = accordionManager.getWeightedPosition(endMin);
       block.style.left = `${leftPct}%`;
       block.style.width = `${endPct - leftPct}%`;
+    });
+
+    // --- スロット時間ラベル・マンセル時間ヘッダーの表示切替 ---
+    const isExpanded = expandedSlot !== null;
+    // スロット時間ラベル: 展開中は全ブロック表示、折りたたみ時は非表示
+    grid.querySelectorAll('.slot-time-label').forEach(label => {
+      label.classList.toggle('slot-time-visible', isExpanded);
+    });
+    // マンセル時間ヘッダー: 同上
+    grid.querySelectorAll('.manncell-time-header').forEach(header => {
+      header.classList.toggle('manncell-time-visible', isExpanded);
     });
 
     // --- 現在時刻線の位置再計算 ---
