@@ -1322,7 +1322,7 @@ export class ReservationBlock {
               const actuallyFixed = isFixed && (assignedId === fixedId);
               const nameStr = assignments[idx].nickname || assignments[idx].name || assignments[idx];
               assistantEl.style.color = actuallyFixed ? '#fcd34d' : 'var(--accent-success)';
-              assistantEl.textContent = (actuallyFixed ? '📌 ' : '') + nameStr;
+              assistantEl.innerHTML = (actuallyFixed ? '📌 ' : '') + nameStr;
 
               // 兼任バッジの表示制御
               const oldBadge = slotEl.querySelector('.slot-concurrent-badge');

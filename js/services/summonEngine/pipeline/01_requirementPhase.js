@@ -56,8 +56,10 @@ function defineRequirements(state, timeStr, timeMs) {
         const isFinishing = (resEndMs - 10 * 60000 <= timeMs) && (timeMs < resEndMs);
         
         let tier = 2; // デフォルトはTier 2 (単独予約)
+        let isStrictlyRequired = false;
         if (overlap >= 2) {
           tier = 1;
+          isStrictlyRequired = true;
         }
 
         if (isFinishing) {
@@ -70,20 +72,28 @@ function defineRequirements(state, timeStr, timeMs) {
             tier: 1, // 仕上げは最優先
             slotIndex: index,
             designatedStaffId: res.stylistId,
-            isFinishing: true
+            isFinishing: true,
+            isStrictlyRequired: true
           });
         } else {
-          const requiredSkill = slot.requiredSkill || 'shampoo';
-          requirements.push({
-            id: `req_${timeStr}_${res.id}_slot${index}`,
-            reservationId: res.id,
-            stylistId: res.stylistId,
-            requiredSkill: requiredSkill,
-            minSkillLevel: slot.requiredProficiency || 1,
-            tier: tier,
-            slotIndex: index,
-            isHandoffProhibited: requiredSkill === 'shampoo'
-          });
+          // 手動トグル（nonOverlapSummonEnabled === false）の判定
+          // 単独予約（任意タスク）かつトグルがOFFの場合は要件自体を生成せず、完全に本人対応とする
+          const isOptionalAndDisabled = !isStrictlyRequired && res.nonOverlapSummonEnabled === false;
+          
+          if (!isOptionalAndDisabled) {
+            const requiredSkill = slot.requiredSkill || 'shampoo';
+            requirements.push({
+              id: `req_${timeStr}_${res.id}_slot${index}`,
+              reservationId: res.id,
+              stylistId: res.stylistId,
+              requiredSkill: requiredSkill,
+              minSkillLevel: slot.requiredProficiency || 1,
+              tier: tier,
+              slotIndex: index,
+              isHandoffProhibited: requiredSkill === 'shampoo',
+              isStrictlyRequired: isStrictlyRequired
+            });
+          }
         }
       }
     });

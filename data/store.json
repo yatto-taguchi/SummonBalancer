@@ -119,12 +119,12 @@
         },
         {
           "startMinute": 40,
-          "endMinute": 75,
+          "endMinute": 70,
           "requiredSkill": "color",
           "requiredProficiency": 3
         },
         {
-          "startMinute": 75,
+          "startMinute": 70,
           "endMinute": 120,
           "requiredSkill": "shampoo",
           "requiredProficiency": 3
@@ -138,21 +138,6 @@
           "type": "cut"
         }
       ]
-    },
-    {
-      "id": "treatment",
-      "name": "トリートメント",
-      "shortName": "T",
-      "duration": 30,
-      "assistantSlots": [
-        {
-          "startMinute": 0,
-          "endMinute": 30,
-          "requiredSkill": "treatment",
-          "requiredProficiency": 3
-        }
-      ],
-      "colorCode": "#10b981"
     },
     {
       "id": "cut_color_color_first",
@@ -181,6 +166,21 @@
           "type": "cut"
         }
       ]
+    },
+    {
+      "id": "treatment",
+      "name": "トリートメント",
+      "shortName": "T",
+      "duration": 30,
+      "assistantSlots": [
+        {
+          "startMinute": 0,
+          "endMinute": 30,
+          "requiredSkill": "treatment",
+          "requiredProficiency": 3
+        }
+      ],
+      "colorCode": "#10b981"
     },
     {
       "id": "double_color",
@@ -343,14 +343,14 @@
       "shortName": "FC",
       "duration": 10,
       "assistantSlots": [],
+      "colorCode": "#6366f1",
       "stylistSlots": [
         {
           "startMinute": 0,
           "endMinute": 10,
           "type": "cut"
         }
-      ],
-      "colorCode": "#6366f1"
+      ]
     },
     {
       "id": "highlight",
@@ -383,13 +383,12 @@
           "requiredProficiency": 3
         }
       ],
-      "stylistSlots": [],
       "colorCode": "#ec4899"
     },
     {
       "id": "head_spa",
       "name": "ヘッドスパ",
-      "shortName": "Spa",
+      "shortName": "HS",
       "duration": 30,
       "assistantSlots": [
         {
@@ -399,7 +398,6 @@
           "requiredProficiency": 3
         }
       ],
-      "stylistSlots": [],
       "colorCode": "#10b981"
     },
     {
@@ -415,7 +413,6 @@
           "requiredProficiency": 3
         }
       ],
-      "stylistSlots": [],
       "colorCode": "#6b7280"
     }
   ],
@@ -2291,7 +2288,7 @@
     },
     {
       "id": "res_1785201789373_u8fbxn",
-      "menuItemId": "cut_color_color_first",
+      "menuItemId": "cut_color_cut_first",
       "stylistId": "stylist_1784677604555_kdrcpf",
       "startTime": 30,
       "endTime": 150,
@@ -2302,7 +2299,7 @@
       "slotTimeOverrides": {},
       "items": null,
       "manualVariantSelection": false,
-      "autoSwitchedVariant": false
+      "autoSwitchedVariant": true
     },
     {
       "id": "res_1785201797317_vga98s",
@@ -2318,6 +2315,21 @@
       "items": null,
       "manualVariantSelection": false,
       "autoSwitchedVariant": false
+    },
+    {
+      "id": "res_1785378440105_antfny",
+      "menuItemId": "cut_color_cut_first",
+      "stylistId": "stylist_1784677604555_kdrcpf",
+      "startTime": 90,
+      "endTime": 210,
+      "assignedAssistants": {},
+      "menuVariant": "",
+      "fixedAssistants": {},
+      "nonOverlapSummonEnabled": true,
+      "slotTimeOverrides": {},
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": true
     }
   ],
   "sb_reservations_2026-07-31": [

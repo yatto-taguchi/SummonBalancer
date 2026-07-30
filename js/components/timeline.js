@@ -529,6 +529,26 @@ export class Timeline {
         cellsContainer.appendChild(cell);
       }
 
+      // レーン（重なり）の計算（mainViewと同じロジック）
+      const stylistResList = reservations.filter(r => r.stylistId === stylist.id);
+      stylistResList.sort((a, b) => (typeof a.startTime === 'number' ? a.startTime : 0) - (typeof b.startTime === 'number' ? b.startTime : 0));
+      const laneMap = new Map();
+      const lanes = [];
+      stylistResList.forEach(res => {
+        const start = typeof res.startTime === 'number' ? res.startTime : 0;
+        const end = typeof res.endTime === 'number' ? res.endTime : start + 60;
+        let assignedLane = -1;
+        for (let i = 0; i < lanes.length; i++) {
+          if (lanes[i] <= start) { assignedLane = i; break; }
+        }
+        if (assignedLane === -1) {
+          assignedLane = lanes.length;
+          lanes.push(0);
+        }
+        lanes[assignedLane] = end;
+        laneMap.set(res.id, assignedLane);
+      });
+
       // マンセル枠の描画
       const stylistManncells = manncells.filter(m => m.stylistId === stylist.id);
       stylistManncells.forEach(manncell => {
@@ -553,23 +573,38 @@ export class Timeline {
         manncellBlock.style.position = 'absolute';
         manncellBlock.style.left = `${leftPct}%`;
         manncellBlock.style.width = `${widthPct}%`;
-        manncellBlock.style.top = '0'; // 予約ブロックを完全に囲むが、行からはみ出さない
-        manncellBlock.style.bottom = '0';
+
+        // 関連予約の最小・最大レーンを計算して高さを決定
+        let minLane = 999;
+        let maxLane = 0;
+        if (manncell.reservationIds && manncell.reservationIds.length > 0) {
+          manncell.reservationIds.forEach(id => {
+            const lane = laneMap.get(id);
+            if (lane !== undefined) {
+              if (lane < minLane) minLane = lane;
+              if (lane > maxLane) maxLane = lane;
+            }
+          });
+        }
+        if (minLane === 999) { minLane = 0; maxLane = 0; } // フォールバック
+
+        const CELL_HEIGHT_FOR_LANE = 60; // mainView.jsのCELL_HEIGHTと同じ値
+        manncellBlock.style.top = `${minLane * CELL_HEIGHT_FOR_LANE}px`;
+        manncellBlock.style.height = `${(maxLane - minLane + 1) * CELL_HEIGHT_FOR_LANE}px`;
+        
         manncellBlock.style.pointerEvents = 'none';
         manncellBlock.style.zIndex = '1'; // 予約ブロック(3)の下に配置
         
         const badge = document.createElement('div');
         badge.className = 'manncell-badge';
         
-        if (manncell.team && manncell.team.length > 0) {
-          const names = manncell.team.map(id => {
-            const ast = activeAssistants.find(a => a.id === id);
-            return ast ? (ast.nickname || ast.name) : id;
-          });
-          badge.textContent = `${names.join(' ＆ ')}（${manncell.teamSize}マンセル）`;
-        } else {
-          badge.textContent = `${manncell.teamSize}マンセル`;
-        }
+        const circledNumbers = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
+        const numStr = manncell.teamSize <= 10 && manncell.teamSize > 0 ? circledNumbers[manncell.teamSize - 1] : `(${manncell.teamSize})`;
+        badge.textContent = numStr;
+        
+        // より目立つようにスタイルを少し調整
+        badge.style.fontSize = '14px';
+        badge.style.fontWeight = 'bold';
         
         manncellBlock.appendChild(badge);
         

@@ -7,7 +7,9 @@ export function hasSkill(staff, requiredSkillId, requiredProficiency = 1) {
     return false;
   }
 
-  // スタイリストはすべての技術を担当できるものとする
+  // スタイリスト特権（オールマイティ判定）:
+  // type === 'stylist' のスタッフは rank に関わらず、
+  // マスターデータにスキル未設定でも全技術を最上位レベルで保持しているものとする
   if (staff.type === 'stylist') {
     return true;
   }

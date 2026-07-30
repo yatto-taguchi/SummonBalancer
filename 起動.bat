@@ -1,62 +1,48 @@
 @echo off
 chcp 65001 > nul
 setlocal enabledelayedexpansion
-title Summon Balancer - ƒT[ƒo[
+title Summon Balancer - ã‚µãƒ¼ãƒãƒ¼
 
 echo.
 echo  ============================================
-echo   Summon Balancer - ‹N“®ƒ`ƒFƒbƒN
+echo   Summon Balancer - èµ·å‹•ãƒã‚§ãƒƒã‚¯
 echo  ============================================
 echo.
 
 set PYTHON_CMD=
-python --version > nul 2>&1
-if %errorlevel% == 0 ( set PYTHON_CMD=python & goto :python_found )
+
+if exist "%LOCALAPPDATA%\Programs\Python\Python312\python.exe" (
+    set PYTHON_CMD="%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
+    goto :python_found
+)
+if exist "%LOCALAPPDATA%\Programs\Python\Python311\python.exe" (
+    set PYTHON_CMD="%LOCALAPPDATA%\Programs\Python\Python311\python.exe"
+    goto :python_found
+)
+if exist "%ProgramFiles%\Python312\python.exe" (
+    set PYTHON_CMD="%ProgramFiles%\Python312\python.exe"
+    goto :python_found
+)
+
 py --version > nul 2>&1
 if %errorlevel% == 0 ( set PYTHON_CMD=py & goto :python_found )
+python --version > nul 2>&1
+if %errorlevel% == 0 ( set PYTHON_CMD=python & goto :python_found )
 python3 --version > nul 2>&1
 if %errorlevel% == 0 ( set PYTHON_CMD=python3 & goto :python_found )
 
-echo  [!] Python ‚ªƒCƒ“ƒXƒg[ƒ‹‚³‚ê‚Ä‚¢‚Ü‚¹‚ñB
+echo  [!] Python ãŒã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«ã•ã‚Œã¦ã„ã¾ã›ã‚“ã€‚
 echo.
-echo  ƒCƒ“ƒXƒg[ƒ‹•û–@:
-echo    A) Microsoft Store ‚©‚çi„§EŠÈ’Pj
-echo    B) python.org ‚©‚çŽè“®ƒ_ƒEƒ“ƒ[ƒh
-echo.
-set /p INSTALL_CHOICE=  [A] Microsoft Store  [B] python.org  : 
-
-if /i "!INSTALL_CHOICE!"=="A" (
-    start ms-windows-store://pdp/?productid=9NCVDN91XZQP
-    echo  ƒCƒ“ƒXƒg[ƒ‹Š®—¹Œã Enter ‚ð‰Ÿ‚µ‚Ä‚­‚¾‚³‚¢B
-    echo  š ƒCƒ“ƒXƒg[ƒ‹Œã‚ÉPC‚ðÄ‹N“®‚ª•K—v‚Èê‡‚ª‚ ‚è‚Ü‚· š
-    pause
-    goto :retry
-)
-if /i "!INSTALL_CHOICE!"=="B" (
-    start https://www.python.org/downloads/
-    echo  š •K‚¸ "Add Python to PATH" ‚Éƒ`ƒFƒbƒN‚ð“ü‚ê‚Ä‚­‚¾‚³‚¢ š
-    echo  ƒCƒ“ƒXƒg[ƒ‹Š®—¹Œã Enter ‚ð‰Ÿ‚µ‚Ä‚­‚¾‚³‚¢B
-    pause
-    goto :retry
-)
-goto :end
-
-:retry
-python --version > nul 2>&1
-if %errorlevel% == 0 ( set PYTHON_CMD=python & goto :python_found )
-py --version > nul 2>&1
-if %errorlevel% == 0 ( set PYTHON_CMD=py & goto :python_found )
-echo  [!] ‚Ü‚¾ Python ‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñBPC‚ðÄ‹N“®‚µ‚Ä‚©‚çÄ“xŽÀs‚µ‚Ä‚­‚¾‚³‚¢B
 pause
 goto :end
 
 :python_found
-echo  [OK] Python ‚ªŒ©‚Â‚©‚è‚Ü‚µ‚½: %PYTHON_CMD%
+echo  [OK] Python ã‚’æ¤œå‡ºã—ã¾ã—ãŸ: %PYTHON_CMD%
 echo.
 
 netstat -an | findstr ":8080 " | findstr "LISTENING" > nul 2>&1
 if %errorlevel% == 0 (
-    echo  [!] ƒ|[ƒg 8080 ‚Í‚·‚Å‚É‹N“®Ï‚Ý‚Å‚·Bƒuƒ‰ƒEƒU‚ðŠJ‚«‚Ü‚·B
+    echo  [!] ãƒãƒ¼ãƒˆ 8080 ã¯ã™ã§ã«èµ·å‹•æ¸ˆã¿ã§ã™ã€‚ãƒ–ãƒ©ã‚¦ã‚¶ã‚’é–‹ãã¾ã™ã€‚
     start http://localhost:8080
     goto :end
 )
@@ -77,20 +63,17 @@ if "!MY_IP!"=="" (
 )
 
 echo  =====================================================
-echo   ‹N“®Š®—¹Iƒuƒ‰ƒEƒU‚ªŽ©“®‚ÅŠJ‚«‚Ü‚·B
+echo   èµ·å‹•ä¸­... ãƒ–ãƒ©ã‚¦ã‚¶ãŒè‡ªå‹•çš„ã«é–‹ãã¾ã™ã€‚
 echo  =====================================================
 echo.
-echo  ‚±‚ÌPCiƒT[ƒo[–ðj‚©‚çŠJ‚­ê‡:
+echo  ãƒ»ã“ã®PCï¼ˆã‚µãƒ¼ãƒãƒ¼ï¼‰ã§é–‹ãå ´åˆ:
 echo    http://localhost:8080
 echo.
-echo  ‘¼‚ÌPCi2‘ä–Új‚©‚çÚ‘±‚·‚éê‡:
+echo  ãƒ»åˆ¥ã®PCã‹ã‚‰æŽ¥ç¶šã™ã‚‹å ´åˆ:
 echo    http://!MY_IP!:8080
-echo    ‚Ü‚½‚Í http://!MY_HOSTNAME!:8080
+echo    ã¾ãŸã¯ http://!MY_HOSTNAME!:8080
 echo.
-echo  š Ú‘±.bat ‚Ì SERVER_HOST ‚Éã‹L‚ÌPC–¼‚ðÝ’è‚µ‚Ä‚­‚¾‚³‚¢ š
-echo    ¨ Œ»Ý‚Ì‚±‚ÌPC‚Ì–¼‘O: !MY_HOSTNAME!
-echo.
-echo  ‚±‚Ì•‚¢‰æ–Ê‚ÍŠJ‚¢‚½‚Ü‚Ü‚É‚µ‚Ä‚­‚¾‚³‚¢i•Â‚¶‚é‚ÆƒT[ƒo[‚ª’âŽ~‚µ‚Ü‚·j
+echo  â€»ã“ã®é»’ã„ç”»é¢ã¯é–‹ã„ãŸã¾ã¾ã«ã—ã¦ãã ã•ã„ï¼ˆé–‰ã˜ã‚‹ã¨ã‚µãƒ¼ãƒãƒ¼ãŒåœæ­¢ã—ã¾ã™ï¼‰
 echo  =====================================================
 echo.
 

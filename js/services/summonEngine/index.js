@@ -115,8 +115,16 @@ export class SummonEngine {
       });
     }
 
-    // 集計用の中間オブジェクト { resId: { slotIndex: { assignedStaffIds: [], unassignedTicks: 0 } } }
+    // 集計用の中間オブジェクト { resId: { slotIndex: { tickDetails: [], manncells: [] } } }
+    // tickDetails: 各Tick（5分）ごとの時刻とアサイン先を時系列で記録
     const aggregation = {};
+
+    const manncellLookup = {};
+    (state.manncellTicks || []).forEach(m => {
+      m.reservationIds.forEach(resId => {
+        manncellLookup[`${m.timeStr}_${resId}`] = m;
+      });
+    });
 
     if (state.timeSlots) {
       Object.keys(state.timeSlots).forEach(time => {
@@ -130,9 +138,15 @@ export class SummonEngine {
               const slotIndex = req.slotIndex !== undefined ? req.slotIndex : 0;
               
               if (!aggregation[resId]) aggregation[resId] = {};
-              if (!aggregation[resId][slotIndex]) aggregation[resId][slotIndex] = { assignedStaffIds: [], unassignedTicks: 0 };
+              if (!aggregation[resId][slotIndex]) aggregation[resId][slotIndex] = { tickDetails: [], manncells: [] };
               
-              aggregation[resId][slotIndex].assignedStaffIds.push(assign.assistantId);
+              // Tickごとの時刻とアサイン先を記録（時系列セグメント化の基礎データ）
+              aggregation[resId][slotIndex].tickDetails.push({ time, staffId: assign.assistantId });
+
+              const mTick = manncellLookup[`${time}_${resId}`];
+              if (mTick) {
+                aggregation[resId][slotIndex].manncells.push(mTick);
+              }
 
               // Phase3 のバッジ（特殊召喚）処理
               if (assign.badges && assign.badges.length > 0) {
@@ -160,9 +174,10 @@ export class SummonEngine {
               const slotIdx = req.slotIndex !== undefined ? req.slotIndex : 0;
               
               if (!aggregation[resId]) aggregation[resId] = {};
-              if (!aggregation[resId][slotIdx]) aggregation[resId][slotIdx] = { assignedStaffIds: [], unassignedTicks: 0 };
+              if (!aggregation[resId][slotIdx]) aggregation[resId][slotIdx] = { tickDetails: [], manncells: [] };
               
-              aggregation[resId][slotIdx].unassignedTicks++;
+              // 不足Tickも時刻付きで記録（staffId = null で不足を表す）
+              aggregation[resId][slotIdx].tickDetails.push({ time, staffId: null });
             }
           });
         }
@@ -175,49 +190,74 @@ export class SummonEngine {
       Object.keys(aggregation[resId]).forEach(slotIndex => {
         const data = aggregation[resId][slotIndex];
         
-        // 担当ごとの回数を数える
-        const staffCounts = {};
-        data.assignedStaffIds.forEach(id => {
-          staffCounts[id] = (staffCounts[id] || 0) + 1;
-        });
-
-        const displayParts = [];
-        const hasManncell = data.assignedStaffIds.includes('MANNCELL_STANDBY');
+        // === セグメント化: tickDetailsを時刻順にソートし、連続する同一状態をグループ化 ===
+        data.tickDetails.sort((a, b) => a.time.localeCompare(b.time));
         
-        if (hasManncell) {
-          const involvedStaffIds = Object.keys(staffCounts).filter(id => id !== 'MANNCELL_STANDBY');
-          const involvedNames = involvedStaffIds.map(id => {
-            const staffObj = state.master.staffMap ? state.master.staffMap[id] : null;
-            return staffObj ? (staffObj.nickname || staffObj.name) : id;
-          });
-          const teamText = involvedNames.length > 0 ? ` (${involvedNames.join('・')})` : '';
-          const totalMins = data.assignedStaffIds.length * 5;
-          displayParts.push(`【チーム対応】${teamText}(${totalMins}分)`);
-        } else {
-          Object.keys(staffCounts).forEach(id => {
-            const minutes = staffCounts[id] * 5;
-            const staffObj = state.master.staffMap ? state.master.staffMap[id] : null;
-            const staffName = staffObj ? (staffObj.nickname || staffObj.name) : id;
-            displayParts.push(`${staffName}(${minutes}分)`);
-          });
+        const segments = [];
+        if (data.tickDetails.length > 0) {
+          let current = { staffId: data.tickDetails[0].staffId, ticks: 1 };
+          for (let i = 1; i < data.tickDetails.length; i++) {
+            const tick = data.tickDetails[i];
+            if (tick.staffId === current.staffId) {
+              current.ticks++;
+            } else {
+              segments.push(current);
+              current = { staffId: tick.staffId, ticks: 1 };
+            }
+          }
+          segments.push(current);
         }
 
-        if (data.unassignedTicks > 0) {
-          const missingMinutes = data.unassignedTicks * 5;
-          // 不足テキスト（UI側で赤色表示される）
-          displayParts.push(`⚠不足(${missingMinutes}分)`);
-          
+        // === セグメントから表示テキストを時系列順に生成 ===
+        const displayParts = [];
+        let totalUnassignedTicks = 0;
+        const hasManncell = data.manncells.length > 0;
+        const isCoveredByManncell = hasManncell || manncellReservationIds.has(resId);
+
+        segments.forEach(seg => {
+          const minutes = seg.ticks * 5;
+
+          if (seg.staffId === null) {
+            // 不足セグメント
+            totalUnassignedTicks += seg.ticks;
+            if (!isCoveredByManncell) {
+              displayParts.push(`<span style="color: var(--accent-danger)">⚠不足(${minutes}分)</span>`);
+            }
+          } else if (seg.staffId === 'MANNCELL_STANDBY') {
+            // マンセル（チーム対応）セグメント
+            const involvedTeamIds = new Set();
+            data.manncells.forEach(mTick => {
+              mTick.team.forEach(tId => involvedTeamIds.add(tId));
+            });
+            const involvedNames = Array.from(involvedTeamIds).map(tId => {
+              const staffObj = state.master.staffMap ? state.master.staffMap[tId] : null;
+              return staffObj ? (staffObj.nickname || staffObj.name) : tId;
+            });
+            const teamText = involvedNames.length > 0 ? involvedNames.join('・') : 'チーム';
+            displayParts.push(`${teamText}(${minutes}分)`);
+          } else {
+            // 通常のアサインセグメント
+            const staffObj = state.master.staffMap ? state.master.staffMap[seg.staffId] : null;
+            const staffName = staffObj ? (staffObj.nickname || staffObj.name) : seg.staffId;
+            displayParts.push(`${staffName}(${minutes}分)`);
+          }
+        });
+
+        // 不足がある場合のアラートとunfilledSlots登録
+        if (totalUnassignedTicks > 0) {
+          const missingMinutes = totalUnassignedTicks * 5;
+
           uiUnfilledSlots.push({
             reservationId: resId,
             slotIndex: parseInt(slotIndex, 10),
             status: 'unassigned',
             reason: 'no_free_staff'
           });
-          
+
           // マンセル（チーム対応）でカバーされている予約はアラートを出さない
           // スロット単位（hasManncell）+ 予約単位（manncellReservationIds）の二段階チェック
           // → 同じ予約内にマンセルが1つでも発動していれば、チーム内で回せるためアラート不要
-          if (!hasManncell && !manncellReservationIds.has(resId)) {
+          if (!isCoveredByManncell) {
             state.alerts.push({
               reservationId: resId,
               slotIndex: parseInt(slotIndex, 10),
@@ -226,7 +266,7 @@ export class SummonEngine {
           }
         }
 
-        uiAssignments[resId][slotIndex] = displayParts.join(' / ');
+        uiAssignments[resId][slotIndex] = displayParts.join(' → ');
       });
     });
 
@@ -236,65 +276,75 @@ export class SummonEngine {
       // timeStrでソート
       state.manncellTicks.sort((a, b) => a.timeStr.localeCompare(b.timeStr));
       
-      const activeBlocks = {};
-      
+      // stylistId ごとに ticks をまとめる
+      const ticksByStylist = {};
       state.manncellTicks.forEach(tick => {
-        let maxStart = 0;
-        let minEnd = 24 * 60;
-        
-        if (tick.reservationIds && tick.reservationIds.length > 0) {
-          tick.reservationIds.forEach(id => {
-            const res = (state.master?.reservations || []).find(r => r.id === id);
-            if (res) {
-              // startTime/endTime は数値（9:00基準の分数）
-              const resStartMins = 9 * 60 + (typeof res.startTime === 'number' ? res.startTime : 0);
-              const resEndMins = 9 * 60 + (typeof res.endTime === 'number' ? res.endTime : 0);
-              maxStart = Math.max(maxStart, resStartMins);
-              minEnd = Math.min(minEnd, resEndMins);
-            }
-          });
-        }
-        
-        if (maxStart >= minEnd || maxStart === 0) {
-          // フォールバック（予約が見つからない場合など）
-          const [h, m] = tick.timeStr.split(':').map(Number);
-          maxStart = h * 60 + m;
-          minEnd = maxStart + 5;
-        }
-
-        const startStr = `${String(Math.floor(maxStart / 60)).padStart(2, '0')}:${String(maxStart % 60).padStart(2, '0')}`;
-        const endStr = `${String(Math.floor(minEnd / 60)).padStart(2, '0')}:${String(minEnd % 60).padStart(2, '0')}`;
-        
-        const blockKey = `${tick.stylistId}_${startStr}_${endStr}`;
-        
-        if (!activeBlocks[blockKey]) {
-          activeBlocks[blockKey] = {
-            stylistId: tick.stylistId,
-            startTime: startStr,
-            endTime: endStr,
-            teamSize: tick.teamSize,
-            team: tick.team ? [...tick.team] : [],
-            reservationIds: tick.reservationIds ? [...tick.reservationIds] : []
-          };
-        } else {
-          // メンバー情報をマージ
-          const currentTeamSet = new Set(activeBlocks[blockKey].team);
-          (tick.team || []).forEach(id => currentTeamSet.add(id));
-          activeBlocks[blockKey].team = Array.from(currentTeamSet);
-          activeBlocks[blockKey].teamSize = Math.max(activeBlocks[blockKey].teamSize, tick.teamSize);
-          
-          if (tick.reservationIds) {
-            tick.reservationIds.forEach(id => {
-              if (!activeBlocks[blockKey].reservationIds.includes(id)) {
-                activeBlocks[blockKey].reservationIds.push(id);
-              }
-            });
-          }
-        }
+        if (!ticksByStylist[tick.stylistId]) ticksByStylist[tick.stylistId] = [];
+        ticksByStylist[tick.stylistId].push(tick);
       });
-      
-      Object.values(activeBlocks).forEach(block => {
-        manncells.push(block);
+
+      // 各スタイリストの ticks を連続するブロックに結合する
+      Object.keys(ticksByStylist).forEach(stylistId => {
+        const ticks = ticksByStylist[stylistId];
+        let currentBlock = null;
+
+        ticks.forEach(tick => {
+          const [h, m] = tick.timeStr.split(':').map(Number);
+          const tickStart = h * 60 + m;
+          const tickEnd = tickStart + 5; // 1つのTickは5分間
+
+          if (!currentBlock) {
+            // 新しいブロックを開始
+            currentBlock = {
+              stylistId: stylistId,
+              startMin: tickStart,
+              endMin: tickEnd,
+              teamSize: tick.teamSize,
+              team: tick.team ? [...tick.team] : [],
+              reservationIds: tick.reservationIds ? [...tick.reservationIds] : []
+            };
+          } else {
+            // 直前のブロックと連続しているか判定
+            if (currentBlock.endMin === tickStart) {
+              // 連続している場合は延長し、情報をマージ
+              currentBlock.endMin = tickEnd;
+              
+              const currentTeamSet = new Set(currentBlock.team);
+              (tick.team || []).forEach(id => currentTeamSet.add(id));
+              currentBlock.team = Array.from(currentTeamSet);
+              
+              currentBlock.teamSize = Math.max(currentBlock.teamSize, tick.teamSize);
+              
+              if (tick.reservationIds) {
+                tick.reservationIds.forEach(id => {
+                  if (!currentBlock.reservationIds.includes(id)) {
+                    currentBlock.reservationIds.push(id);
+                  }
+                });
+              }
+            } else {
+              // 連続していない場合は現在のブロックを保存し、新しいブロックを開始
+              currentBlock.startTime = `${String(Math.floor(currentBlock.startMin / 60)).padStart(2, '0')}:${String(currentBlock.startMin % 60).padStart(2, '0')}`;
+              currentBlock.endTime = `${String(Math.floor(currentBlock.endMin / 60)).padStart(2, '0')}:${String(currentBlock.endMin % 60).padStart(2, '0')}`;
+              manncells.push(currentBlock);
+              
+              currentBlock = {
+                stylistId: stylistId,
+                startMin: tickStart,
+                endMin: tickEnd,
+                teamSize: tick.teamSize,
+                team: tick.team ? [...tick.team] : [],
+                reservationIds: tick.reservationIds ? [...tick.reservationIds] : []
+              };
+            }
+          }
+        });
+
+        if (currentBlock) {
+          currentBlock.startTime = `${String(Math.floor(currentBlock.startMin / 60)).padStart(2, '0')}:${String(currentBlock.startMin % 60).padStart(2, '0')}`;
+          currentBlock.endTime = `${String(Math.floor(currentBlock.endMin / 60)).padStart(2, '0')}:${String(currentBlock.endMin % 60).padStart(2, '0')}`;
+          manncells.push(currentBlock);
+        }
       });
     }
     state.manncells = manncells;

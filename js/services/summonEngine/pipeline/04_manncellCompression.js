@@ -50,8 +50,17 @@ export function executeManncellCompression(state) {
       const allReqIds = new Set(allReqs.map(r => r.id));
 
       // Phase 2 でアサインされたアシスタントを抽出（チーム結成）
+      // ※Phase 3で召喚されたスタイリストはマンセルチームに含めない
       const teamAssignments = timeSlot.assignments.filter(a => allReqIds.has(a.requirementId));
-      const teamAssistants = Array.from(new Set(teamAssignments.map(a => a.assistantId)));
+      const teamAssistants = Array.from(new Set(
+        teamAssignments
+          .map(a => a.assistantId)
+          .filter(id => {
+            if (id === 'MANNCELL_STANDBY') return false;
+            const staffObj = (state.master?.staffMap || {})[id];
+            return staffObj && staffObj.type === 'assistant';
+          })
+      ));
 
       if (teamAssistants.length === 0) {
         // 1人も確保できていない場合は完全な不足。マンセル不可。
