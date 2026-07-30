@@ -1765,3 +1765,118 @@ body.is-resizing .reservation-resize-handle {
     rgba(30, 41, 59, 0.75) 20px
   ) !important;
 }
+
+/* ═══ アコーディオン展開 ═══ */
+.timeline-header-cell {
+  cursor: pointer;
+  transition: flex-grow 0.35s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease;
+  position: relative;
+  min-width: 0;
+}
+
+.timeline-header-cell:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.timeline-header-cell.expanded {
+  flex: 6;
+  flex-direction: column;
+  background-color: rgba(99, 102, 241, 0.06);
+  align-items: stretch;
+}
+
+/* 展開時のメインラベル */
+.accordion-main-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+/* 展開インジケータ（▾） */
+.accordion-main-label::after {
+  content: '▾';
+  color: var(--text-muted);
+  font-size: 0.55rem;
+  display: inline-block;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-left: 2px;
+}
+
+.expanded .accordion-main-label::after {
+  transform: rotate(180deg);
+}
+
+/* サブラベル（5分刻み） */
+.accordion-sub-labels {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.accordion-sub-label {
+  flex: 1;
+  text-align: center;
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  padding: 1px 0;
+  white-space: nowrap;
+}
+
+.accordion-sub-label:not(:first-child) {
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ボディセルの展開 */
+.timeline-cell {
+  transition: flex-grow 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 0;
+}
+
+.timeline-cell.expanded {
+  flex: 6;
+}
+
+/* ガイドライン（5分刻みの点線） */
+.accordion-gridlines {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: row;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.accordion-gridline {
+  flex: 1;
+  border-left: 1px dashed rgba(255, 255, 255, 0.07);
+}
+
+.accordion-gridline:first-child {
+  border-left: none;
+}
+
+/* サブヘッダーの展開 */
+.timeline-header-sub-cell {
+  transition: flex-grow 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.timeline-header-sub-cell.expanded {
+  flex: 6;
+}
+
+/* 予約ブロック・マンセル枠のスムーズなアニメーション */
+.timeline-cells .reservation-block {
+  transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow var(--transition-fast),
+              transform var(--transition-fast);
+}
+
+.timeline-cells .manncell-block {
+  transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+

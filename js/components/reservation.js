@@ -9,6 +9,7 @@
 import { AlertBadge } from './alertBadge.js';
 import * as Storage from '../services/storage.js';
 import { getFreeTimeLabel } from './freeTimeModal.js';
+import accordionManager from './accordionManager.js';
 
 /** セル幅(px) */
 const CELL_WIDTH = 80;
@@ -285,18 +286,23 @@ export class ReservationBlock {
       }
     }
 
-    // 位置・サイズ計算（割合ベースに変更し、画面幅に最適化）
+    // 位置・サイズ計算（重み付きパーセンテージでアコーディオン展開に対応）
     const startMin = timeToMinutes(res.startTime);
     const endMin = timeToMinutes(res.endTime);
     const durationMin = endMin - startMin;
     const totalDurationMin = 600; // 9:00〜19:00 (10時間 = 600分)
-    const leftPct = (startMin / totalDurationMin) * 100;
-    const widthPct = (durationMin / totalDurationMin) * 100;
+    // 重み付きパーセンテージで位置を計算
+    const leftPct = accordionManager.getWeightedPosition(startMin);
+    // 【重要】widthは始点と終点の差分から算出し累積誤差を防ぐ
+    const endPct = accordionManager.getWeightedPosition(endMin);
+    const widthPct = endPct - leftPct;
 
     // メイン要素の作成
     const block = document.createElement('div');
     block.className = 'reservation-block';
     block.dataset.reservationId = res.id;
+    block.dataset.startMin = String(startMin);
+    block.dataset.endMin = String(endMin);
     block.style.position = 'absolute';
     block.style.left = `${leftPct}%`;
     block.style.width = `${widthPct}%`;
@@ -317,7 +323,7 @@ export class ReservationBlock {
     } else {
       block.style.zIndex = '10';
     }
-    block.style.transition = 'box-shadow var(--transition-fast), transform var(--transition-fast)';
+    // transition は CSS (.timeline-cells .reservation-block) で管理
 
     // ドラッグ移動の設定
     block.draggable = !isVirtual;
@@ -326,6 +332,8 @@ export class ReservationBlock {
 
       block.addEventListener('dragstart', (e) => {
         isDragging = true;
+        // ドラッグ開始時にアコーディオンを安全に閉じる（ワープ防止）
+        accordionManager.collapse();
         block.classList.add('is-being-dragged');
         document.body.classList.add('is-dragging-item');
         e.dataTransfer.setData('text/reservation-id', res.id);
@@ -633,12 +641,16 @@ export class ReservationBlock {
         e.preventDefault();
         e.stopPropagation(); // ブロックのdragstartを防ぐ
 
+        // リサイズ開始時にアコーディオンを安全に閉じる（ワープ防止）
+        accordionManager.collapse();
+
         const startX = e.clientX;
 
         // タイムラインセル群の幅から px/分 を計算
         const cellsEl = block.closest('.timeline-cells');
         const cellsWidth = cellsEl ? cellsEl.getBoundingClientRect().width : 1600;
         const totalDurationMin = 600; // 9:00〜19:00
+        // TODO: 将来的に5分単位スナップに変更する場合はSLOT_MINUTESを参照
         const pxPerMin = cellsWidth / totalDurationMin;
 
         const originalDuration = (typeof res.endTime === 'number' && typeof res.startTime === 'number')

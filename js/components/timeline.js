@@ -8,6 +8,7 @@
 
 import { RANKS } from '../models/staff.js';
 import * as Storage from '../services/storage.js?v=12';
+import accordionManager, { SUB_SLOT_COUNT, SUB_SLOT_MINUTES } from './accordionManager.js';
 
 /** セル幅(px) */
 const CELL_WIDTH = 80;
@@ -275,7 +276,29 @@ export class Timeline {
       const cell = document.createElement('div');
       cell.className = 'timeline-header-cell';
       cell.dataset.time = String(minutes);
-      cell.textContent = `${hour}:${String(min).padStart(2, '0')}`;
+      cell.dataset.slotIndex = String(i);
+
+      // メインラベル
+      const mainLabel = document.createElement('span');
+      mainLabel.className = 'accordion-main-label';
+      mainLabel.textContent = `${hour}:${String(min).padStart(2, '0')}`;
+      cell.appendChild(mainLabel);
+
+      // 展開状態の適用
+      if (accordionManager.isExpanded(i)) {
+        cell.classList.add('expanded');
+        cell.style.flex = '6';
+        this._createSubLabels(cell, i);
+      } else {
+        cell.style.flex = '1';
+      }
+
+      // クリックでアコーディオン展開/折りたたみ
+      cell.addEventListener('click', (e) => {
+        e.stopPropagation();
+        accordionManager.toggle(i);
+      }, { signal });
+
       header.appendChild(cell);
     }
     grid.appendChild(header);
@@ -352,6 +375,7 @@ export class Timeline {
 
       const cell = document.createElement('div');
       cell.className = 'timeline-header-sub-cell';
+      cell.dataset.slotIndex = String(i);
       cell.style.flex = '1';
       cell.style.minWidth = '32px';
       cell.style.display = 'flex';
@@ -362,6 +386,14 @@ export class Timeline {
       cell.style.padding = '6px 0';
       cell.style.borderRight = '1px solid rgba(255, 255, 255, 0.05)';
       cell.style.userSelect = 'none';
+
+      // 展開状態の適用
+      if (accordionManager.isExpanded(i)) {
+        cell.classList.add('expanded');
+        cell.style.flex = '6';
+      } else {
+        cell.style.flex = '1';
+      }
       
       // テキストカラーの決定
       if (freeStylists === 0 && freeAssistants === 0) {
@@ -405,8 +437,18 @@ export class Timeline {
         const cell = document.createElement('div');
         cell.className = 'timeline-cell';
         cell.dataset.time = String(minutes);
+        cell.dataset.slotIndex = String(i);
         cell.dataset.stylistId = stylist.id;
         cell.style.height = `${CELL_HEIGHT}px`;
+
+        // 展開状態の適用
+        if (accordionManager.isExpanded(i)) {
+          cell.classList.add('expanded');
+          cell.style.flex = '6';
+          this._createGridlines(cell);
+        } else {
+          cell.style.flex = '1';
+        }
 
         const slotTimeMinute = (START_HOUR * 60) + minutes;
         const isOffDuty = typeof stylist.isWorkingAtTime === 'function'
@@ -561,12 +603,16 @@ export class Timeline {
         const endMin = endTotalMin - (START_HOUR * 60);
         
         const durationMin = endMin - startMin;
-        const totalDurationMin = 600; // 9:00〜19:00 (10時間)
-        const leftPct = isNaN(startMin) ? 50 : (startMin / totalDurationMin) * 100;
-        const widthPct = isNaN(durationMin) ? 25 : (durationMin / totalDurationMin) * 100;
+        // 重み付きパーセンテージで位置を計算（アコーディオン展開対応）
+        const leftPct = isNaN(startMin) ? 50 : accordionManager.getWeightedPosition(startMin);
+        // 【重要】widthは始点と終点の差分から算出し累積誤差を防ぐ
+        const endPct = isNaN(endMin) ? 75 : accordionManager.getWeightedPosition(endMin);
+        const widthPct = endPct - leftPct;
         
         const manncellBlock = document.createElement('div');
         manncellBlock.className = 'manncell-block';
+        manncellBlock.dataset.startMin = String(startMin);
+        manncellBlock.dataset.endMin = String(endMin);
         if (manncell.isSuccess) {
           manncellBlock.classList.add('manncell-success');
         }
@@ -862,7 +908,9 @@ export class Timeline {
         return;
       }
       this._currentTimeLine.style.display = 'block';
-      this._currentTimeLine.style.left = `calc(${STAFF_COL_WIDTH}px + (${currentMinutes} / 600) * (100% - ${STAFF_COL_WIDTH}px))`;
+      // 重み付きパーセンテージで位置を計算（アコーディオン展開対応）
+      const posPct = accordionManager.getWeightedPosition(currentMinutes);
+      this._currentTimeLine.style.left = `calc(${STAFF_COL_WIDTH}px + ${posPct} * (100% - ${STAFF_COL_WIDTH}px) / 100)`;
     };
 
     updateLine();
@@ -1014,6 +1062,159 @@ export class Timeline {
     const m = String(date.getMonth() + 1).padStart(2, '0');
     const d = String(date.getDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
+  }
+
+  // ─── アコーディオン展開ヘルパーメソッド ───
+
+  /**
+   * 展開されたヘッダーセル内に5分刻みのサブラベルを生成する
+   * @param {HTMLElement} headerCell - ヘッダーセル要素
+   * @param {number} slotIndex - スロットインデックス (0-19)
+   * @private
+   */
+  _createSubLabels(headerCell, slotIndex) {
+    // 既存のサブラベルがあれば削除
+    const existing = headerCell.querySelector('.accordion-sub-labels');
+    if (existing) existing.remove();
+
+    const container = document.createElement('div');
+    container.className = 'accordion-sub-labels';
+
+    const baseMinutes = slotIndex * SLOT_MINUTES;
+    for (let j = 0; j < SUB_SLOT_COUNT; j++) {
+      const subMin = baseMinutes + j * SUB_SLOT_MINUTES;
+      const hour = START_HOUR + Math.floor(subMin / 60);
+      const min = subMin % 60;
+
+      const label = document.createElement('div');
+      label.className = 'accordion-sub-label';
+      label.textContent = `${hour}:${String(min).padStart(2, '0')}`;
+      container.appendChild(label);
+    }
+
+    headerCell.appendChild(container);
+  }
+
+  /**
+   * 展開されたボディセル内に5分刻みのガイドライン（点線）を生成する
+   * @param {HTMLElement} bodyCell - ボディセル要素
+   * @private
+   */
+  _createGridlines(bodyCell) {
+    // 既存のガイドラインがあれば削除
+    const existing = bodyCell.querySelector('.accordion-gridlines');
+    if (existing) existing.remove();
+
+    const container = document.createElement('div');
+    container.className = 'accordion-gridlines';
+
+    for (let j = 0; j < SUB_SLOT_COUNT; j++) {
+      const line = document.createElement('div');
+      line.className = 'accordion-gridline';
+      container.appendChild(line);
+    }
+
+    bodyCell.appendChild(container);
+  }
+
+  /**
+   * アコーディオン展開状態を既存DOMに反映する（accordion-changedイベント時に呼ばれる）
+   * CSS transitionにより滑らかにアニメーションする。
+   */
+  applyAccordionState() {
+    const grid = this._container.querySelector('.timeline-grid');
+    if (!grid) return;
+
+    const expandedSlot = accordionManager.expandedSlot;
+
+    // --- ヘッダーセルの更新 ---
+    const headerCells = grid.querySelectorAll('.timeline-header-cell');
+    headerCells.forEach(cell => {
+      const idx = parseInt(cell.dataset.slotIndex, 10);
+      if (accordionManager.isExpanded(idx)) {
+        cell.classList.add('expanded');
+        cell.style.flex = '6';
+        if (!cell.querySelector('.accordion-sub-labels')) {
+          this._createSubLabels(cell, idx);
+        }
+      } else {
+        cell.classList.remove('expanded');
+        cell.style.flex = '1';
+        const subLabels = cell.querySelector('.accordion-sub-labels');
+        if (subLabels) subLabels.remove();
+      }
+    });
+
+    // --- サブヘッダーセルの更新 ---
+    const subHeaderCells = grid.querySelectorAll('.timeline-header-sub-cell');
+    subHeaderCells.forEach(cell => {
+      const idx = parseInt(cell.dataset.slotIndex, 10);
+      if (accordionManager.isExpanded(idx)) {
+        cell.classList.add('expanded');
+        cell.style.flex = '6';
+      } else {
+        cell.classList.remove('expanded');
+        cell.style.flex = '1';
+      }
+    });
+
+    // --- ボディセルの更新 ---
+    const bodyCells = grid.querySelectorAll('.timeline-cell');
+    bodyCells.forEach(cell => {
+      const idx = parseInt(cell.dataset.slotIndex, 10);
+      if (accordionManager.isExpanded(idx)) {
+        cell.classList.add('expanded');
+        cell.style.flex = '6';
+        if (!cell.querySelector('.accordion-gridlines')) {
+          this._createGridlines(cell);
+        }
+      } else {
+        cell.classList.remove('expanded');
+        cell.style.flex = '1';
+        const gridlines = cell.querySelector('.accordion-gridlines');
+        if (gridlines) gridlines.remove();
+      }
+    });
+
+    // --- マンセル枠の位置再計算 ---
+    const manncellBlocks = grid.querySelectorAll('.manncell-block');
+    manncellBlocks.forEach(block => {
+      const startMin = parseFloat(block.dataset.startMin);
+      const endMin = parseFloat(block.dataset.endMin);
+      if (isNaN(startMin) || isNaN(endMin)) return;
+      const leftPct = accordionManager.getWeightedPosition(startMin);
+      const endPct = accordionManager.getWeightedPosition(endMin);
+      block.style.left = `${leftPct}%`;
+      block.style.width = `${endPct - leftPct}%`;
+    });
+
+    // --- 現在時刻線の位置再計算 ---
+    if (this._currentTimeLine) {
+      const now = new Date();
+      const currentMinutes = (now.getHours() - START_HOUR) * 60 + now.getMinutes();
+      if (currentMinutes >= 0 && currentMinutes <= (END_HOUR - START_HOUR) * 60) {
+        const posPct = accordionManager.getWeightedPosition(currentMinutes);
+        this._currentTimeLine.style.left = `calc(${STAFF_COL_WIDTH}px + ${posPct} * (100% - ${STAFF_COL_WIDTH}px) / 100)`;
+      }
+    }
+
+    // --- 展開セルへのオートスクロール（sticky干渉回避のため手動計算） ---
+    if (expandedSlot !== null) {
+      const scrollContainer = this._container; // #timeline-area
+      // stickyでないボディセルを基準にする
+      const targetCell = grid.querySelector(`.timeline-cell[data-slot-index="${expandedSlot}"]`);
+      if (targetCell && scrollContainer) {
+        setTimeout(() => {
+          const containerRect = scrollContainer.getBoundingClientRect();
+          const cellRect = targetCell.getBoundingClientRect();
+          // セルを画面中央に配置するスクロール量
+          const scrollLeft = scrollContainer.scrollLeft
+            + (cellRect.left - containerRect.left)
+            - (containerRect.width / 2 - cellRect.width / 2);
+          scrollContainer.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+        }, 380); // CSSトランジション完了直後のタイミング
+      }
+    }
   }
 
   /**

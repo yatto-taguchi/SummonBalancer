@@ -15,6 +15,7 @@ import { StaffList } from '../components/staffList.js?v=6';
 import { FatigueBar } from '../components/fatigueBar.js?v=6';
 import { AlertBadge } from '../components/alertBadge.js';
 import { FreeTimeModal } from '../components/freeTimeModal.js?v=2';
+import accordionManager from '../components/accordionManager.js';
 
 export class MainView {
   /**
@@ -746,6 +747,16 @@ export class MainView {
     if (timelineArea) {
       this.timeline = new Timeline(timelineArea);
       this.timeline.render(stylists, reservations, this.currentDate, null, {}, {}, offStylists, offAssistants, []);
+
+      // アコーディオン展開イベントリスナー
+      document.removeEventListener('accordion-changed', this._onAccordionChanged);
+      this._onAccordionChanged = () => {
+        if (this.timeline) {
+          this.timeline.applyAccordionState();
+        }
+        this._updateReservationBlockPositions();
+      };
+      document.addEventListener('accordion-changed', this._onAccordionChanged);
     }
 
     // メニューバー（index.htmlの上部#menu-barに描画）
@@ -877,6 +888,30 @@ export class MainView {
       }
 
       this.reservationBlocks.push(block);
+    });
+  }
+
+  /**
+   * アコーディオン展開状態変更時に予約ブロックの位置をin-placeで再計算する。
+   * DOMを再生成せず、left/widthのみ更新することでCSS transitionによる滑らかなアニメーションを実現する。
+   * @private
+   */
+  _updateReservationBlockPositions() {
+    const timelineArea = this.container.querySelector('#timeline-area');
+    if (!timelineArea) return;
+
+    const blocks = timelineArea.querySelectorAll('.reservation-block');
+    blocks.forEach(block => {
+      const startMin = parseFloat(block.dataset.startMin);
+      const endMin = parseFloat(block.dataset.endMin);
+      if (isNaN(startMin) || isNaN(endMin)) return;
+
+      // 重み付きパーセンテージで位置を再計算
+      const leftPct = accordionManager.getWeightedPosition(startMin);
+      // 【重要】widthは始点と終点の差分から算出し累積誤差を防ぐ
+      const endPct = accordionManager.getWeightedPosition(endMin);
+      block.style.left = `${leftPct}%`;
+      block.style.width = `${endPct - leftPct}%`;
     });
   }
 
