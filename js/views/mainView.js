@@ -1036,6 +1036,17 @@ export class MainView {
       res.assignedAssistants = {};
       if (resAssign) {
         for (const [slotIdx, astId] of Object.entries(resAssign)) {
+          // マンセル（チーム制）マーカーの検出: "__manncell__::チーム名" 形式
+          if (typeof astId === 'string' && astId.startsWith('__manncell__::')) {
+            const manncellTeam = astId.substring('__manncell__::'.length);
+            res.assignedAssistants[slotIdx] = { 
+              id: '__manncell__', 
+              name: '__manncell__', 
+              manncellTeam: manncellTeam 
+            };
+            continue;
+          }
+
           const staff = staffMap.get(astId);
           const cInfo = resConcurrent ? resConcurrent[slotIdx] : null;
           const isConcurrent = typeof cInfo === 'boolean' ? cInfo : !!(cInfo && cInfo.isConcurrent);
@@ -1165,6 +1176,17 @@ export class MainView {
       const mappedAssign = {};
       if (resAssign) {
         for (const [slotIdx, astId] of Object.entries(resAssign)) {
+          // マンセル（チーム制）マーカーの検出: "__manncell__::チーム名" 形式
+          if (typeof astId === 'string' && astId.startsWith('__manncell__::')) {
+            const manncellTeam = astId.substring('__manncell__::'.length);
+            mappedAssign[slotIdx] = { 
+              id: '__manncell__', 
+              name: '__manncell__', 
+              manncellTeam: manncellTeam  // チーム担当者名テキスト（例: "凪・らんらん"）
+            };
+            continue;
+          }
+
           const staff = staffMap.get(astId);
           const cInfo = resConcurrent ? resConcurrent[slotIdx] : null;
           const isConcurrent = typeof cInfo === 'boolean' ? cInfo : !!(cInfo && cInfo.isConcurrent);
@@ -1280,6 +1302,8 @@ export class MainView {
 
         Object.entries(slotMap).forEach(([slotIdx, assignedId]) => {
           if (!assignedId || assignedId === '__none__') return;
+          // マンセルマーカーはスタッフIDではないのでスキップ
+          if (typeof assignedId === 'string' && assignedId.startsWith('__manncell__')) return;
           const slotIndex = parseInt(slotIdx, 10);
           const slotDef = menu && menu.assistantSlots ? menu.assistantSlots[slotIndex] : null;
           if (!slotDef) return;

@@ -214,6 +214,21 @@ export class SummonEngine {
         const hasManncell = data.manncells.length > 0;
         const isCoveredByManncell = hasManncell || manncellReservationIds.has(resId);
 
+        // マンセル対象の場合、チーム全員の名前を data.manncells から抽出
+        // （個別アサインの有無に関わらず、全スロットで統一表示するため）
+        let manncellTeamText = '';
+        if (hasManncell) {
+          const involvedTeamIds = new Set();
+          data.manncells.forEach(mTick => {
+            mTick.team.forEach(tId => involvedTeamIds.add(tId));
+          });
+          const involvedNames = Array.from(involvedTeamIds).map(tId => {
+            const staffObj = state.master.staffMap ? state.master.staffMap[tId] : null;
+            return staffObj ? (staffObj.nickname || staffObj.name) : tId;
+          });
+          manncellTeamText = involvedNames.length > 0 ? involvedNames.join('・') : 'チーム';
+        }
+
         segments.forEach(seg => {
           const minutes = seg.ticks * 5;
 
@@ -224,17 +239,8 @@ export class SummonEngine {
               displayParts.push(`<span style="color: var(--accent-danger)">⚠不足(${minutes}分)</span>`);
             }
           } else if (seg.staffId === 'MANNCELL_STANDBY') {
-            // マンセル（チーム対応）セグメント
-            const involvedTeamIds = new Set();
-            data.manncells.forEach(mTick => {
-              mTick.team.forEach(tId => involvedTeamIds.add(tId));
-            });
-            const involvedNames = Array.from(involvedTeamIds).map(tId => {
-              const staffObj = state.master.staffMap ? state.master.staffMap[tId] : null;
-              return staffObj ? (staffObj.nickname || staffObj.name) : tId;
-            });
-            const teamText = involvedNames.length > 0 ? involvedNames.join('・') : 'チーム';
-            displayParts.push(`${teamText}(${minutes}分)`);
+            // マンセル（チーム対応）セグメント — 最終出力は hasManncell で統一上書きされる
+            displayParts.push(`${manncellTeamText}(${minutes}分)`);
           } else {
             // 通常のアサインセグメント
             const staffObj = state.master.staffMap ? state.master.staffMap[seg.staffId] : null;
@@ -266,7 +272,13 @@ export class SummonEngine {
           }
         }
 
-        uiAssignments[resId][slotIndex] = displayParts.join(' → ');
+        // マンセル対象スロットは、個別アサインの有無に関わらずチーム全員の名前で統一表示
+        // （現場のチーム内で話し合って役割を決める運用方針）
+        if (hasManncell) {
+          uiAssignments[resId][slotIndex] = `__manncell__::${manncellTeamText}`;
+        } else {
+          uiAssignments[resId][slotIndex] = displayParts.join(' → ');
+        }
       });
     });
 

@@ -775,9 +775,11 @@ export class ReservationBlock {
       
       let isConcurrent = false;
       
-      // 特殊ID "__manncell__" の場合はセル内に個人の名前を出さない（大きな枠で出すため）
+      // 特殊ID "__manncell__" の場合はチーム制の2段表示
       if (ast === '__manncell__' || ast.id === '__manncell__') {
-        assistantEl.textContent = ''; // 完全に表示なし
+        const teamName = ast.manncellTeam || 'チーム';
+        assistantEl.className = 'slot-assistant manncell-assigned-text';
+        assistantEl.innerHTML = `<span class="manncell-label">【チーム制】</span><span class="manncell-team-name">${teamName}</span>`;
       } else {
         const nameStr = ast.nickname || ast.name || ast;
         isConcurrent = !!ast.isConcurrent;
@@ -1313,8 +1315,11 @@ export class ReservationBlock {
               const oldBadge = slotEl.querySelector('.slot-concurrent-badge');
               if (oldBadge) oldBadge.remove();
             } else if (assignedId === '__manncell__') {
-              // マンセル（チーム連携）の場合は文字を出さない
-              assistantEl.textContent = '';
+              // マンセル（チーム連携）の場合は【チーム制】+ 担当者名の2段表示
+              const teamName = assignments[idx].manncellTeam || 'チーム';
+              assistantEl.className = 'slot-assistant manncell-assigned-text';
+              assistantEl.style.color = '';  // CSSクラスに任せる
+              assistantEl.innerHTML = `<span class="manncell-label">【チーム制】</span><span class="manncell-team-name">${teamName}</span>`;
               const oldBadge = slotEl.querySelector('.slot-concurrent-badge');
               if (oldBadge) oldBadge.remove();
             } else {
