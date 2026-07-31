@@ -253,4 +253,107 @@ export class Reservation {
     }
     return new Reservation(data);
   }
+
+  /**
+   * 結合状態を考慮した実効的なメニュー（Effective Menu）を返す
+   * @param {Array<Object>} allMenus - マスターの全メニュー配列
+   * @returns {Object|null} 実効的なメニューオブジェクト
+   */
+  getEffectiveMenu(allMenus) {
+    return Reservation.getEffectiveMenu(this, allMenus);
+  }
+
+  /**
+   * 結合状態を考慮した実効的なメニュー（Effective Menu）を返す（プレーンオブジェクト対応）
+   * @param {Object} resData - Reservationインスタンスまたはプレーンオブジェクト
+   * @param {Array<Object>} allMenus - マスターの全メニュー配列
+   * @returns {Object|null} 実効的なメニューオブジェクト（イミュータブル）
+   */
+  static getEffectiveMenu(resData, allMenus) {
+    if (!resData || !allMenus) return null;
+    
+    const baseMenu = allMenus.find(m => m.id === resData.menuItemId);
+    if (!baseMenu) return null;
+
+    if (!resData.items || !Array.isArray(resData.items) || resData.items.length <= 1) {
+      return baseMenu; // 結合されていない場合はベースをそのまま返す
+    }
+
+    // 対象メニューと置換用スキルのマッピング
+    const replacementMap = {
+      'treatment': 'treatment',
+      'head_spa': 'spa'
+    };
+    
+    // 置き換え対象のベーススキル
+    const replaceableSkills = ['shampoo', 'straight_2', 'perm_liquid'];
+
+    // 純粋関数とするため、ディープコピー（JSONシリアライズ/デシリアライズ）
+    const effectiveMenu = JSON.parse(JSON.stringify(baseMenu));
+
+    // items に含まれる「ベースメニュー以外」の追加メニューを収集
+    const additionalItems = resData.items.filter(item => item.menuItemId !== resData.menuItemId);
+
+    if (additionalItems.length === 0) {
+      return effectiveMenu;
+    }
+
+    let hasReplaced = false;
+
+    // 複数の追加メニューがある場合の処理
+    additionalItems.forEach((addedItem) => {
+      const addedMenuId = addedItem.menuItemId;
+      const targetSkill = replacementMap[addedMenuId];
+      
+      if (!targetSkill) {
+        // トリートメントやスパ以外のメニューが追加された場合は何もしない
+        return;
+      }
+
+      if (!hasReplaced) {
+        // 1つ目の対象追加メニュー：ベースのシャンプー等を置き換え
+        let replacedAny = false;
+        effectiveMenu.assistantSlots.forEach(slot => {
+          if (replaceableSkills.includes(slot.requiredSkill)) {
+            slot.requiredSkill = targetSkill;
+            replacedAny = true;
+          }
+        });
+        if (replacedAny) {
+          hasReplaced = true;
+        } else {
+          // もしベースに置き換え対象のスキルがなかった場合は、新規スロットとして追加へフォールバック
+          addNewSlot(effectiveMenu, addedMenuId, targetSkill, allMenus);
+        }
+      } else {
+        // 2つ目以降の対象追加メニュー：スロットを新規追加（時間は後ろにずらす）
+        addNewSlot(effectiveMenu, addedMenuId, targetSkill, allMenus);
+      }
+    });
+
+    return effectiveMenu;
+
+    // ヘルパー: スロットの新規追加（時間が被らないように後ろにずらす）
+    function addNewSlot(menu, addedMenuId, targetSkill, menusDef) {
+      const addedMenuDef = menusDef.find(m => m.id === addedMenuId);
+      const addedSlotDuration = addedMenuDef?.assistantSlots?.[0] 
+        ? (addedMenuDef.assistantSlots[0].endMinute - addedMenuDef.assistantSlots[0].startMinute) 
+        : 30; // フォールバック
+      
+      let newStart = 0;
+      if (menu.assistantSlots && menu.assistantSlots.length > 0) {
+        // 既存スロットの最後尾を取得
+        const lastSlot = menu.assistantSlots[menu.assistantSlots.length - 1];
+        newStart = lastSlot.endMinute;
+      }
+      
+      if (!menu.assistantSlots) menu.assistantSlots = [];
+      menu.assistantSlots.push({
+        startMinute: newStart,
+        endMinute: newStart + addedSlotDuration,
+        requiredSkill: targetSkill,
+        requiredProficiency: 3
+      });
+    }
+  }
 }

@@ -561,6 +561,18 @@ input:focus, select:focus, textarea:focus {
   z-index: 6;
 }
 
+/* 召喚・特殊召喚ブロックは通常の予約ブロックや空き時間ブロックより手前に表示する */
+.reservation-block.summon-virtual-block {
+  z-index: 4;
+  border: 1px dashed rgba(255, 255, 255, 0.5);
+}
+
+.reservation-block.special-summon-block {
+  z-index: 5;
+  border: 2px solid rgba(245, 158, 11, 0.8);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+}
+
 .reservation-label {
   font-weight: 700;
   font-size: 0.8rem;

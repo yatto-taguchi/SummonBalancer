@@ -52,9 +52,16 @@ export function executeFallbackReassign(state) {
   // 3. 各スロットへの再アサイン処理
   for (const slot of sortedSlots) {
     // --- 候補者のフィルタリングと選出 ---
+    // 交代禁止タスクのロック状態を確認
+    const isHandoffProhibited = ['shampoo', 'treatment', 'spa'].includes(slot.requiredSkill);
+    const taskKey = `${slot.reservationId}_${slot.slotIndex}`;
+    const lockedStaffId = nextState.ongoingTasks ? nextState.ongoingTasks[taskKey] : null;
+
     let candidates = nextState.staff.filter(a => {
       // 自己召喚バグの防止（自分の予約には入れない）
       if (a.id === slot.stylistId) return false;
+      // ロックされているタスクなら、ロックされた本人以外は絶対に入れない（除外）
+      if (isHandoffProhibited && lockedStaffId && a.id !== lockedStaffId) return false;
       // スキルチェック
       if (!hasSkill(a, slot.requiredSkill, slot.requiredProficiency)) return false;
       // 空き時間チェック

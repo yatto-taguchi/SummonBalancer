@@ -1277,7 +1277,8 @@ export class MainView {
       const cellsContainer = timelineArea.querySelector(
         `.timeline-row[data-stylist-id="${summon.stylistId}"] .timeline-cells`
       );
-      const container = cellsContainer || timelineArea;
+      if (!cellsContainer) return; // 描画先の行が存在しない場合は安全にスキップ（timelineAreaへのフォールバックを廃止）
+      const container = cellsContainer;
 
       // 特殊召喚用メニューを個別作成
       const summonMenu = {
@@ -1586,17 +1587,23 @@ export class MainView {
 
         // 開始時刻のHH:MM形式変換
         let timeStr = '';
-        if (typeof summon.startTime === 'number') {
+        if (typeof summon.startTime === 'string' && summon.startTime.includes(':')) {
+          timeStr = summon.startTime;
+        } else if (typeof summon.startTime === 'number') {
           const h = 9 + Math.floor(summon.startTime / 60);
           const m = summon.startTime % 60;
           timeStr = `${h}:${String(m).padStart(2,'0')}`;
         } else if (summon.startTime) {
           const d = new Date(summon.startTime);
-          timeStr = `${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+          if (!isNaN(d)) {
+            timeStr = `${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+          } else {
+            timeStr = String(summon.startTime); // 最後のフォールバック
+          }
         }
 
         const reasonLabel = summon.specialSummonReason === 'lunch'
-          ? 'お昂交代'
+          ? 'お昼交代'
           : summon.specialSummonReason === 'rest'
             ? '休憩交代'
             : '特殊';

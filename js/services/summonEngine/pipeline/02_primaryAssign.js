@@ -15,6 +15,9 @@ export function executePrimaryAssign(state) {
   let nextState = state.clone();
   
   if (!nextState.timeSlots) return nextState;
+  
+  if (!nextState.ongoingTasks) nextState.ongoingTasks = {};
+  if (!nextState.lockedUnassignedTasks) nextState.lockedUnassignedTasks = {};
 
   const assistants = (nextState.master?.staff || []).filter(s => s.type === 'assistant');
   const stylists = (nextState.master?.staff || []).filter(s => s.type === 'stylist');
@@ -46,19 +49,21 @@ export function executePrimaryAssign(state) {
     const timeSlot = nextState.timeSlots[time];
     if (!timeSlot || !timeSlot.requirements || timeSlot.requirements.length === 0) return;
 
-    // 1. requirements を必須(strict)と任意(optional)に分割
-    const strictReqs = timeSlot.requirements.filter(r => r.isStrictlyRequired || r.tier === 1);
-    const optionalReqs = timeSlot.requirements.filter(r => !r.isStrictlyRequired && r.tier === 2);
-
-    // 必須タスクのソート（第1優先：継続中、第2優先：ID順）
-    strictReqs.sort((a, b) => {
-      const keyA = `${a.reservationId}_${a.slotIndex}`;
-      const keyB = `${b.reservationId}_${b.slotIndex}`;
-      const aHasOngoing = (nextState.ongoingTasks && nextState.ongoingTasks[keyA]) ? 1 : 0;
-      const bHasOngoing = (nextState.ongoingTasks && nextState.ongoingTasks[keyB]) ? 1 : 0;
-      if (aHasOngoing !== bHasOngoing) return bHasOngoing - aHasOngoing;
-      return a.id.localeCompare(b.id);
+    // 0. requirements を 第0優先度(継続中の交代禁止)、必須(strict)、任意(optional) に分割
+    const lockedReqs = timeSlot.requirements.filter(r => {
+      const key = `${r.reservationId}_${r.slotIndex}`;
+      return r.isHandoffProhibited && !!nextState.ongoingTasks[key];
     });
+
+    const strictReqs = timeSlot.requirements.filter(r => 
+      (r.isStrictlyRequired || r.tier === 1) && !lockedReqs.includes(r)
+    );
+    const optionalReqs = timeSlot.requirements.filter(r => 
+      !r.isStrictlyRequired && r.tier === 2 && !lockedReqs.includes(r)
+    );
+
+    // 必須タスクのソート（ID順）
+    strictReqs.sort((a, b) => a.id.localeCompare(b.id));
 
     // 2. その時間枠で稼働可能なアシスタントのプールを初期化
     timeSlot.freePoolStaffIds = assistants.map(a => a.id);
@@ -86,14 +91,19 @@ export function executePrimaryAssign(state) {
         .filter(a => a && hasSkill(a, req.requiredSkill, req.minSkillLevel));
 
       const taskKey = `${req.reservationId}_${req.slotIndex}`;
-      const ongoingAssistantId = nextState.ongoingTasks ? nextState.ongoingTasks[taskKey] : null;
+      const ongoingAssistantId = nextState.ongoingTasks[taskKey] || null;
+      const isLockedUnassigned = !!nextState.lockedUnassignedTasks[taskKey];
 
-      if (req.isHandoffProhibited && ongoingAssistantId) {
-        const isFree = candidates.some(a => a.id === ongoingAssistantId);
-        if (isFree) {
-          const ongoingAssistant = assistants.find(a => a.id === ongoingAssistantId);
-          candidates = [ongoingAssistant];
-        } else {
+      if (req.isHandoffProhibited) {
+        if (ongoingAssistantId) {
+          const isFree = candidates.some(a => a.id === ongoingAssistantId);
+          if (isFree) {
+            const ongoingAssistant = assistants.find(a => a.id === ongoingAssistantId);
+            candidates = [ongoingAssistant];
+          } else {
+            candidates = [];
+          }
+        } else if (isLockedUnassigned) {
           candidates = [];
         }
       }
@@ -105,6 +115,9 @@ export function executePrimaryAssign(state) {
             requirementId: req.id,
             reason: "no_free_staff"
           });
+        }
+        if (req.isHandoffProhibited) {
+          nextState.lockedUnassignedTasks[taskKey] = true;
         }
         return false;
       }
@@ -132,8 +145,7 @@ export function executePrimaryAssign(state) {
         assistantId: selected.id
       });
 
-      if (!nextState.ongoingTasks) nextState.ongoingTasks = {};
-      nextState.ongoingTasks[`${req.reservationId}_${req.slotIndex}`] = selected.id;
+      nextState.ongoingTasks[taskKey] = selected.id;
 
       timeSlot.freePoolStaffIds = timeSlot.freePoolStaffIds.filter(id => id !== selected.id);
 
@@ -148,18 +160,17 @@ export function executePrimaryAssign(state) {
       return true;
     };
 
+    // Step 0: 継続中の交代禁止タスク（第0優先度）の消化
+    // 奪われ防止のため、最も早くアサイン処理を行う
+    lockedReqs.forEach(req => tryAssign(req, req.isStrictlyRequired || req.tier === 1));
+
     // Step 1: 必須タスクの消化
     strictReqs.forEach(req => tryAssign(req, true));
 
     // Step 2: 余力判定と任意タスク（tier: 2）への配置
     if (optionalReqs.length > 0) {
-      // ソート: 継続中タスク > ①オーナーの予約 > ②スタイリストの稼働率が高い順
+      // ソート: ①オーナーの予約 > ②スタイリストの稼働率が高い順
       optionalReqs.sort((a, b) => {
-        const keyA = `${a.reservationId}_${a.slotIndex}`;
-        const keyB = `${b.reservationId}_${b.slotIndex}`;
-        const aHasOngoing = (nextState.ongoingTasks && nextState.ongoingTasks[keyA]) ? 1 : 0;
-        const bHasOngoing = (nextState.ongoingTasks && nextState.ongoingTasks[keyB]) ? 1 : 0;
-        if (aHasOngoing !== bHasOngoing) return bHasOngoing - aHasOngoing;
 
         const stylistA = stylists.find(s => s.id === a.stylistId);
         const stylistB = stylists.find(s => s.id === b.stylistId);
@@ -181,6 +192,9 @@ export function executePrimaryAssign(state) {
         const utilization = stylistUtilization[req.stylistId] || 0;
 
         let shouldAssign = false;
+        
+        // 既に lockedReqs で処理されているものはここには来ないが、
+        // 念のため未アサインのロック(lockedUnassigned)なども考慮
         if (utilization >= 0.5 || isOwner) {
           // 条件B: 稼働率50%以上またはオーナーなら1人でも余っていればアサイン
           shouldAssign = freeCount >= 1;
@@ -191,6 +205,10 @@ export function executePrimaryAssign(state) {
 
         if (shouldAssign) {
           tryAssign(req, false);
+        } else if (req.isHandoffProhibited) {
+          // 余力不足でアサイン見送りと判断された交代禁止タスクは、未アサイン状態をロックする
+          const taskKey = `${req.reservationId}_${req.slotIndex}`;
+          nextState.lockedUnassignedTasks[taskKey] = true;
         }
       });
     }

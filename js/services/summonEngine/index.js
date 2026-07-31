@@ -61,6 +61,12 @@ export class SummonEngine {
       if (this.previousState.manncellTicks) {
         state.manncellTicks = JSON.parse(JSON.stringify(this.previousState.manncellTicks));
       }
+      if (this.previousState.ongoingTasks) {
+        state.ongoingTasks = JSON.parse(JSON.stringify(this.previousState.ongoingTasks));
+      }
+      if (this.previousState.lockedUnassignedTasks) {
+        state.lockedUnassignedTasks = JSON.parse(JSON.stringify(this.previousState.lockedUnassignedTasks));
+      }
       
       // === 過去の確定済みフリータイム活動の復元 ===
       if (this.previousState.freeTimeActivities) {
@@ -91,6 +97,8 @@ export class SummonEngine {
         alerts: state.alerts,
         stylistSummons: state.stylistSummons,
         manncellTicks: state.manncellTicks,
+        ongoingTasks: state.ongoingTasks,
+        lockedUnassignedTasks: state.lockedUnassignedTasks,
         freeTimeActivities: state.freeTimeActivities,
         utilizationRates: state.utilizationRates
       }));
@@ -107,9 +115,9 @@ export class SummonEngine {
     const uiStylistSummons = [...(state.stylistSummons || [])];
     const uiUnfilledSlots = [...(state.slots || []).filter(s => s.status === 'unassigned')];
     
-    // === 予約単位のマンセル判定（修正C） ===
-    // 全timeSlotを走査し、MANNCELL_STANDBY がアサインされている「予約ID」を収集
-    const manncellReservationIds = new Set();
+    // === 予約内のスロット単位のマンセル判定 ===
+    // 全timeSlotを走査し、MANNCELL_STANDBY がアサインされているスロットの固有キーを収集
+    const manncellSlotKeys = new Set();
     if (state.timeSlots) {
       Object.values(state.timeSlots).forEach(ts => {
         if (ts.assignments) {
@@ -117,7 +125,8 @@ export class SummonEngine {
             if (assign.assistantId === 'MANNCELL_STANDBY') {
               const req = ts.requirements?.find(r => r.id === assign.requirementId);
               if (req) {
-                manncellReservationIds.add(req.reservationId);
+                const slotIdx = req.slotIndex !== undefined ? req.slotIndex : 0;
+                manncellSlotKeys.add(`${req.reservationId}_${slotIdx}`);
               }
             }
           });
@@ -151,25 +160,15 @@ export class SummonEngine {
               if (!aggregation[resId][slotIndex]) aggregation[resId][slotIndex] = { tickDetails: [], manncells: [] };
               
               // Tickごとの時刻とアサイン先を記録（時系列セグメント化の基礎データ）
-              aggregation[resId][slotIndex].tickDetails.push({ time, staffId: assign.assistantId });
+              aggregation[resId][slotIndex].tickDetails.push({ 
+                time, 
+                staffId: assign.assistantId,
+                badges: assign.badges || []
+              });
 
               const mTick = manncellLookup[`${time}_${resId}`];
               if (mTick) {
                 aggregation[resId][slotIndex].manncells.push(mTick);
-              }
-
-              // Phase3 のバッジ（特殊召喚）処理
-              if (assign.badges && assign.badges.length > 0) {
-                uiStylistSummons.push({
-                  stylistId: assign.assistantId,
-                  reservationId: resId,
-                  slotIndex: slotIndex,
-                  startTime: time,
-                  endTime: time, // UI表示用
-                  badge: true,
-                  badges: assign.badges,
-                  isSpecialSummon: true
-                });
               }
             }
           });
@@ -205,14 +204,26 @@ export class SummonEngine {
         
         const segments = [];
         if (data.tickDetails.length > 0) {
-          let current = { staffId: data.tickDetails[0].staffId, ticks: 1 };
+          let current = { 
+            staffId: data.tickDetails[0].staffId, 
+            ticks: 1,
+            startTime: data.tickDetails[0].time,
+            badges: data.tickDetails[0].badges || []
+          };
           for (let i = 1; i < data.tickDetails.length; i++) {
             const tick = data.tickDetails[i];
-            if (tick.staffId === current.staffId) {
+            // IDとバッジの両方が一致した場合のみ結合する
+            const sameBadges = JSON.stringify(tick.badges || []) === JSON.stringify(current.badges);
+            if (tick.staffId === current.staffId && sameBadges) {
               current.ticks++;
             } else {
               segments.push(current);
-              current = { staffId: tick.staffId, ticks: 1 };
+              current = { 
+                staffId: tick.staffId, 
+                ticks: 1,
+                startTime: tick.time,
+                badges: tick.badges || []
+              };
             }
           }
           segments.push(current);
@@ -222,7 +233,7 @@ export class SummonEngine {
         const displayParts = [];
         let totalUnassignedTicks = 0;
         const hasManncell = data.manncells.length > 0;
-        const isCoveredByManncell = hasManncell || manncellReservationIds.has(resId);
+        const isCoveredByManncell = hasManncell || manncellSlotKeys.has(`${resId}_${slotIndex}`);
 
         // マンセル対象の場合、チーム全員の名前を data.manncells から抽出
         // （個別アサインの有無に関わらず、全スロットで統一表示するため）
@@ -239,6 +250,10 @@ export class SummonEngine {
           manncellTeamText = involvedNames.length > 0 ? involvedNames.join('・') : 'チーム';
         }
 
+        // 予約自体のスタイリストを取得しておく（自己アサイン判定用）
+        const targetRes = state.reservations ? state.reservations.find(r => r.id === resId) : null;
+        const resStylistId = targetRes ? targetRes.stylistId : null;
+
         segments.forEach(seg => {
           const minutes = seg.ticks * 5;
 
@@ -252,10 +267,39 @@ export class SummonEngine {
             // マンセル（チーム対応）セグメント — 最終出力は hasManncell で統一上書きされる
             displayParts.push(`${manncellTeamText}(${minutes}分)`);
           } else {
-            // 通常のアサインセグメント
-            const staffObj = state.master.staffMap ? state.master.staffMap[seg.staffId] : null;
-            const staffName = staffObj ? (staffObj.nickname || staffObj.name) : seg.staffId;
-            displayParts.push(`${staffName}(${minutes}分)`);
+            // 自己対応（本人の予約へのアサイン）の判定
+            const isSelf = (seg.staffId === resStylistId);
+
+            if (!isSelf) {
+              // 通常のアサインセグメント（自身以外）
+              const staffObj = state.master.staffMap ? state.master.staffMap[seg.staffId] : null;
+              const staffName = staffObj ? (staffObj.nickname || staffObj.name) : seg.staffId;
+              displayParts.push(`${staffName}(${minutes}分)`);
+              
+              // アサインされたのがスタイリストの場合、召喚（特殊/通常）として uiStylistSummons に登録する
+              if (staffObj && staffObj.type === 'stylist') {
+                const isSpecial = seg.badges && seg.badges.length > 0;
+                
+                const [h, m] = seg.startTime.split(':').map(Number);
+                const startTotalMins = h * 60 + m;
+                const endTotalMins = startTotalMins + minutes;
+                const endH = Math.floor(endTotalMins / 60);
+                const endM = endTotalMins % 60;
+                const endTimeStr = `${String(endH).padStart(2,'0')}:${String(endM).padStart(2,'0')}`;
+                
+                uiStylistSummons.push({
+                  stylistId: seg.staffId,
+                  reservationId: resId,
+                  slotIndex: parseInt(slotIndex, 10),
+                  startTime: seg.startTime,
+                  endTime: endTimeStr,
+                  badge: isSpecial,
+                  badges: seg.badges,
+                  isSpecialSummon: isSpecial,
+                  specialSummonReason: isSpecial ? (seg.badges.includes('special_summon_lunch') ? 'lunch' : 'rest') : null
+                });
+              }
+            }
           }
         });
 

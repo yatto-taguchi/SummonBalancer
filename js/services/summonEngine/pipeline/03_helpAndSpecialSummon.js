@@ -10,7 +10,7 @@ import { hasSkill } from '../utils/skillUtils.js?v=3';
  * @param {Object} tracker - EngineState.tracker（各スタッフの疲労度・休憩状況）
  * @returns {Object} { newTimeSlotState, newTracker } 更新された状態
  */
-export const summonStylistAndSpecial = (timeSlotState, master, tracker) => {
+export const summonStylistAndSpecial = (timeSlotState, master, tracker, ongoingTasks) => {
   // 1. 状態のディープコピー（イミュータブル原則の徹底）
   const newState = {
     ...timeSlotState,
@@ -20,6 +20,7 @@ export const summonStylistAndSpecial = (timeSlotState, master, tracker) => {
   };
 
   let currentTracker = { ...tracker };
+  let currentOngoingTasks = { ...(ongoingTasks || {}) };
 
   // 未アサイン（赤枠）がない場合はそのまま通過
   if (newState.unassignedReqs.length === 0) {
@@ -38,13 +39,35 @@ export const summonStylistAndSpecial = (timeSlotState, master, tracker) => {
     const fullReq = timeSlotState.requirements.find(r => r.id === unassigned.requirementId);
     if (!fullReq) continue;
 
+    // 交代禁止タスクのロック状態を確認
+    const taskKey = `${fullReq.reservationId}_${fullReq.slotIndex}`;
+    const lockedStaffId = currentOngoingTasks[taskKey] || null;
+
     // freePoolStaffIds に残っているアシスタントのみを候補とする
     let candidates = newState.freePoolStaffIds
       .map(id => master.staffMap[id])
-      .filter(s => s && s.type === 'assistant' && hasSkill(s, fullReq.requiredSkill, fullReq.minSkillLevel));
+      .filter(s => {
+        if (!s || s.type !== 'assistant' || !hasSkill(s, fullReq.requiredSkill, fullReq.minSkillLevel)) {
+          return false;
+        }
+        // ロックされているタスクなら、ロックされた本人以外は絶対に入れない（除外）
+        if (fullReq.isHandoffProhibited && lockedStaffId && s.id !== lockedStaffId) {
+          return false;
+        }
+        return true;
+      });
 
-    // 疲労度（アサイン済み枠数）が低い順にソート
+    // ソフトロック（継続性）のための直前担当者を取得
+    const ongoingAssistantId = currentOngoingTasks[taskKey] || null;
+
+    // 候補者のソート：継続性を最優先（ソフトロック）し、次に疲労度（アサイン済み枠数）が低い順にソート
     candidates.sort((a, b) => {
+      // 1. 交代可能・不可に関わらず、直前のTickでアサインされている人を最優先（細切れ防止）
+      if (ongoingAssistantId) {
+        if (a.id === ongoingAssistantId) return -1;
+        if (b.id === ongoingAssistantId) return 1;
+      }
+      // 2. それ以外は疲労度が低い順にソート
       const loadA = currentTracker[a.id]?.totalAssignedSlots || 0;
       const loadB = currentTracker[b.id]?.totalAssignedSlots || 0;
       return loadA - loadB;
@@ -67,6 +90,9 @@ export const summonStylistAndSpecial = (timeSlotState, master, tracker) => {
       };
       updatedTracker.totalAssignedSlots += 1;
       currentTracker = { ...currentTracker, [selected.id]: updatedTracker };
+
+      // 継続性のための直前担当者更新
+      currentOngoingTasks[taskKey] = selected.id;
     } else {
       // アシスタントでは対応不可 → Step 3-2（スタイリスト召喚）へ回す
       afterStep1Reqs.push(unassigned);
@@ -83,6 +109,10 @@ export const summonStylistAndSpecial = (timeSlotState, master, tracker) => {
     const fullReq = timeSlotState.requirements.find(r => r.id === unassigned.requirementId);
     if (!fullReq) continue;
 
+    // 交代禁止タスクのロック状態を確認
+    const taskKey = `${fullReq.reservationId}_${fullReq.slotIndex}`;
+    const lockedStaffId = currentOngoingTasks[taskKey] || null;
+
     let assignedId = null;
     let appliedBadges = [];
     let lunchUpdateStaffId = null;
@@ -91,6 +121,11 @@ export const summonStylistAndSpecial = (timeSlotState, master, tracker) => {
     // 空きスタイリストのみを候補とする（重複防止・スキルチェック・自己召喚防止）
     const allStylists = (master.staff || []).filter(s => s.type === 'stylist' && s.isWorking);
     const candidates = allStylists.filter(s => {
+      // ロックされているタスクなら、ロックされた本人以外は絶対に入れない（除外）
+      if (fullReq.isHandoffProhibited && lockedStaffId && s.id !== lockedStaffId) {
+        return false;
+      }
+
       const overlap = newState.stylistOverlapCounts[s.id] || 0;
       return overlap === 0
         && s.id !== fullReq.stylistId         // 自己召喚防止
@@ -98,8 +133,17 @@ export const summonStylistAndSpecial = (timeSlotState, master, tracker) => {
         && hasSkill(s, fullReq.requiredSkill, fullReq.minSkillLevel); // スキルチェック
     });
 
-    // 疲労度（アサイン済み枠数）が低い順にソート
+    // ソフトロック（継続性）のための直前担当者を取得
+    const ongoingAssistantId = currentOngoingTasks[taskKey] || null;
+
+    // 候補者のソート：継続性を最優先（ソフトロック）し、次に疲労度（アサイン済み枠数）が低い順にソート
     candidates.sort((a, b) => {
+      // 1. 交代可能・不可に関わらず、直前のTickでアサインされている人を最優先（細切れ防止）
+      if (ongoingAssistantId) {
+        if (a.id === ongoingAssistantId) return -1;
+        if (b.id === ongoingAssistantId) return 1;
+      }
+      // 2. それ以外は疲労度（アサイン済み枠数）が低い順にソート
       const loadA = currentTracker[a.id]?.totalAssignedSlots || 0;
       const loadB = currentTracker[b.id]?.totalAssignedSlots || 0;
       return loadA - loadB;
@@ -163,6 +207,9 @@ export const summonStylistAndSpecial = (timeSlotState, master, tracker) => {
       if (breakUpdateStaffId === assignedId) updatedStaffTracker.hasBreak = true;
       currentTracker = { ...currentTracker, [assignedId]: updatedStaffTracker };
 
+      // 継続性のための直前担当者更新
+      currentOngoingTasks[taskKey] = assignedId;
+
     } else {
       // 誰も召喚できなかった場合、Tier 1(必須)のみエラーとして残し、Tier 2(任意)は破棄する
       if (fullReq.tier === 1) {
@@ -174,7 +221,7 @@ export const summonStylistAndSpecial = (timeSlotState, master, tracker) => {
   // 残存した赤枠リストで上書き (Phase 4 のマンセル圧縮へ回す)
   newState.unassignedReqs = remainingReqs;
 
-  return { newTimeSlotState: newState, newTracker: currentTracker };
+  return { newTimeSlotState: newState, newTracker: currentTracker, newOngoingTasks: currentOngoingTasks };
 };
 
 export function executeHelpAndSpecialSummon(state) {
@@ -191,14 +238,17 @@ export function executeHelpAndSpecialSummon(state) {
       return;
     }
 
-    const { newTimeSlotState, newTracker } = summonStylistAndSpecial(
+    const { newTimeSlotState, newTracker, newOngoingTasks } = summonStylistAndSpecial(
       nextState.timeSlots[time],
       nextState.master,
-      nextState.tracker
+      nextState.tracker,
+      nextState.ongoingTasks
     );
     
     // 全体の tracker をイミュータブルに更新
     nextState.tracker = newTracker;
+    // ongoingTasks を更新
+    nextState.ongoingTasks = newOngoingTasks;
     // timeSlot を上書き
     nextState.timeSlots[time] = newTimeSlotState;
   });

@@ -25,6 +25,8 @@ export class EngineState {
       
       this.workloads = JSON.parse(JSON.stringify(initialState.workloads || {}));
       this.timeSlots = JSON.parse(JSON.stringify(initialState.timeSlots || {}));
+      this.ongoingTasks = initialState.ongoingTasks ? JSON.parse(JSON.stringify(initialState.ongoingTasks)) : {};
+      this.lockedUnassignedTasks = initialState.lockedUnassignedTasks ? JSON.parse(JSON.stringify(initialState.lockedUnassignedTasks)) : {};
       this.lunchOverrides = JSON.parse(JSON.stringify(initialState.lunchOverrides || {}));
       this.restOverrides = JSON.parse(JSON.stringify(initialState.restOverrides || {}));
       this.utilizationRates = JSON.parse(JSON.stringify(initialState.utilizationRates || {}));
@@ -62,6 +64,8 @@ export class EngineState {
         this.workloads[s.id] = 0;
       });
       this.timeSlots = {};
+      this.ongoingTasks = {};
+      this.lockedUnassignedTasks = {};
       this.lunchOverrides = {};
       this.restOverrides = {};
       this.utilizationRates = {};

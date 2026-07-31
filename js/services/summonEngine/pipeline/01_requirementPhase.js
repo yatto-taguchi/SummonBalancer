@@ -1,4 +1,5 @@
 import { toTimestamp } from '../utils/timeUtils.js';
+import { Reservation } from '../../../models/reservation.js';
 
 /**
  * Step 1: 要件定義 (純粋関数)
@@ -41,7 +42,10 @@ function defineRequirements(state, timeStr, timeMs) {
     const overlap = overlapCounts[res.stylistId];
     
     // 予約のメニュー情報を取得
-    const menu = (state.master?.menus || []).find(m => m.id === res.menuItemId);
+    const allMenus = state.master?.menus || [];
+    const baseMenu = allMenus.find(m => m.id === res.menuItemId);
+    const effectiveMenu = Reservation.getEffectiveMenu(res, allMenus);
+    const menu = effectiveMenu || baseMenu;
     const slots = menu?.assistantSlots || [];
     const resStartMs = toTimestamp(res.startTime);
 
@@ -90,7 +94,7 @@ function defineRequirements(state, timeStr, timeMs) {
               minSkillLevel: slot.requiredProficiency || 1,
               tier: tier,
               slotIndex: index,
-              isHandoffProhibited: requiredSkill === 'shampoo',
+              isHandoffProhibited: ['shampoo', 'treatment', 'spa'].includes(requiredSkill),
               isStrictlyRequired: isStrictlyRequired
             });
           }

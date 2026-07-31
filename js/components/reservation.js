@@ -10,6 +10,7 @@ import { AlertBadge } from './alertBadge.js';
 import * as Storage from '../services/storage.js';
 import { getFreeTimeLabel } from './freeTimeModal.js';
 import accordionManager from './accordionManager.js';
+import { Reservation } from '../models/reservation.js';
 
 /** セル幅(px) */
 const CELL_WIDTH = 80;
@@ -189,7 +190,9 @@ export class ReservationBlock {
     const signal = this._abortController.signal;
 
     const res = this._reservation;
-    const menu = this._menuItem;
+    const allMenus = Storage.loadMenus();
+    const effectiveMenu = Reservation.getEffectiveMenu(res, allMenus);
+    const menu = effectiveMenu || this._menuItem;
     const isActivity = !!res.isVirtualActivity;
     const isSummon = !!res.isVirtualSummon;
     const isVirtual = isSummon || isActivity;
