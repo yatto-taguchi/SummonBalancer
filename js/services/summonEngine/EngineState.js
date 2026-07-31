@@ -20,10 +20,14 @@ export class EngineState {
       this.manncells = JSON.parse(JSON.stringify(initialState.manncells));
       this.manncellTicks = initialState.manncellTicks ? JSON.parse(JSON.stringify(initialState.manncellTicks)) : [];
       this.freeTimeActivities = JSON.parse(JSON.stringify(initialState.freeTimeActivities));
+      this.frozenFreeTimeActivities = initialState.frozenFreeTimeActivities ? JSON.parse(JSON.stringify(initialState.frozenFreeTimeActivities)) : [];
       this.stylistSummons = JSON.parse(JSON.stringify(initialState.stylistSummons));
       
       this.workloads = JSON.parse(JSON.stringify(initialState.workloads || {}));
       this.timeSlots = JSON.parse(JSON.stringify(initialState.timeSlots || {}));
+      this.lunchOverrides = JSON.parse(JSON.stringify(initialState.lunchOverrides || {}));
+      this.restOverrides = JSON.parse(JSON.stringify(initialState.restOverrides || {}));
+      this.utilizationRates = JSON.parse(JSON.stringify(initialState.utilizationRates || {}));
       this.master = { 
         reservations: this.reservations,
         staff: this.staff,
@@ -50,6 +54,7 @@ export class EngineState {
       this.manncells = [];
       this.manncellTicks = [];
       this.freeTimeActivities = [];
+      this.frozenFreeTimeActivities = [];
       this.stylistSummons = [];
       
       this.workloads = {};
@@ -57,6 +62,9 @@ export class EngineState {
         this.workloads[s.id] = 0;
       });
       this.timeSlots = {};
+      this.lunchOverrides = {};
+      this.restOverrides = {};
+      this.utilizationRates = {};
       
       this.master = { 
         reservations: this.reservations,

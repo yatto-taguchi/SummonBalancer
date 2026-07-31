@@ -1,17 +1,17 @@
 import { SummonEngine as LegacySummonEngine } from '../summonEngine.js';
-import { SummonEngine as NewPipelineEngine } from './index.js?v=4';
-import { EngineAdapter } from './engineAdapter.js?v=4';
+import { SummonEngine as NewPipelineEngine } from './index.js?v=7';
+import { EngineAdapter } from './engineAdapter.js?v=5';
 
 export const summonEngine = {
   // 内部にインスタンスを保持
   _legacyEngine: new LegacySummonEngine(),
   _newEngine: new NewPipelineEngine(),
 
-  calculate: function(reservations, stylists, assistants, menus, lunchOverrides = {}, restOverrides = {}) {
+  calculate: function(reservations, stylists, assistants, menus, lunchOverrides = {}, restOverrides = {}, options = {}) {
     // 1. 本番用（UI用）：新エンジンを同期実行し、Adapterでフォーマットを合わせる
     let adaptedNewResult;
     try {
-      const newRawResult = this._newEngine.calculate(reservations, stylists, assistants, menus, lunchOverrides, restOverrides);
+      const newRawResult = this._newEngine.calculate(reservations, stylists, assistants, menus, lunchOverrides, restOverrides, options);
       adaptedNewResult = EngineAdapter.adapt(newRawResult);
     } catch (error) {
       console.error('[Shadow Run] 新エンジンの実行で例外が発生しました:', error);

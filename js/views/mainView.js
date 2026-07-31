@@ -6,7 +6,7 @@
  */
 
 import * as Storage from '../services/storage.js?v=18';
-import { summonEngine as SummonEngineInstance } from '../services/summonEngine/engineShadowRunner.js?v=32';
+import { summonEngine as SummonEngineInstance } from '../services/summonEngine/engineShadowRunner.js?v=35';
 import { FatigueManager } from '../services/fatigueManager.js';
 import { Timeline } from '../components/timeline.js?v=32';
 import { MenuBar } from '../components/menuBar.js?v=5';
@@ -1138,25 +1138,12 @@ export class MainView {
         busyIntervals.push({ start, end });
       });
 
-      // アシスタント/ヘルプとしての配置
-      if (result.assignments) {
-        Object.entries(result.assignments).forEach(([resId, slotMap]) => {
-          const res = reservations.find(r => r.id === resId);
-          if (!res) return;
-          const menu = menus.find(m => m.id === res.menuItemId);
-          Object.entries(slotMap).forEach(([slotIdx, assignedId]) => {
-            if (assignedId === staffId) {
-              const slotIndex = parseInt(slotIdx, 10);
-              const slotDef = menu && menu.assistantSlots ? menu.assistantSlots[slotIndex] : null;
-              if (slotDef) {
-                const resStart = typeof res.startTime === 'number' ? res.startTime : (new Date(res.startTime).getHours() - 9) * 60 + new Date(res.startTime).getMinutes();
-                busyIntervals.push({
-                  start: resStart + slotDef.startMinute,
-                  end: resStart + slotDef.endMinute
-                });
-              }
-            }
-          });
+      // アシスタント/ヘルプとしての配置（helperBlocks: 5分Tickマージ済み）
+      if (result.helperBlocks) {
+        result.helperBlocks.forEach(hb => {
+          if (hb.staffId === staffId) {
+            busyIntervals.push({ start: hb.startMin, end: hb.endMin });
+          }
         });
       }
 
@@ -1328,27 +1315,11 @@ export class MainView {
       });
     });
 
-    // 2. 手動・自動でアサインされたヘルプ時間帯（アシスタント＆スタイリスト）
-    if (result.assignments) {
-      Object.entries(result.assignments).forEach(([resId, slotMap]) => {
-        const res = reservations.find(r => r.id === resId);
-        if (!res) return;
-        const menu = menus.find(m => m.id === res.menuItemId);
-
-        Object.entries(slotMap).forEach(([slotIdx, assignedId]) => {
-          if (!assignedId || assignedId === '__none__') return;
-          // マンセルマーカーはスタッフIDではないのでスキップ
-          if (typeof assignedId === 'string' && assignedId.startsWith('__manncell__')) return;
-          const slotIndex = parseInt(slotIdx, 10);
-          const slotDef = menu && menu.assistantSlots ? menu.assistantSlots[slotIndex] : null;
-          if (!slotDef) return;
-
-          let hStart = typeof res.startTime === 'number' ? res.startTime + slotDef.startMinute : new Date(res.startTime).getTime() + slotDef.startMinute * 60000;
-          let hEnd = typeof res.startTime === 'number' ? res.startTime + slotDef.endMinute : new Date(res.startTime).getTime() + slotDef.endMinute * 60000;
-
-          if (!busyTimeRanges[assignedId]) busyTimeRanges[assignedId] = [];
-          busyTimeRanges[assignedId].push({ start: hStart, end: hEnd });
-        });
+    // 2. ヘルプ配置の時間帯（helperBlocks: 5分Tickマージ済み）
+    if (result.helperBlocks) {
+      result.helperBlocks.forEach(hb => {
+        if (!busyTimeRanges[hb.staffId]) busyTimeRanges[hb.staffId] = [];
+        busyTimeRanges[hb.staffId].push({ start: hb.startMin, end: hb.endMin });
       });
     }
 
@@ -1397,77 +1368,50 @@ export class MainView {
       this.reservationBlocks.push(block);
     });
 
-    // 3. アシスタントヘルプ用バーチャルブロックの描画
-    if (result.assignments) {
-      Object.entries(result.assignments).forEach(([resId, slotMap]) => {
-        const res = reservations.find(r => r.id === resId);
+    // 3. アシスタントヘルプ用バーチャルブロックの描画（helperBlocks: 5分Tickマージ済み）
+    if (result.helperBlocks && result.helperBlocks.length > 0) {
+      result.helperBlocks.forEach(hb => {
+        const res = reservations.find(r => r.id === hb.resId);
         if (!res) return;
         const menu = menus.find(m => m.id === res.menuItemId);
-        const menuName = menu ? menu.name : '';
         const colorCode = menu ? (menu.colorCode || '#6366f1') : '#6366f1';
-        
-        const stylist = staffMap.get(res.stylistId);
+
+        const stylist = staffMap.get(hb.stylistId);
         const stylistName = stylist ? (stylist.nickname || stylist.name) : '';
 
-        Object.entries(slotMap).forEach(([slotIdx, assignedId]) => {
-          const assistant = staffMap.get(assignedId);
-          if (!assistant) return;
+        const helperStaff = staffMap.get(hb.staffId);
+        const isStylist = helperStaff && helperStaff.type === 'stylist';
 
-          // スタイリスト召喚によるアサインメントはスキップ（召喚ブロックとして既に描画済み）
-          const isSummonAssignment = result.stylistSummons.some(
-            s => s.stylistId === assignedId && s.reservationId === resId && String(s.slotIndex) === String(slotIdx)
-          );
-          if (isSummonAssignment) return;
+        // startMin/endMin は9:00基準の分数なので、そのまま使える
+        const virtualRes = {
+          id: `helper-virtual-${hb.staffId}-${hb.resId}-${hb.slotIndex}-${hb.startMin}`,
+          menuItemId: res.menuItemId,
+          stylistId: hb.staffId,
+          startTime: hb.startMin,
+          endTime: hb.endMin,
+          assignedAssistants: {},
+          fixedAssistants: {},
+          isVirtualActivity: true,
+          activityType: 'helper',
+          colorCode: isStylist ? '#f59e0b' : colorCode,
+          activityLabel: isStylist ? `特殊召喚 (${stylistName}へ)` : stylistName
+        };
 
-          // スロットの定義を取得して正確な担当時間帯を計算する
-          const slotIndex = parseInt(slotIdx, 10);
-          const slotDef = menu && menu.assistantSlots ? menu.assistantSlots[slotIndex] : null;
-          if (!slotDef) return;
+        const timelineArea = this.container.querySelector('#timeline-area');
+        if (!timelineArea) return;
+        const cellsContainer = timelineArea.querySelector(
+          `.timeline-row[data-stylist-id="${hb.staffId}"] .timeline-cells`
+        );
+        const container = cellsContainer || timelineArea;
 
-          let helperStart = res.startTime;
-          let helperEnd = res.endTime;
+        const block = new ReservationBlock(virtualRes, null, container);
+        block.render();
 
-          if (typeof res.startTime === 'number') {
-            helperStart = res.startTime + slotDef.startMinute;
-            helperEnd = res.startTime + slotDef.endMinute;
-          } else {
-            const startMs = new Date(res.startTime).getTime();
-            helperStart = new Date(startMs + slotDef.startMinute * 60000).toISOString();
-            helperEnd = new Date(startMs + slotDef.endMinute * 60000).toISOString();
-          }
+        if (block._element) {
+          block._element.classList.add('activity-virtual-block');
+        }
 
-          const isStylist = Storage.loadStylists().some(s => s.id === assignedId);
-
-          const virtualRes = {
-            id: `helper-virtual-${assignedId}-${res.id}-${slotIdx}`,
-            menuItemId: res.menuItemId,
-            stylistId: assignedId,
-            startTime: helperStart,
-            endTime: helperEnd,
-            assignedAssistants: {},
-            fixedAssistants: {},
-            isVirtualActivity: true,
-            activityType: 'helper',
-            colorCode: isStylist ? '#f59e0b' : colorCode,
-            activityLabel: isStylist ? `特殊召喚 (${stylistName}へ)` : stylistName
-          };
-
-          const timelineArea = this.container.querySelector('#timeline-area');
-          if (!timelineArea) return;
-          const cellsContainer = timelineArea.querySelector(
-            `.timeline-row[data-stylist-id="${assignedId}"] .timeline-cells`
-          );
-          const container = cellsContainer || timelineArea;
-
-          const block = new ReservationBlock(virtualRes, null, container);
-          block.render();
-
-          if (block._element) {
-            block._element.classList.add('activity-virtual-block');
-          }
-
-          this.reservationBlocks.push(block);
-        });
+        this.reservationBlocks.push(block);
       });
     }
 

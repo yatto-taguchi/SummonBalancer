@@ -1,10 +1,10 @@
-import { EngineState } from './EngineState.js?v=3';
+import { EngineState } from './EngineState.js?v=4';
 import { executeRequirementPhase } from './pipeline/01_requirementPhase.js?v=3';
 import { executePrimaryAssign } from './pipeline/02_primaryAssign.js?v=3';
 import { executeHelpAndSpecialSummon } from './pipeline/03_helpAndSpecialSummon.js?v=3';
 import { executeManncellCompression } from './pipeline/04_manncellCompression.js?v=3';
 import { executeFallbackReassign } from './pipeline/05_fallbackReassign.js?v=3';
-import { executeFreeTimeAllocation } from './pipeline/06_freeTimeAllocation.js?v=3';
+import { executeFreeTimeAllocation } from './pipeline/06_freeTimeAllocation.js?v=4';
 
 export class SummonEngine {
   constructor() {
@@ -28,7 +28,8 @@ export class SummonEngine {
     
     // === フリーズ境界の計算（5分Tickへの丸め処理） ===
     let freezeBoundary = null;
-    if (options.isToday && typeof options.currentTime === 'number') {
+    // 初回計算時 (previousState が無い場合) は、朝イチから全計算して過去実績を作るためフリーズしない
+    if (options.isToday && typeof options.currentTime === 'number' && this.previousState) {
       // 例: 12:32 (212分) -> 12:30 (210分) にFloorでスナップ
       freezeBoundary = Math.floor(options.currentTime / 5) * 5;
     }
@@ -60,9 +61,16 @@ export class SummonEngine {
       if (this.previousState.manncellTicks) {
         state.manncellTicks = JSON.parse(JSON.stringify(this.previousState.manncellTicks));
       }
+      
+      // === 過去の確定済みフリータイム活動の復元 ===
+      if (this.previousState.freeTimeActivities) {
+        state.frozenFreeTimeActivities = JSON.parse(JSON.stringify(this.previousState.freeTimeActivities));
+      }
     }
 
-    // TODO: overrides（昼食・休憩の上書き）などを初期状態にセットする処理を後で追加
+    // overrides（昼食・休憩の手動上書き）を初期状態にセット
+    state.lunchOverrides = lunchOverrides || {};
+    state.restOverrides = restOverrides || {};
 
     // 2. パイプライン（Chain of Responsibility）の実行
     //    各Phaseは内部で state.freezeBoundary を参照し、フリーズ対象のTickをスキップする
@@ -82,7 +90,9 @@ export class SummonEngine {
         tracker: state.tracker,
         alerts: state.alerts,
         stylistSummons: state.stylistSummons,
-        manncellTicks: state.manncellTicks
+        manncellTicks: state.manncellTicks,
+        freeTimeActivities: state.freeTimeActivities,
+        utilizationRates: state.utilizationRates
       }));
     } catch (e) {
       console.warn('[SummonEngine] Failed to cache previousState:', e);
@@ -282,6 +292,92 @@ export class SummonEngine {
       });
     });
 
+    // === ヘルプブロック（アシスタント行に描画するバーチャルブロック）の生成 ===
+    // aggregation の tickDetails から、各スタッフがどの予約にヘルプとして入っているかを
+    // 5分Tick単位で抽出し、同一スタッフ・同一予約の連続Tickを1つのブロックにマージする。
+    // （マンセル枠と同じ手法で「フラグメンテーション問題」を解決）
+    const helperBlocks = [];
+    {
+      // スタイリスト召喚の予約ID+slotIndexのSetを作成（重複描画防止用）
+      const summonKeys = new Set();
+      uiStylistSummons.forEach(s => {
+        summonKeys.add(`${s.stylistId}_${s.reservationId}_${s.slotIndex}`);
+      });
+
+      // 中間データ: { staffId: [ { time, resId, slotIndex, stylistId } ] }
+      const helperTicksByStaff = {};
+
+      Object.keys(aggregation).forEach(resId => {
+        const reservation = state.reservations.find(r => r.id === resId);
+        if (!reservation) return;
+        const stylistId = reservation.stylistId;
+
+        Object.keys(aggregation[resId]).forEach(slotIndex => {
+          const data = aggregation[resId][slotIndex];
+          data.tickDetails.forEach(tick => {
+            // null（不足）、MANNCELL_STANDBY、スタイリスト自身はスキップ
+            if (!tick.staffId || tick.staffId === 'MANNCELL_STANDBY') return;
+            if (tick.staffId === stylistId) return; // 自分自身の予約はスキップ
+
+            // スタイリストはhelperBlocksの対象外（召喚システムで管理）
+            const staffObj = state.master.staffMap[tick.staffId];
+            if (staffObj && staffObj.type === 'stylist') return;
+
+            // スタイリスト召喚として既に描画されるアサインはスキップ
+            if (summonKeys.has(`${tick.staffId}_${resId}_${slotIndex}`)) return;
+
+            if (!helperTicksByStaff[tick.staffId]) helperTicksByStaff[tick.staffId] = [];
+            helperTicksByStaff[tick.staffId].push({
+              time: tick.time,
+              resId,
+              slotIndex: parseInt(slotIndex, 10),
+              stylistId
+            });
+          });
+        });
+      });
+
+      // 各スタッフのTickを時刻順にソートし、同一予約の連続Tickをマージ
+      Object.keys(helperTicksByStaff).forEach(staffId => {
+        const ticks = helperTicksByStaff[staffId];
+        ticks.sort((a, b) => a.time.localeCompare(b.time));
+
+        let currentBlock = null;
+
+        ticks.forEach(tick => {
+          const [h, m] = tick.time.split(':').map(Number);
+          const tickStartMin = (h - 9) * 60 + m; // 9:00基準の分数
+          const tickEndMin = tickStartMin + 5;
+
+          if (
+            currentBlock &&
+            currentBlock.resId === tick.resId &&
+            currentBlock.endMin === tickStartMin
+          ) {
+            // 同一予約の連続Tick → 延長
+            currentBlock.endMin = tickEndMin;
+          } else {
+            // 新しいブロックを開始（前のブロックがあれば保存）
+            if (currentBlock) {
+              helperBlocks.push(currentBlock);
+            }
+            currentBlock = {
+              staffId: staffId,
+              resId: tick.resId,
+              slotIndex: tick.slotIndex,
+              stylistId: tick.stylistId,
+              startMin: tickStartMin,
+              endMin: tickEndMin
+            };
+          }
+        });
+
+        if (currentBlock) {
+          helperBlocks.push(currentBlock);
+        }
+      });
+    }
+
     // === state.manncellTicks の連続ブロック化 ===
     const manncells = [];
     if (state.manncellTicks) {
@@ -375,7 +471,9 @@ export class SummonEngine {
       manncells: state.manncells,
       stylistSummons: state.stylistSummons,
       freeTimeActivities: state.freeTimeActivities,
-      alerts: state.alerts
+      utilizationRates: state.utilizationRates || {},
+      alerts: state.alerts,
+      helperBlocks: helperBlocks // アシスタント行に描画するヘルプブロック（5分Tickマージ済み）
     };
   }
 }
