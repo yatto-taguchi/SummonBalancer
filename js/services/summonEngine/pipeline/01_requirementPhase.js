@@ -59,6 +59,9 @@ function defineRequirements(state, timeStr, timeMs) {
         // 予約終了の10分前〜終了までを「仕上げ」とする
         const isFinishing = (resEndMs - 10 * 60000 <= timeMs) && (timeMs < resEndMs);
         
+        // 固定モード: fixedAssistants からこのスロットの固定情報を取得
+        const fixedId = (res.fixedAssistants && res.fixedAssistants[index]) || null;
+        
         let tier = 2; // デフォルトはTier 2 (単独予約)
         let isStrictlyRequired = false;
         if (overlap >= 2) {
@@ -66,8 +69,26 @@ function defineRequirements(state, timeStr, timeMs) {
           isStrictlyRequired = true;
         }
 
-        if (isFinishing) {
+        // __none__ 固定（召喚不要）の場合: 要件は生成するが skipAssignment フラグを付与
+        if (fixedId === '__none__') {
           requirements.push({
+            id: `req_${timeStr}_${res.id}_slot${index}`,
+            reservationId: res.id,
+            stylistId: res.stylistId,
+            requiredSkill: slot.requiredSkill || 'shampoo',
+            minSkillLevel: 1,
+            tier: tier,
+            slotIndex: index,
+            fixedAssistantId: '__none__',
+            skipAssignment: true,  // アサイン不要マーカー
+            isStrictlyRequired: false  // 不要固定は必須扱いにしない
+          });
+          return; // このスロットの処理はここで完了（forEachのreturn）
+        }
+
+        if (isFinishing) {
+          // 仕上げスロット: 固定がある場合は固定を優先
+          const finishReq = {
             id: `req_${timeStr}_${res.id}_slot${index}_finish`,
             reservationId: res.id,
             stylistId: res.stylistId,
@@ -75,10 +96,16 @@ function defineRequirements(state, timeStr, timeMs) {
             minSkillLevel: 1,
             tier: 1, // 仕上げは最優先
             slotIndex: index,
-            designatedStaffId: res.stylistId,
             isFinishing: true,
             isStrictlyRequired: true
-          });
+          };
+          if (fixedId) {
+            // ユーザー手動固定が優先（スタイリスト自動指定より上位）
+            finishReq.fixedAssistantId = fixedId;
+          } else {
+            finishReq.designatedStaffId = res.stylistId;
+          }
+          requirements.push(finishReq);
         } else {
           // 手動トグル（nonOverlapSummonEnabled === false）の判定
           // 単独予約（任意タスク）かつトグルがOFFの場合は要件自体を生成せず、完全に本人対応とする
@@ -86,7 +113,7 @@ function defineRequirements(state, timeStr, timeMs) {
           
           if (!isOptionalAndDisabled) {
             const requiredSkill = slot.requiredSkill || 'shampoo';
-            requirements.push({
+            const req = {
               id: `req_${timeStr}_${res.id}_slot${index}`,
               reservationId: res.id,
               stylistId: res.stylistId,
@@ -96,7 +123,12 @@ function defineRequirements(state, timeStr, timeMs) {
               slotIndex: index,
               isHandoffProhibited: ['shampoo', 'treatment', 'spa'].includes(requiredSkill),
               isStrictlyRequired: isStrictlyRequired
-            });
+            };
+            // 固定モード: fixedAssistantId を付与
+            if (fixedId) {
+              req.fixedAssistantId = fixedId;
+            }
+            requirements.push(req);
           }
         }
       }

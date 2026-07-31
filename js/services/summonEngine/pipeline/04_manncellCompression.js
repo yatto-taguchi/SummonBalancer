@@ -38,7 +38,8 @@ export function executeManncellCompression(state) {
 
     targetStylistIds.forEach(stylistId => {
       // 1. このスタイリストのアシスタント要件を抽出 (仕上げは除外するが、途中交代禁止タスクは重複計算に含める)
-      const allReqs = timeSlot.requirements.filter(r => r.stylistId === stylistId && !r.isFinishing);
+      // skipAssignment（__none__固定）の要件はマンセル対象から除外
+      const allReqs = timeSlot.requirements.filter(r => r.stylistId === stylistId && !r.isFinishing && !r.skipAssignment);
       if (allReqs.length <= 1) return; // 要件が1つだけならチームローテーション不要（単なる人員不足）
 
       // 安定したローテーションのため、要件をソート（Tier順、ID順）
@@ -99,7 +100,24 @@ export function executeManncellCompression(state) {
       timeSlot.unassignedReqs = timeSlot.unassignedReqs.filter(unreq => !rotatableReqIds.has(unreq.requirementId));
 
       // 救済できた未アサインタスクに対してのみ、ダミーIDをアサインする（既存アサインは維持）
+      // 【固定アサイン保護】fixedAssistantId が設定されている要件で、既にそのスタッフが
+      // アサイン成功している場合は MANNCELL_STANDBY で上書きしない
+      const existingAssignMap = new Map();
+      timeSlot.assignments.forEach(a => existingAssignMap.set(a.requirementId, a));
+
       rescuedUnreqs.forEach((unreq) => {
+        const fullReq = timeSlot.requirements.find(r => r.id === unreq.requirementId);
+        const existingAssign = existingAssignMap.get(unreq.requirementId);
+
+        // 固定アサインが既に成功している場合はスキップ（保護）
+        if (fullReq && fullReq.fixedAssistantId && existingAssign 
+            && existingAssign.assistantId !== 'MANNCELL_STANDBY'
+            && existingAssign.assistantId !== '__none__'
+            && existingAssign.assistantId === fullReq.fixedAssistantId) {
+          // 固定アサインを維持 — MANNCELL_STANDBY で上書きしない
+          return;
+        }
+
         // ダミーID（MANNCELL_STANDBY）をアサインすることでUI側にチーム対応中であることを伝達
         timeSlot.assignments.push({
           requirementId: unreq.requirementId,
@@ -108,12 +126,23 @@ export function executeManncellCompression(state) {
       });
 
       // UI描画用にマンセル発動を記録 (全タスクを対象とする)
+      // 固定スタッフの抽出: このスタイリストの要件の中で fixedAssistantId が設定されているものを収集
+      const fixedStaffIds = [];
+      allReqs.forEach(r => {
+        if (r.fixedAssistantId && r.fixedAssistantId !== '__none__' && !r.skipAssignment) {
+          if (!fixedStaffIds.includes(r.fixedAssistantId)) {
+            fixedStaffIds.push(r.fixedAssistantId);
+          }
+        }
+      });
+
       if (!nextState.manncellTicks) nextState.manncellTicks = [];
       nextState.manncellTicks.push({
         stylistId,
         timeStr: time,
         teamSize: allReqs.length,
         team: teamAssistants,
+        fixedStaffIds: fixedStaffIds, // 固定スタッフID群（不動の軸）
         reservationIds: Array.from(new Set(allReqs.map(r => r.reservationId)))
       });
 

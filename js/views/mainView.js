@@ -2391,21 +2391,23 @@ export class MainView {
       }
     }
 
-    // 重複する他の固定スロットを探す
+    // 重複する固定スロットを探す（同一予約内 + 他の予約）
     let overlapsFound = [];
     for (const otherRes of reservations) {
-      if (otherRes.id === reservationId) continue; // 同じ予約はスキップ
       if (!otherRes.fixedAssistants) continue;
 
       for (const [otherSlotIdx, otherAstId] of Object.entries(otherRes.fixedAssistants)) {
         if (otherAstId === assistantId) {
-          // このアシスタントは別の予約でも固定されている
+          // 同一予約・同一スロットへの再固定はスキップ（上書きなので重複ではない）
+          if (otherRes.id === reservationId && String(otherSlotIdx) === String(slotIndex)) continue;
+
+          // このアシスタントは別のスロットで固定されている → 時間重複チェック
           const otherMenu = menuMap.get(otherRes.menuItemId);
           if (otherMenu && otherMenu.assistantSlots && otherMenu.assistantSlots[otherSlotIdx]) {
             const oSlotDef = otherMenu.assistantSlots[otherSlotIdx];
-            const oStartBase = toTimestamp(otherRes.startTime);
-            const oStart = typeof otherRes.startTime === 'number' ? oStartBase + oSlotDef.startMinute : oStartBase + oSlotDef.startMinute * 60000;
-            const oEnd = typeof otherRes.startTime === 'number' ? oStartBase + oSlotDef.endMinute : oStartBase + oSlotDef.endMinute * 60000;
+            const oStartBase = getMillis(otherRes.startTime);
+            const oStart = oStartBase + oSlotDef.startMinute * 60000;
+            const oEnd = oStartBase + oSlotDef.endMinute * 60000;
 
             // 時間の重複チェック (A開始 < B終了 && A終了 > B開始)
             if (targetStart < oEnd && targetEnd > oStart) {

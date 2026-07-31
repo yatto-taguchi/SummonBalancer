@@ -240,14 +240,22 @@ export class SummonEngine {
         let manncellTeamText = '';
         if (hasManncell) {
           const involvedTeamIds = new Set();
+          // 固定スタッフIDの収集（📌マーク表示用）
+          const fixedStaffIdSet = new Set();
           data.manncells.forEach(mTick => {
             mTick.team.forEach(tId => involvedTeamIds.add(tId));
+            // fixedStaffIds がマンセルTickに記録されていれば収集
+            if (mTick.fixedStaffIds) {
+              mTick.fixedStaffIds.forEach(fId => fixedStaffIdSet.add(fId));
+            }
           });
           const involvedNames = Array.from(involvedTeamIds).map(tId => {
             const staffObj = state.master.staffMap ? state.master.staffMap[tId] : null;
-            return staffObj ? (staffObj.nickname || staffObj.name) : tId;
+            const name = staffObj ? (staffObj.nickname || staffObj.name) : tId;
+            // 固定スタッフには📌マークを付与（現場が軸を把握できるように）
+            return fixedStaffIdSet.has(tId) ? `📌${name}` : name;
           });
-          manncellTeamText = involvedNames.length > 0 ? involvedNames.join('・') : 'チーム';
+          manncellTeamText = involvedNames.length > 0 ? involvedNames.join('、') : 'チーム';
         }
 
         // 予約自体のスタイリストを取得しておく（自己アサイン判定用）
@@ -263,6 +271,9 @@ export class SummonEngine {
             if (!isCoveredByManncell) {
               displayParts.push(`<span style="color: var(--accent-danger)">⚠不足(${minutes}分)</span>`);
             }
+          } else if (seg.staffId === '__none__') {
+            // 召喚不要固定（📌固定モードで「召喚の必要がない」を選択）— 正常処理済みとして扱う
+            // displayParts には追加しない（UIのスロット表示は reservation.js 側で「🚫 不要」を表示する）
           } else if (seg.staffId === 'MANNCELL_STANDBY') {
             // マンセル（チーム対応）セグメント — 最終出力は hasManncell で統一上書きされる
             displayParts.push(`${manncellTeamText}(${minutes}分)`);
@@ -326,11 +337,23 @@ export class SummonEngine {
           }
         }
 
-        // マンセル対象スロットは、個別アサインの有無に関わらずチーム全員の名前で統一表示
-        // （現場のチーム内で話し合って役割を決める運用方針）
-        if (hasManncell) {
+        // 【固定アサイン優先表示】このスロットに固定アサインがあるか判定（マンセル/非マンセル共通）
+        // 固定スタッフの実IDを出力することで、reservation.js の📌判定ルート（actuallyFixed判定）に到達させる
+        const thisSlotReqs = (state.timeSlots ? Object.values(state.timeSlots) : [])
+          .flatMap(ts => (ts.requirements || []).filter(r => r.reservationId === resId && String(r.slotIndex) === String(slotIndex)));
+        const fixedReqInSlot = thisSlotReqs.find(r => r.fixedAssistantId && r.fixedAssistantId !== '__none__');
+        const hasFixedSegment = fixedReqInSlot && segments.some(seg => 
+          seg.staffId === fixedReqInSlot.fixedAssistantId
+        );
+
+        if (hasFixedSegment && fixedReqInSlot) {
+          // 固定スタッフが実際にアサインされている → スタッフ実IDを直接出力
+          uiAssignments[resId][slotIndex] = fixedReqInSlot.fixedAssistantId;
+        } else if (hasManncell) {
+          // 固定なし + マンセル → チーム全員の名前で統一表示
           uiAssignments[resId][slotIndex] = `__manncell__::${manncellTeamText}`;
         } else {
+          // 固定なし + 非マンセル → 通常の表示テキスト
           uiAssignments[resId][slotIndex] = displayParts.join(' → ');
         }
       });
@@ -453,6 +476,7 @@ export class SummonEngine {
               endMin: tickEnd,
               teamSize: tick.teamSize,
               team: tick.team ? [...tick.team] : [],
+              fixedStaffIds: tick.fixedStaffIds ? [...tick.fixedStaffIds] : [],
               reservationIds: tick.reservationIds ? [...tick.reservationIds] : []
             };
           } else {
@@ -464,6 +488,11 @@ export class SummonEngine {
               const currentTeamSet = new Set(currentBlock.team);
               (tick.team || []).forEach(id => currentTeamSet.add(id));
               currentBlock.team = Array.from(currentTeamSet);
+              
+              // fixedStaffIds のマージ
+              const currentFixedSet = new Set(currentBlock.fixedStaffIds || []);
+              (tick.fixedStaffIds || []).forEach(id => currentFixedSet.add(id));
+              currentBlock.fixedStaffIds = Array.from(currentFixedSet);
               
               currentBlock.teamSize = Math.max(currentBlock.teamSize, tick.teamSize);
               
@@ -486,6 +515,7 @@ export class SummonEngine {
                 endMin: tickEnd,
                 teamSize: tick.teamSize,
                 team: tick.team ? [...tick.team] : [],
+                fixedStaffIds: tick.fixedStaffIds ? [...tick.fixedStaffIds] : [],
                 reservationIds: tick.reservationIds ? [...tick.reservationIds] : []
               };
             }

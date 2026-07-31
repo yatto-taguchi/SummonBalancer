@@ -49,17 +49,22 @@ export function executePrimaryAssign(state) {
     const timeSlot = nextState.timeSlots[time];
     if (!timeSlot || !timeSlot.requirements || timeSlot.requirements.length === 0) return;
 
-    // 0. requirements を 第0優先度(継続中の交代禁止)、必須(strict)、任意(optional) に分割
+    // 0. requirements を 固定(fixed)、第0優先度(継続中の交代禁止)、必須(strict)、任意(optional) に分割
+    // Step -1: 固定要件を最優先で抽出（全Tier横断）— ユーザーの手動指示は絶対
+    const fixedReqs = timeSlot.requirements.filter(r => 
+      r.fixedAssistantId && !r.skipAssignment
+    );
+
     const lockedReqs = timeSlot.requirements.filter(r => {
       const key = `${r.reservationId}_${r.slotIndex}`;
-      return r.isHandoffProhibited && !!nextState.ongoingTasks[key];
+      return r.isHandoffProhibited && !!nextState.ongoingTasks[key] && !r.fixedAssistantId;
     });
 
     const strictReqs = timeSlot.requirements.filter(r => 
-      (r.isStrictlyRequired || r.tier === 1) && !lockedReqs.includes(r)
+      (r.isStrictlyRequired || r.tier === 1) && !lockedReqs.includes(r) && !fixedReqs.includes(r)
     );
     const optionalReqs = timeSlot.requirements.filter(r => 
-      !r.isStrictlyRequired && r.tier === 2 && !lockedReqs.includes(r)
+      !r.isStrictlyRequired && r.tier === 2 && !lockedReqs.includes(r) && !fixedReqs.includes(r)
     );
 
     // 必須タスクのソート（ID順）
@@ -70,6 +75,64 @@ export function executePrimaryAssign(state) {
 
     // 共通のアサイン処理関数 (isStrict = true ならばエラー時は unassignedReqs へ)
     const tryAssign = (req, isStrict) => {
+      // === 固定モード対応 ===
+
+      // (A) skipAssignment: __none__固定（召喚不要）— 要件は存在するがアサイン不要
+      if (req.skipAssignment) {
+        timeSlot.assignments.push({
+          requirementId: req.id,
+          assistantId: '__none__'
+        });
+        return true;
+      }
+
+      // (B) fixedAssistantId: ユーザー手動固定 — designatedStaffId より優先
+      //     【SSOT準拠】固定モードは「ユーザーの絶対的な手動指示」であるため、
+      //     フォールバック（代替アサイン）は絶対に行わない。
+      //     固定スタッフが使用不可の場合は未アサイン（赤枠エラー）として残す。
+      if (req.fixedAssistantId) {
+        const fixedId = req.fixedAssistantId;
+        // ガード: そのスタッフがこのTickで使用可能か確認
+        const isInFreePool = timeSlot.freePoolStaffIds.includes(fixedId);
+        // スタイリストの場合はfreePoolに含まれないため、overlappingCountsで判定する
+        const isStylist = (nextState.master?.staff || []).some(s => s.id === fixedId && s.type === 'stylist');
+        const stylistOverlap = isStylist ? (timeSlot.stylistOverlapCounts[fixedId] || 0) : 0;
+        const isStylistFree = isStylist && stylistOverlap === 0;
+
+        if (isInFreePool || isStylistFree) {
+          timeSlot.assignments.push({
+            requirementId: req.id,
+            assistantId: fixedId
+          });
+          // freePool から除外（アシスタントの場合のみ）
+          if (isInFreePool) {
+            timeSlot.freePoolStaffIds = timeSlot.freePoolStaffIds.filter(id => id !== fixedId);
+          }
+          // tracker 更新
+          const taskKey = `${req.reservationId}_${req.slotIndex}`;
+          nextState.ongoingTasks[taskKey] = fixedId;
+          const currentTracker = nextState.tracker[fixedId] || { totalAssignedSlots: 0, hasLunch: false, hasBreak: false };
+          nextState.tracker = {
+            ...nextState.tracker,
+            [fixedId]: {
+              ...currentTracker,
+              totalAssignedSlots: currentTracker.totalAssignedSlots + 1
+            }
+          };
+          return true;
+        }
+        // 【フォールバック禁止】固定スタッフが使用不可 → 代替アサインせず赤枠エラーとして残す
+        console.warn(`[Phase 2] 固定スタッフ ${fixedId} はこのTickで使用不可。フォールバック禁止のため未アサイン（赤枠）として残します。`);
+        if (isStrict) {
+          timeSlot.unassignedReqs.push({
+            requirementId: req.id,
+            reason: 'fixed_staff_unavailable'
+          });
+        }
+        return false; // フォールバックせず終了
+      }
+
+      // === 既存ロジック ===
       if (req.designatedStaffId) {
         timeSlot.assignments.push({
           requirementId: req.id,
@@ -159,6 +222,19 @@ export function executePrimaryAssign(state) {
       };
       return true;
     };
+
+    // Step -1: 固定要件の最優先処理（ユーザーの絶対的な手動指示）
+    // freePool 初期化直後に処理し、固定スタッフが他の要件に先取りされることを防止
+    // 【確定的ソート】同一スタッフが複数Tickで重複固定された場合の処理順序を安定化
+    fixedReqs.sort((a, b) => {
+      // 1. Tier 優先（Tier 1 > Tier 2: 掛け持ちが多い予約を先に処理）
+      if (a.tier !== b.tier) return a.tier - b.tier;
+      // 2. 予約ID順（同一Tier内は辞書順で安定化）
+      if (a.reservationId !== b.reservationId) return a.reservationId.localeCompare(b.reservationId);
+      // 3. スロットID順
+      return a.slotIndex - b.slotIndex;
+    });
+    fixedReqs.forEach(req => tryAssign(req, req.isStrictlyRequired || req.tier === 1));
 
     // Step 0: 継続中の交代禁止タスク（第0優先度）の消化
     // 奪われ防止のため、最も早くアサイン処理を行う

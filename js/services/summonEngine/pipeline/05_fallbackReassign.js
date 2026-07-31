@@ -87,8 +87,18 @@ export function executeFallbackReassign(state) {
     }
 
     if (slot.fixedAssistantId) {
+      if (slot.fixedAssistantId === '__none__') {
+        // 召喚不要固定 — このスロットはアサイン対象外
+        continue;
+      }
       const fixed = candidates.find(c => c.id === slot.fixedAssistantId);
-      if (fixed) candidates = [fixed];
+      if (fixed) {
+        candidates = [fixed];
+      } else {
+        // 【フォールバック禁止】固定スタッフが候補にいない → 代替アサインせず未アサインとして残す
+        console.warn(`[Phase 5] 固定スタッフ ${slot.fixedAssistantId} が候補に不在。フォールバック禁止のため未アサインとして残します。`);
+        continue;
+      }
     } else {
       let previousAssigneeId = null;
       if (slot.slotIndex > 0 && nextState.assignments[slot.reservationId]) {

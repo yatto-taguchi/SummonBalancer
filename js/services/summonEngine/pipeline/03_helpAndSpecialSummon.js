@@ -39,6 +39,40 @@ export const summonStylistAndSpecial = (timeSlotState, master, tracker, ongoingT
     const fullReq = timeSlotState.requirements.find(r => r.id === unassigned.requirementId);
     if (!fullReq) continue;
 
+    // === 固定モード保護【フォールバック禁止】 ===
+    // fixedAssistantId が設定されている要件は Phase 2 Step -1 で最優先処理済み。
+    // ここに来ているということは固定スタッフが使用不可（重複固定等）のケース。
+    // 【SSOT準拠】代替アサインは行わず、未アサイン（赤枠エラー）として残す。
+    if (fullReq.fixedAssistantId) {
+      const fixedId = fullReq.fixedAssistantId;
+      // freePool にまだいるか再チェック
+      const isInFreePool = newState.freePoolStaffIds.includes(fixedId);
+      if (isInFreePool) {
+        // 固定スタッフがフリーなら最優先でアサイン
+        newState.assignments.push({
+          requirementId: fullReq.id,
+          assistantId: fixedId,
+          badges: [],
+          isLocked: false
+        });
+        newState.freePoolStaffIds = newState.freePoolStaffIds.filter(id => id !== fixedId);
+        const updatedTracker = {
+          ...(currentTracker[fixedId] || { totalAssignedSlots: 0, hasLunch: false, hasBreak: false })
+        };
+        updatedTracker.totalAssignedSlots += 1;
+        currentTracker = { ...currentTracker, [fixedId]: updatedTracker };
+        const taskKey = `${fullReq.reservationId}_${fullReq.slotIndex}`;
+        currentOngoingTasks[taskKey] = fixedId;
+        continue; // 次のunassignedへ
+      }
+      // 【フォールバック禁止】固定スタッフが使用不可 → 代替アサインせず未アサインとして残す
+      console.warn(`[Phase 3] 固定スタッフ ${fixedId} は Step 3-1 で使用不可。フォールバック禁止のため未アサインとして残します。`);
+      continue; // 代替アサインせずそのまま残す
+    }
+
+    // === skipAssignment 保護 ===
+    if (fullReq.skipAssignment) continue; // __none__ 固定は Phase 2 で処理済み
+
     // 交代禁止タスクのロック状態を確認
     const taskKey = `${fullReq.reservationId}_${fullReq.slotIndex}`;
     const lockedStaffId = currentOngoingTasks[taskKey] || null;
@@ -108,6 +142,40 @@ export const summonStylistAndSpecial = (timeSlotState, master, tracker, ongoingT
   for (const unassigned of afterStep1Reqs) {
     const fullReq = timeSlotState.requirements.find(r => r.id === unassigned.requirementId);
     if (!fullReq) continue;
+
+    // === 固定モード保護【フォールバック禁止】（スタイリスト固定のリトライ） ===
+    if (fullReq.fixedAssistantId) {
+      const fixedId = fullReq.fixedAssistantId;
+      // スタイリストが固定されているか確認
+      const allStylists = (master.staff || []).filter(s => s.type === 'stylist' && s.isWorking);
+      const fixedStylist = allStylists.find(s => s.id === fixedId);
+      if (fixedStylist) {
+        // 固定されたスタイリストの空き確認（overlap数が0）
+        const overlap = newState.stylistOverlapCounts[fixedId] || 0;
+        if (overlap === 0) {
+          newState.assignments.push({
+            requirementId: fullReq.id,
+            assistantId: fixedId,
+            badges: [],
+            isLocked: false
+          });
+          const updatedTracker = {
+            ...(currentTracker[fixedId] || { totalAssignedSlots: 0, hasLunch: false, hasBreak: false })
+          };
+          updatedTracker.totalAssignedSlots += 1;
+          currentTracker = { ...currentTracker, [fixedId]: updatedTracker };
+          const taskKey = `${fullReq.reservationId}_${fullReq.slotIndex}`;
+          currentOngoingTasks[taskKey] = fixedId;
+          continue;
+        }
+      }
+      // 【フォールバック禁止】固定スタッフが使用不可 → 代替アサインせず未アサインとして残す
+      console.warn(`[Phase 3] 固定スタッフ ${fixedId} は Step 3-2 でも使用不可。フォールバック禁止のため未アサインとして残します。`);
+      continue; // 代替アサインせずそのまま残す
+    }
+
+    // === skipAssignment 保護 ===
+    if (fullReq.skipAssignment) continue;
 
     // 交代禁止タスクのロック状態を確認
     const taskKey = `${fullReq.reservationId}_${fullReq.slotIndex}`;

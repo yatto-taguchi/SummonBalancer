@@ -3105,7 +3105,7 @@
       "assignedAssistants": {},
       "menuVariant": "",
       "fixedAssistants": {
-        "1": "assistant_1784762178214_mhwaa8"
+        "1": "assistant_1784762217527_r00tiz"
       },
       "nonOverlapSummonEnabled": true,
       "slotTimeOverrides": {},
@@ -3204,7 +3204,9 @@
       "endTime": 210,
       "assignedAssistants": {},
       "menuVariant": "",
-      "fixedAssistants": {},
+      "fixedAssistants": {
+        "2": "assistant_1784762298350_3phnmd"
+      },
       "nonOverlapSummonEnabled": true,
       "slotTimeOverrides": {},
       "items": null,
@@ -3277,7 +3279,12 @@
       "endTime": 420,
       "assignedAssistants": {},
       "menuVariant": "",
-      "fixedAssistants": {},
+      "fixedAssistants": {
+        "0": "assistant_1784762217527_r00tiz",
+        "1": "assistant_1784762281270_g5qbk2",
+        "2": "assistant_1784762324367_t20z3i",
+        "3": "assistant_1784762281270_g5qbk2"
+      },
       "nonOverlapSummonEnabled": true,
       "slotTimeOverrides": {},
       "items": [
@@ -3300,7 +3307,13 @@
       "startTime": 60,
       "endTime": 180,
       "assignedAssistants": {},
-      "menuVariant": null
+      "menuVariant": "",
+      "fixedAssistants": {},
+      "nonOverlapSummonEnabled": true,
+      "slotTimeOverrides": {},
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false
     }
   ],
   "sb_reservations_2026-08-06": [
@@ -3336,7 +3349,9 @@
       "endTime": 90,
       "assignedAssistants": {},
       "menuVariant": "",
-      "fixedAssistants": {},
+      "fixedAssistants": {
+        "0": "assistant_1784762178214_mhwaa8"
+      },
       "nonOverlapSummonEnabled": true,
       "slotTimeOverrides": {
         "0": {
@@ -3354,6 +3369,38 @@
           "duration": 15
         }
       ],
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false
+    },
+    {
+      "id": "res_1785539887146_7vbag6",
+      "menuItemId": "cut_color_color_first",
+      "stylistId": "stylist_1784677557052_zojf98",
+      "startTime": 90,
+      "endTime": 210,
+      "assignedAssistants": {},
+      "menuVariant": "",
+      "fixedAssistants": {
+        "1": "assistant_1784762217527_r00tiz"
+      },
+      "nonOverlapSummonEnabled": true,
+      "slotTimeOverrides": {},
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false
+    },
+    {
+      "id": "res_1785539904914_ks99w9",
+      "menuItemId": "double_color",
+      "stylistId": "stylist_1784677572837_trrikn",
+      "startTime": 120,
+      "endTime": 300,
+      "assignedAssistants": {},
+      "menuVariant": "",
+      "fixedAssistants": {},
+      "nonOverlapSummonEnabled": true,
+      "slotTimeOverrides": {},
+      "items": null,
       "manualVariantSelection": false,
       "autoSwitchedVariant": false
     }
