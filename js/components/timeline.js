@@ -1226,22 +1226,33 @@ export class Timeline {
       }
     }
 
-    // --- 展開セルへのオートスクロール（sticky干渉回避のため手動計算） ---
+    // --- グリッド幅の動的拡張 + 展開セルへのオートスクロール ---
     if (expandedSlot !== null) {
+      // 展開時: グリッド幅を拡張してスクロール可能にする
+      // 通常20スロット(各flex:1)→ 展開時19+6=25ウェイト → 25/20 = 125%
+      const totalWeight = accordionManager.getTotalWeight();
+      const normalWeight = 20; // TOTAL_SLOTS
+      const expandRatio = totalWeight / normalWeight;
+      grid.style.minWidth = `${expandRatio * 100}%`;
+
       const scrollContainer = this._container; // #timeline-area
       // stickyでないボディセルを基準にする
       const targetCell = grid.querySelector(`.timeline-cell[data-slot-index="${expandedSlot}"]`);
       if (targetCell && scrollContainer) {
+        // CSSトランジション＋幅拡張が完了した後にスクロール
         setTimeout(() => {
           const containerRect = scrollContainer.getBoundingClientRect();
           const cellRect = targetCell.getBoundingClientRect();
-          // セルを画面中央に配置するスクロール量
-          const scrollLeft = scrollContainer.scrollLeft
-            + (cellRect.left - containerRect.left)
-            - (containerRect.width / 2 - cellRect.width / 2);
-          scrollContainer.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+          // セルの中央をコンテナ中央に配置するスクロール量
+          const cellCenter = cellRect.left + cellRect.width / 2;
+          const containerCenter = containerRect.left + containerRect.width / 2;
+          const scrollLeft = scrollContainer.scrollLeft + (cellCenter - containerCenter);
+          scrollContainer.scrollTo({ left: Math.max(0, scrollLeft), behavior: 'smooth' });
         }, 380); // CSSトランジション完了直後のタイミング
       }
+    } else {
+      // 折りたたみ時: グリッド幅を元に戻す
+      grid.style.minWidth = '100%';
     }
   }
 

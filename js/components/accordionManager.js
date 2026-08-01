@@ -141,6 +141,35 @@ class AccordionManager {
     return (cumWeight / totalWeight) * 100;
   }
 
+  /**
+   * パーセンテージ位置を営業開始からの分数に逆変換する
+   * getWeightedPosition の逆関数
+   * @param {number} pct - パーセンテージ位置 (0〜100)
+   * @returns {number} 営業開始からの分数 (0〜600)
+   */
+  getMinutesFromPosition(pct) {
+    if (pct <= 0) return 0;
+    if (pct >= 100) return TOTAL_DURATION_MIN;
+
+    if (this._expandedSlot === null) {
+      return (pct / 100) * TOTAL_DURATION_MIN;
+    }
+
+    const totalWeight = this.getTotalWeight();
+    const targetWeight = (pct / 100) * totalWeight;
+    let cumWeight = 0;
+
+    for (let i = 0; i < TOTAL_SLOTS; i++) {
+      const slotWeight = this.getSlotWeight(i);
+      if (cumWeight + slotWeight >= targetWeight) {
+        const offset = (targetWeight - cumWeight) / slotWeight;
+        return (i + offset) * SLOT_MINUTES;
+      }
+      cumWeight += slotWeight;
+    }
+    return TOTAL_DURATION_MIN;
+  }
+
   // ─── イベント ───
 
   /**

@@ -644,16 +644,19 @@ export class ReservationBlock {
         e.preventDefault();
         e.stopPropagation(); // ブロックのdragstartを防ぐ
 
-        // リサイズ開始時にアコーディオンを安全に閉じる（ワープ防止）
-        accordionManager.collapse();
+        // ★ アコーディオン展開中はそのまま維持し、5分刻みリサイズを可能にする
+        // （ドラッグ移動時の collapse() は別途残すが、リサイズではアコーディオンを閉じない）
 
         const startX = e.clientX;
 
-        // タイムラインセル群の幅から px/分 を計算
+        // アコーディオン展開状態に応じてスナップ単位を決定
+        const isAccordionExpanded = accordionManager.hasExpanded;
+        const snapMinutes = isAccordionExpanded ? 5 : 30;
+
+        // タイムラインセル群の幅から px/分 を計算（アコーディオン非展開時用）
         const cellsEl = block.closest('.timeline-cells');
         const cellsWidth = cellsEl ? cellsEl.getBoundingClientRect().width : 1600;
         const totalDurationMin = 600; // 9:00〜19:00
-        // TODO: 将来的に5分単位スナップに変更する場合はSLOT_MINUTESを参照
         const pxPerMin = cellsWidth / totalDurationMin;
 
         const originalDuration = (typeof res.endTime === 'number' && typeof res.startTime === 'number')
@@ -664,16 +667,41 @@ export class ReservationBlock {
 
         // ライブプレビュー: ブロック幅をリアルタイム更新
         const onMouseMove = (moveEvt) => {
-          const deltaX = moveEvt.clientX - startX;
-          const deltaMin = deltaX / pxPerMin;
-          // 30分グリッドにスナップ
-          const snapped = Math.round(deltaMin / 30) * 30;
-          const newDur = Math.max(30, originalDuration + snapped);
-          const newWidthPct = (newDur / totalDurationMin) * 100;
-          block.style.width = `${newWidthPct}%`;
+          let deltaMin;
+
+          if (isAccordionExpanded && cellsEl) {
+            // アコーディオン展開中: マウスX座標からパーセンテージ → 分数に逆変換
+            const cellsRect = cellsEl.getBoundingClientRect();
+            const mousePct = ((moveEvt.clientX - cellsRect.left) / cellsRect.width) * 100;
+            const mouseMin = accordionManager.getMinutesFromPosition(mousePct);
+            // 予約開始時刻からの差分を新しい所要時間として扱う
+            deltaMin = mouseMin - startMin;
+          } else {
+            // 全体表示: 従来通り deltaX / pxPerMin で算出
+            const deltaX = moveEvt.clientX - startX;
+            deltaMin = deltaX / pxPerMin;
+          }
+
+          // スナップ単位に応じて丸める
+          let snapped;
+          if (isAccordionExpanded) {
+            // アコーディオン展開時: deltaMin は「予約開始からの総分数」なので直接スナップ
+            snapped = Math.round(deltaMin / snapMinutes) * snapMinutes;
+            // 新しい所要時間を算出（開始時刻からの差分）
+            var newDur = Math.max(snapMinutes, snapped);
+          } else {
+            // 全体表示: deltaMin は「元の終了位置からの移動量」
+            snapped = Math.round(deltaMin / snapMinutes) * snapMinutes;
+            var newDur = Math.max(snapMinutes, originalDuration + snapped);
+          }
+
+          // プレビュー幅: アコーディオンの重み付きパーセンテージを使用
+          const newEndMin = startMin + newDur;
+          const newLeftPct = accordionManager.getWeightedPosition(startMin);
+          const newEndPct = accordionManager.getWeightedPosition(newEndMin);
+          block.style.width = `${newEndPct - newLeftPct}%`;
 
           // プレビュータイムラベル（右下に表示）
-          const newEndMin = res.startTime + newDur;
           const h = Math.floor(newEndMin / 60) + 9;
           const m = newEndMin % 60;
           resizeHandle.dataset.previewTime =
@@ -687,10 +715,27 @@ export class ReservationBlock {
           document.body.classList.remove('is-resizing');
           delete resizeHandle.dataset.previewTime;
 
-          const deltaX = upEvt.clientX - startX;
-          const deltaMin = deltaX / pxPerMin;
-          const snapped = Math.round(deltaMin / 30) * 30;
-          const newDuration = Math.max(30, originalDuration + snapped);
+          let deltaMin;
+
+          if (isAccordionExpanded && cellsEl) {
+            // アコーディオン展開中: マウスX座標からパーセンテージ → 分数に逆変換
+            const cellsRect = cellsEl.getBoundingClientRect();
+            const mousePct = ((upEvt.clientX - cellsRect.left) / cellsRect.width) * 100;
+            const mouseMin = accordionManager.getMinutesFromPosition(mousePct);
+            deltaMin = mouseMin - startMin;
+          } else {
+            const deltaX = upEvt.clientX - startX;
+            deltaMin = deltaX / pxPerMin;
+          }
+
+          let newDuration;
+          if (isAccordionExpanded) {
+            const snapped = Math.round(deltaMin / snapMinutes) * snapMinutes;
+            newDuration = Math.max(snapMinutes, snapped);
+          } else {
+            const snapped = Math.round(deltaMin / snapMinutes) * snapMinutes;
+            newDuration = Math.max(snapMinutes, originalDuration + snapped);
+          }
 
           if (newDuration === originalDuration) return; // 変化なし
 
