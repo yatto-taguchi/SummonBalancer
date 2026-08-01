@@ -204,7 +204,8 @@ export class ReservationBlock {
       cleaning: { label: '大掃除', color: '#f59e0b' },
       teaching: { label: '指導', color: '#ec4899' },
       helper: { label: 'ヘルプ', color: '#6366f1' },
-      free_time: { label: '空き時間', color: '#64748b' }
+      free_time: { label: '空き時間', color: '#64748b' },
+      ganbare: { label: '頑張れ', color: '#f97316' }
     };
 
     let colorCode = '#6366f1';
@@ -501,6 +502,9 @@ export class ReservationBlock {
     }
 
     header.appendChild(menuNameEl);
+
+
+
     if (isVirtual && !isSummon) {
       header.appendChild(timeEl);
     }
@@ -522,6 +526,7 @@ export class ReservationBlock {
       });
 
       block.appendChild(slotsContainer);
+
 
 
     }
@@ -804,7 +809,7 @@ export class ReservationBlock {
     slotEl.addEventListener('click', (e) => {
       // 固定モードか確認（MainViewのisManualModeを参照）
       const mainView = window.__mainViewInstance;
-      if (mainView && mainView.isManualMode) {
+      if (mainView && (mainView.isManualMode || mainView.isGanbareMode)) {
         e.stopPropagation();
         e.preventDefault();
 
@@ -1354,7 +1359,7 @@ export class ReservationBlock {
             
             assistantEl.addEventListener('click', (e) => {
               const mainView = window.__mainViewInstance;
-              if (mainView && mainView.isManualMode) {
+              if (mainView && (mainView.isManualMode || mainView.isGanbareMode)) {
                 e.stopPropagation();
                 e.preventDefault();
                 
@@ -1421,6 +1426,47 @@ export class ReservationBlock {
 
 
     }
+  }
+
+  /**
+   * 頑張れ配置の表示を更新する（スロット枠内に描画）
+   */
+  updateGanbare() {
+    if (!this._element) return;
+    
+    const slotsContainer = this._element.querySelector('.reservation-slots');
+    if (!slotsContainer) return;
+
+    const slotEls = slotsContainer.querySelectorAll('.assistant-slot');
+    slotEls.forEach((slotEl, idx) => {
+      // 既存の表示をクリア
+      const oldGanbare = slotEl.querySelector('.slot-ganbare-text');
+      if (oldGanbare) oldGanbare.remove();
+
+      const ganbareIds = this._reservation.ganbare ? this._reservation.ganbare[idx] : null;
+      if (ganbareIds && ganbareIds.length > 0) {
+        const allStaff = [...Storage.loadAssistants(), ...Storage.loadStylists()];
+        const staffMap = new Map(allStaff.map(s => [s.id, s]));
+        const names = ganbareIds.map(id => {
+          const s = staffMap.get(id);
+          return s ? (s.nickname || s.name) : id;
+        });
+
+        const ganbareEl = document.createElement('span');
+        ganbareEl.className = 'slot-ganbare-text';
+        ganbareEl.innerHTML = `🔥 ${names.join('・')}`;
+        ganbareEl.style.fontSize = '8px';
+        ganbareEl.style.display = 'block'; 
+        ganbareEl.style.color = '#f97316';
+        ganbareEl.style.fontWeight = 'bold';
+        ganbareEl.style.whiteSpace = 'nowrap';
+        ganbareEl.style.marginTop = '2px';
+        ganbareEl.style.transform = 'scale(0.85)';
+        ganbareEl.style.transformOrigin = 'left top';
+        
+        slotEl.appendChild(ganbareEl);
+      }
+    });
   }
 
   /**

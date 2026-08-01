@@ -1945,3 +1945,92 @@ body.is-resizing .reservation-resize-handle {
 .manncell-time-header.manncell-time-visible {
   display: block;
 }
+
+/* ══════════════════════════════════════════════════
+   頑張れ配置 (🔥 Ganbare Assignment)
+   ══════════════════════════════════════════════════ */
+
+/* --- ヘッダーバッジ（縮小時用）--- */
+.ganbare-header-badge {
+  flex-shrink: 0;
+  font-size: 8px;
+  padding: 1px 3px;
+  border-radius: 3px;
+  background: rgba(249, 115, 22, 0.25);
+  color: #f97316;
+  white-space: nowrap;
+  margin-left: 2px;
+  animation: ganbare-pulse 2s ease-in-out infinite;
+}
+
+@keyframes ganbare-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* --- 下段表示行（展開時用）--- */
+.reservation-ganbare {
+  display: flex;
+  gap: 2px;
+  padding: 0 2px 1px 2px;
+  min-height: 0;
+}
+
+.ganbare-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 7px;
+  font-weight: bold;
+  color: #f97316;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transform: scale(0.9);
+  transform-origin: center;
+}
+
+/* --- 頑張れモードボタンのactive状態 --- */
+.ganbare-mode-btn.active {
+  background: rgba(249, 115, 22, 0.2) !important;
+  color: #f97316 !important;
+  border-color: #f97316 !important;
+  box-shadow: 0 0 8px rgba(249, 115, 22, 0.3);
+}
+
+/* --- 頑張れモードオーバーレイ --- */
+.ganbare-mode-overlay {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: 6px 16px;
+  background: linear-gradient(90deg, rgba(249,115,22,0.15), rgba(249,115,22,0.05));
+  color: #f97316;
+  font-size: 13px;
+  font-weight: bold;
+  text-align: center;
+  border-bottom: 1px solid rgba(249,115,22,0.3);
+  pointer-events: none;
+}
+
+/* --- 頑張れバーチャルブロック（スタッフタイムライン）--- */
+.ganbare-virtual-block {
+  background: rgba(249, 115, 22, 0.15) !important;
+  border: 1.5px dashed #f97316 !important;
+  border-radius: 4px;
+  z-index: 3;
+}
+
+.ganbare-virtual-block .reservation-header {
+  background: transparent !important;
+}
+
+.ganbare-virtual-block .reservation-menu-name {
+  color: #f97316 !important;
+  font-size: 8px !important;
+}
+
+/* --- 頑張れセレクターポップアップ --- */
+.ganbare-selector-popup label:hover {
+  background: var(--bg-hover);
+}

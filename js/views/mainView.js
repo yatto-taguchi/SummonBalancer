@@ -37,6 +37,9 @@ export class MainView {
     /** @type {boolean} 手動調整モード */
     this.isManualMode = false;
 
+    /** @type {boolean} 頑張れ配置モード */
+    this.isGanbareMode = false;
+
     // コンポーネントからアクセスできるようにグローバル参照を保存
     window.__mainViewInstance = this;
 
@@ -158,7 +161,11 @@ export class MainView {
     
     // イベントハンドラを保持
     this._eventHandlers.assistantSlotClicked = (data) => {
-      this._showAssistantSelector(data);
+      if (this.isGanbareMode) {
+        this._showGanbareSelector(data);
+      } else {
+        this._showAssistantSelector(data);
+      }
     };
     this._eventHandlers.assistantSlotUnfix = (data) => {
       this._applyManualAssignment(data.reservationId, data.slotIndex, null);
@@ -648,13 +655,27 @@ export class MainView {
     separator.style.cssText = 'width: 1px; height: 24px; background: var(--border-glass); flex-shrink: 0;';
     toolbar.appendChild(separator);
 
+    // 固定モード + 頑張れ配置の2列ラッパー
+    const modeWrapper = document.createElement('div');
+    modeWrapper.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
+
     // 固定モードボタン
     const manualBtn = document.createElement('button');
     manualBtn.className = 'menu-bar-toolbar-btn';
     manualBtn.dataset.action = 'manual-mode';
     manualBtn.innerHTML = '📌 固定モード';
     if (this.isManualMode) manualBtn.classList.add('active');
-    toolbar.appendChild(manualBtn);
+    modeWrapper.appendChild(manualBtn);
+
+    // 頑張れ配置ボタン
+    const ganbareBtn = document.createElement('button');
+    ganbareBtn.className = 'menu-bar-toolbar-btn ganbare-mode-btn';
+    ganbareBtn.dataset.action = 'ganbare-mode';
+    ganbareBtn.innerHTML = '🔥 頑張れ配置';
+    if (this.isGanbareMode) ganbareBtn.classList.add('active');
+    modeWrapper.appendChild(ganbareBtn);
+
+    toolbar.appendChild(modeWrapper);
 
     // 更新ボタン
     const refreshBtn = document.createElement('button');
@@ -716,6 +737,10 @@ export class MainView {
         case 'manual-mode':
           this.toggleManualMode();
           btn.classList.toggle('active', this.isManualMode);
+          break;
+        case 'ganbare-mode':
+          this.toggleGanbareMode();
+          btn.classList.toggle('active', this.isGanbareMode);
           break;
         case 'refresh':
           window.location.reload();
@@ -1233,6 +1258,7 @@ export class MainView {
       }
       const isInManncell = result.manncells && block.reservation && result.manncells.some(m => m.reservationIds.includes(block.reservation.id));
       block.updateAssistants(mappedAssign, blockAlerts, isInManncell);
+      block.updateGanbare();  // 頑張れ配置の表示も更新
     });
 
     // 既存のバーチャルブロックをクリーンアップ
@@ -1415,6 +1441,9 @@ export class MainView {
         this.reservationBlocks.push(block);
       });
     }
+
+    // === 頑張れ配置バーチャルブロック ===
+    this._renderGanbareVirtualBlocks();
 
     // スタイリスト召喚バッジ表示
     this._renderSummonBadges(result.stylistSummons, stylists);
@@ -1638,11 +1667,11 @@ export class MainView {
     alertsArea.querySelectorAll('.alert-item').forEach(el => el.remove());
 
     if (alerts.length === 0) {
-      // 全配置完了
-      const item = document.createElement('div');
-      item.className = 'alert-item success';
-      item.innerHTML = '✅ 全スロット配置完了';
-      alertsArea.appendChild(item);
+      // 全配置完了 — 非表示化（復活する場合は以下のコメントアウトを解除）
+      // const item = document.createElement('div');
+      // item.className = 'alert-item success';
+      // item.innerHTML = '✅ 全スロット配置完了';
+      // alertsArea.appendChild(item);
     } else {
       alerts.forEach(alert => {
         const res = reservations.find(r => r.id === alert.reservationId);
@@ -2452,11 +2481,261 @@ export class MainView {
   }
 
   /**
+   * 頑張れ配置セレクター（複数選択式チェックボックスモーダル）を表示する
+   * @param {Object} data - { reservationId, slotIndex, clientX, clientY }
+   * @private
+   */
+  _showGanbareSelector(data) {
+    if (!this.isGanbareMode) return;
+
+    // 既存ポップオーバーを削除
+    const existing = document.querySelector('.ganbare-selector-popup');
+    if (existing) existing.remove();
+
+    const dateStr = this._formatDate(this.currentDate);
+    const assistants = Storage.loadAssistants().filter(a => a.isWorkingOn(dateStr));
+    const stylists = Storage.loadStylists().filter(s => s.isWorkingOn(dateStr));
+    const reservations = Storage.loadReservations(dateStr);
+    const currentRes = reservations.find(r => r.id === data.reservationId);
+    if (!currentRes) return;
+
+    // 現在の頑張れ配置を取得
+    const currentGanbare = (currentRes.ganbare && currentRes.ganbare[data.slotIndex]) || [];
+
+    const popup = document.createElement('div');
+    popup.className = 'ganbare-selector-popup';
+    popup.style.cssText = `
+      position: fixed;
+      top: ${Math.min(data.clientY + 10, window.innerHeight - 420)}px;
+      left: ${Math.min(data.clientX, window.innerWidth - 240)}px;
+      background: var(--bg-secondary);
+      border: 1px solid #f97316;
+      border-radius: var(--radius-md);
+      box-shadow: 0 8px 24px rgba(249,115,22,0.3);
+      padding: 8px 0;
+      z-index: 1000;
+      max-height: 400px;
+      overflow-y: auto;
+      min-width: 220px;
+    `;
+
+    // ヘッダー
+    const headerEl = document.createElement('div');
+    headerEl.textContent = '🔥 頑張れ配置（複数選択可）';
+    headerEl.style.cssText = 'padding: 6px 12px; font-size: 12px; font-weight: bold; color: #f97316; border-bottom: 1px solid var(--border-glass);';
+    popup.appendChild(headerEl);
+
+    const selectedIds = new Set(currentGanbare);
+
+    // チェックボックス付きスタッフ行を生成
+    const createStaffCheckbox = (staff) => {
+      const row = document.createElement('label');
+      row.style.cssText = 'display: flex; align-items: center; gap: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; color: var(--text-primary);';
+      row.addEventListener('mouseover', () => row.style.background = 'var(--bg-hover)');
+      row.addEventListener('mouseout', () => row.style.background = 'transparent');
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = staff.id;
+      cb.checked = selectedIds.has(staff.id);
+      cb.style.accentColor = '#f97316';
+      cb.addEventListener('change', () => {
+        if (cb.checked) selectedIds.add(staff.id);
+        else selectedIds.delete(staff.id);
+      });
+
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = staff.nickname ? `${staff.nickname} (${staff.name})` : staff.name;
+
+      row.appendChild(cb);
+      row.appendChild(nameSpan);
+      return row;
+    };
+
+    // --- アシスタント一覧 ---
+    if (assistants.length > 0) {
+      const astHeader = document.createElement('div');
+      astHeader.textContent = '【 アシスタント 】';
+      astHeader.style.cssText = 'padding: 4px 12px 2px; font-size: 10px; color: var(--text-muted); font-weight: bold;';
+      popup.appendChild(astHeader);
+      assistants.forEach(a => popup.appendChild(createStaffCheckbox(a)));
+    }
+
+    // --- スタイリスト一覧 ---
+    if (stylists.length > 0) {
+      const stHeader = document.createElement('div');
+      stHeader.textContent = '【 スタイリスト 】';
+      stHeader.style.cssText = 'padding: 6px 12px 2px; font-size: 10px; color: #f59e0b; font-weight: bold; border-top: 1px solid var(--border-glass);';
+      popup.appendChild(stHeader);
+      stylists.forEach(s => popup.appendChild(createStaffCheckbox(s)));
+    }
+
+    // --- 適用ボタン ---
+    const btnContainer = document.createElement('div');
+    btnContainer.style.cssText = 'padding: 8px 12px; border-top: 1px solid var(--border-glass); display: flex; gap: 6px;';
+
+    const applyBtn = document.createElement('button');
+    applyBtn.textContent = '🔥 適用';
+    applyBtn.style.cssText = 'flex: 1; padding: 6px; border: none; border-radius: 4px; background: linear-gradient(135deg, #f97316, #ea580c); color: white; font-weight: bold; cursor: pointer; font-size: 12px;';
+    applyBtn.addEventListener('click', () => {
+      this._applyGanbareAssignment(data.reservationId, data.slotIndex, [...selectedIds]);
+      popup.remove();
+    });
+
+    const clearBtn = document.createElement('button');
+    clearBtn.textContent = '解除';
+    clearBtn.style.cssText = 'padding: 6px 10px; border: 1px solid var(--border-glass); border-radius: 4px; background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 12px;';
+    clearBtn.addEventListener('click', () => {
+      this._applyGanbareAssignment(data.reservationId, data.slotIndex, []);
+      popup.remove();
+    });
+
+    btnContainer.appendChild(applyBtn);
+    btnContainer.appendChild(clearBtn);
+    popup.appendChild(btnContainer);
+
+    // 画面外クリックで閉じる
+    const closeListener = (e) => {
+      if (!popup.contains(e.target)) {
+        popup.remove();
+        document.removeEventListener('click', closeListener);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closeListener), 10);
+
+    document.body.appendChild(popup);
+  }
+
+  /**
+   * 頑張れ配置を適用する（エンジン再計算なし）
+   * @param {string} reservationId - 予約ID
+   * @param {number} slotIndex - スロットインデックス
+   * @param {Array<string>} staffIds - スタッフIDの配列
+   * @private
+   */
+  _applyGanbareAssignment(reservationId, slotIndex, staffIds) {
+    const dateStr = this._formatDate(this.currentDate);
+    const reservations = Storage.loadReservations(dateStr);
+    const res = reservations.find(r => r.id === reservationId);
+    if (!res) return;
+
+    if (!res.ganbare) res.ganbare = {};
+
+    if (!staffIds || staffIds.length === 0) {
+      delete res.ganbare[slotIndex];
+    } else {
+      res.ganbare[slotIndex] = [...staffIds];
+    }
+
+    Storage.saveReservation(dateStr, res);
+
+    // UIブロックの同期（エンジン再計算なし！）
+    const block = this.reservationBlocks.find(b => b.reservation?.id === res.id);
+    if (block) {
+      block._reservation = res;
+      block.updateGanbare();
+    }
+
+    // スタッフタイムラインのバーチャルブロックも再描画
+    this._renderGanbareVirtualBlocks();
+  }
+
+  /**
+   * 頑張れ配置バーチャルブロックをスタッフタイムラインに描画する
+   * @private
+   */
+  _renderGanbareVirtualBlocks() {
+    const timelineArea = this.container.querySelector('#timeline-area');
+    if (!timelineArea) return;
+
+    // 既存の頑張れバーチャルブロックをクリーンアップ
+    this.container.querySelectorAll('.ganbare-virtual-block').forEach(el => el.remove());
+
+    const dateStr = this._formatDate(this.currentDate);
+    const reservations = Storage.loadReservations(dateStr);
+    const menus = Storage.loadMenus();
+    const menuMap = new Map();
+    menus.forEach(m => menuMap.set(m.id, m));
+
+    const allStaff = [...Storage.loadAssistants(), ...Storage.loadStylists()];
+    const staffMap = new Map();
+    allStaff.forEach(s => staffMap.set(s.id, s));
+
+    for (const res of reservations) {
+      if (!res.ganbare) continue;
+      const menu = menuMap.get(res.menuItemId);
+      if (!menu || !menu.assistantSlots) continue;
+
+      // 予約の主担当スタイリスト名
+      const stylist = staffMap.get(res.stylistId);
+      const stylistName = stylist ? (stylist.nickname || stylist.name) : '';
+
+      for (const [slotIdx, staffIds] of Object.entries(res.ganbare)) {
+        if (!Array.isArray(staffIds) || staffIds.length === 0) continue;
+
+        const slotDef = menu.assistantSlots[slotIdx];
+        if (!slotDef) continue;
+
+        // スロットの実時間を計算（9:00からの経過分数）
+        const resStartMin = typeof res.startTime === 'number' && res.startTime < 1440
+          ? res.startTime : 0;
+        const override = res.slotTimeOverrides ? res.slotTimeOverrides[slotIdx] : null;
+        const startMin = resStartMin + (override ? override.startMinute : slotDef.startMinute);
+        const endMin = resStartMin + (override ? override.endMinute : slotDef.endMinute);
+
+        for (const staffId of staffIds) {
+          const staff = staffMap.get(staffId);
+          const staffName = staff ? (staff.nickname || staff.name) : staffId;
+
+          // 対象スタッフのタイムライン行を探す
+          const cellsContainer = timelineArea.querySelector(
+            `.timeline-row[data-stylist-id="${staffId}"] .timeline-cells`
+          );
+          if (!cellsContainer) continue;
+
+          const virtualRes = {
+            id: `ganbare-virtual-${staffId}-${res.id}-${slotIdx}`,
+            menuItemId: null,
+            stylistId: staffId,
+            startTime: startMin,
+            endTime: endMin,
+            isVirtualActivity: true,
+            activityType: 'ganbare',
+            colorCode: '#f97316',
+            activityLabel: `🔥 ${stylistName}へ応援`,
+            assignedAssistants: {}
+          };
+
+          const block = new ReservationBlock(virtualRes, null, cellsContainer);
+          block.render();
+
+          // 頑張れ専用スタイル適用
+          if (block._element) {
+            block._element.classList.add('ganbare-virtual-block');
+            block._element.style.background = 'rgba(249,115,22,0.15)';
+            block._element.style.border = '1.5px dashed #f97316';
+            block._element.style.zIndex = '3';
+          }
+        }
+      }
+    }
+  }
+
+  /**
    * 手動調整モード切替
    * @private
    */
   toggleManualMode() {
     this.isManualMode = !this.isManualMode;
+
+    // 排他制御: 固定ON → 頑張れモードOFF
+    if (this.isManualMode && this.isGanbareMode) {
+      this.isGanbareMode = false;
+      const ganbareBtn = this.container.querySelector('[data-action="ganbare-mode"]');
+      if (ganbareBtn) ganbareBtn.classList.remove('active');
+      const ganbareOverlay = this.container.querySelector('.ganbare-mode-overlay');
+      if (ganbareOverlay) ganbareOverlay.remove();
+    }
 
     const timelineArea = this.container.querySelector('#timeline-area');
     if (!timelineArea) return;
@@ -2487,6 +2766,49 @@ export class MainView {
       // 「空いた人」ボタン削除
       const freeBtn = this.container.querySelector('#free-staff-btn');
       if (freeBtn) freeBtn.remove();
+    }
+  }
+
+  /**
+   * 頑張れ配置モード切替
+   * @private
+   */
+  toggleGanbareMode() {
+    this.isGanbareMode = !this.isGanbareMode;
+
+    // 排他制御: 頑張れON → 固定モードOFF
+    if (this.isGanbareMode && this.isManualMode) {
+      this.toggleManualMode();
+      const manualBtn = this.container.querySelector('[data-action="manual-mode"]');
+      if (manualBtn) manualBtn.classList.remove('active');
+    }
+
+    const timelineArea = this.container.querySelector('#timeline-area');
+    if (!timelineArea) return;
+
+    const existing = timelineArea.querySelector('.ganbare-mode-overlay');
+    if (existing) existing.remove();
+
+    if (this.isGanbareMode) {
+      const overlay = document.createElement('div');
+      overlay.className = 'ganbare-mode-overlay';
+      overlay.textContent = '🔥 頑張れ配置モード — いけたら行ってもらうスタッフを配置します';
+      timelineArea.style.position = 'relative';
+      timelineArea.appendChild(overlay);
+
+      // 「空いた人」ボタンをサイドバーに追加
+      const staffSection = this.container.querySelector('#staff-list-container');
+      if (staffSection && !this.container.querySelector('#free-staff-btn')) {
+        const btn = document.createElement('button');
+        btn.className = 'free-staff-btn';
+        btn.id = 'free-staff-btn';
+        btn.textContent = '👤 空いた人を表示';
+        btn.addEventListener('click', () => this._showFreeStaff());
+        staffSection.parentElement.insertBefore(btn, staffSection);
+      }
+    } else {
+      const freeBtn = this.container.querySelector('#free-staff-btn');
+      if (freeBtn && !this.isManualMode) freeBtn.remove();
     }
   }
 

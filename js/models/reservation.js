@@ -27,7 +27,7 @@ export class Reservation {
    * @param {string} [params.menuVariant=''] - メニューバリエーション名（例: "カットのみ（メンズ）"）
    * @throws {Error} 必須パラメータが不足している場合
    */
-  constructor({ id, menuItemId, stylistId, startTime, endTime, assignedAssistants = {}, menuVariant = '', fixedAssistants = {}, nonOverlapSummonEnabled = true, slotTimeOverrides = {}, items = null, manualVariantSelection = false, autoSwitchedVariant = false }) {
+  constructor({ id, menuItemId, stylistId, startTime, endTime, assignedAssistants = {}, menuVariant = '', fixedAssistants = {}, ganbare = {}, nonOverlapSummonEnabled = true, slotTimeOverrides = {}, items = null, manualVariantSelection = false, autoSwitchedVariant = false }) {
     // 必須パラメータのバリデーション
     if (!id) {
       throw new Error('予約IDは必須です');
@@ -68,6 +68,12 @@ export class Reservation {
 
     /** @type {Object.<number, string>} 固定されたアシスタントマップ { slotIndex: assistantId } */
     this.fixedAssistants = { ...fixedAssistants };
+
+    /** @type {Object.<number, Array<string>>} 頑張れ配置マップ { slotIndex: [staffId1, staffId2, ...] } */
+    this.ganbare = {};
+    for (const [k, v] of Object.entries(ganbare)) {
+      this.ganbare[k] = Array.isArray(v) ? [...v] : [v];
+    }
 
     /**
      * @type {boolean} 非掛け持ち時間帯のアシスタント自動配置の有効・無効
@@ -234,6 +240,9 @@ export class Reservation {
       assignedAssistants: { ...this.assignedAssistants },
       menuVariant: this.menuVariant,
       fixedAssistants: { ...this.fixedAssistants },
+      ganbare: Object.fromEntries(
+        Object.entries(this.ganbare).map(([k, v]) => [k, [...v]])
+      ),
       nonOverlapSummonEnabled: this.nonOverlapSummonEnabled,
       slotTimeOverrides: { ...this.slotTimeOverrides },
       items: this.items ? this.items.map(item => ({ ...item })) : null,
