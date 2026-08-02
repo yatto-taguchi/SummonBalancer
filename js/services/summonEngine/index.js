@@ -4,6 +4,7 @@ import { executePrimaryAssign } from './pipeline/02_primaryAssign.js?v=3';
 import { executeHelpAndSpecialSummon } from './pipeline/03_helpAndSpecialSummon.js?v=3';
 import { executeManncellCompression } from './pipeline/04_manncellCompression.js?v=3';
 import { executeFallbackReassign } from './pipeline/05_fallbackReassign.js?v=3';
+import { executeGapAssignment } from './pipeline/05_5_gapAssignment.js?v=1';
 import { executeFreeTimeAllocation } from './pipeline/06_freeTimeAllocation.js?v=4';
 
 export class SummonEngine {
@@ -85,6 +86,7 @@ export class SummonEngine {
     state = executeHelpAndSpecialSummon(state);
     state = executeManncellCompression(state);
     state = executeFallbackReassign(state);
+    state = executeGapAssignment(state);
     state = executeFreeTimeAllocation(state);
 
     console.log('[SummonEngine Pipeline] Calculation finished.');
@@ -186,7 +188,7 @@ export class SummonEngine {
               if (!aggregation[resId][slotIdx]) aggregation[resId][slotIdx] = { tickDetails: [], manncells: [] };
               
               // 不足Tickも時刻付きで記録（staffId = null で不足を表す）
-              aggregation[resId][slotIdx].tickDetails.push({ time, staffId: null });
+              aggregation[resId][slotIdx].tickDetails.push({ time, staffId: null, badges: [] });
             }
           });
         }
@@ -278,19 +280,47 @@ export class SummonEngine {
             // マンセル（チーム対応）セグメント — 最終出力は hasManncell で統一上書きされる
             displayParts.push(`${manncellTeamText}(${minutes}分)`);
           } else {
+            // 新しい厳格なバッジ判定（SSOT準拠）
+            const badges = seg.badges || [];
+            
+            // 1. 特殊召喚（金）の判定: sp_special_summon_gap, sp_summon_lunch, sp_summon_break
+            const isSpSpecial = badges.includes('sp_special_summon_gap') || badges.includes('sp_summon_lunch') || badges.includes('sp_summon_break');
+            
+            // 2. 通常召喚（赤）の判定: sp_summon のみ
+            const isSpSummon = badges.includes('sp_summon');
+            
+            // 3. 召喚系のバッジを持っているか
+            const isAnySummon = isSpSpecial || isSpSummon;
+
+            // スタッフ情報の取得
+            const staffObj = state.master.staffMap ? state.master.staffMap[seg.staffId] : null;
+
+            // 4. 通常の隙間ヘルプ判定
+            // ※「スタイリストであっても、特殊なバッジがなければ通常のアシスタント稼働とみなす」ため、
+            // 召喚バッジがなければ一律で gap_help 扱いとする。
+            const isGapHelp = badges.includes('gap_help') || (!isAnySummon && staffObj && staffObj.type === 'stylist');
+
+            // 【厳守事項2】隙間ヘルプであっても、元のタスクは本来「不足」であるため、
+            // カウントを加算し、アラート生成の条件を満たすようにする。
+            if (isGapHelp || badges.includes('gap_help') || badges.includes('sp_special_summon_gap')) {
+              totalUnassignedTicks += seg.ticks;
+            }
+
             // 自己対応（本人の予約へのアサイン）の判定
-            const isSelf = (seg.staffId === resStylistId);
+            const isSelf = (seg.staffId === resStylistId) && !isSpSpecial; // SP特殊召喚なら自分でも描画
 
             if (!isSelf) {
-              // 通常のアサインセグメント（自身以外）
-              const staffObj = state.master.staffMap ? state.master.staffMap[seg.staffId] : null;
+              // 通常のアサインセグメント（自身以外、またはSP特殊召喚）
               const staffName = staffObj ? (staffObj.nickname || staffObj.name) : seg.staffId;
-              displayParts.push(`${staffName}(${minutes}分)`);
               
-              // アサインされたのがスタイリストの場合、召喚（特殊/通常）として uiStylistSummons に登録する
-              if (staffObj && staffObj.type === 'stylist') {
-                const isSpecial = seg.badges && seg.badges.length > 0;
-                
+              let namePrefix = '';
+              if (isGapHelp) namePrefix = '☆';
+
+              displayParts.push(`${namePrefix}${staffName}(${minutes}分)`);
+              
+              // アサインされたのがスタイリストであり、かつ「召喚バッジ」を持っている場合のみ uiStylistSummons に登録する
+              // （バッジなしの場合は単なるアシスタント枠として helperBlocks へ流れる）
+              if (staffObj && staffObj.type === 'stylist' && isAnySummon) {
                 const [h, m] = seg.startTime.split(':').map(Number);
                 const startTotalMins = h * 60 + m;
                 const endTotalMins = startTotalMins + minutes;
@@ -304,10 +334,10 @@ export class SummonEngine {
                   slotIndex: parseInt(slotIndex, 10),
                   startTime: seg.startTime,
                   endTime: endTimeStr,
-                  badge: isSpecial,
-                  badges: seg.badges,
-                  isSpecialSummon: isSpecial,
-                  specialSummonReason: isSpecial ? (seg.badges.includes('special_summon_lunch') ? 'lunch' : 'rest') : null
+                  badge: true,
+                  badges: badges,
+                  isSpecialSummon: isSpSpecial,
+                  specialSummonReason: badges.includes('sp_special_summon_gap') ? 'gap' : (badges.includes('sp_summon_lunch') ? 'lunch' : (badges.includes('sp_summon_break') ? 'rest' : null))
                 });
               }
             }
@@ -386,9 +416,14 @@ export class SummonEngine {
             if (!tick.staffId || tick.staffId === 'MANNCELL_STANDBY') return;
             if (tick.staffId === stylistId) return; // 自分自身の予約はスキップ
 
-            // スタイリストはhelperBlocksの対象外（召喚システムで管理）
+            // 召喚システム（uiStylistSummons）で描画されるアサインは helperBlocks から除外する
+            // 逆に、スタイリストであってもバッジなし等の場合は helperBlocks として描画する
             const staffObj = state.master.staffMap[tick.staffId];
-            if (staffObj && staffObj.type === 'stylist') return;
+            if (staffObj && staffObj.type === 'stylist') {
+              const badges = tick.badges || [];
+              const isAnySummon = badges.includes('sp_special_summon_gap') || badges.includes('sp_summon_lunch') || badges.includes('sp_summon_break') || badges.includes('sp_summon');
+              if (isAnySummon) return;
+            }
 
             // スタイリスト召喚として既に描画されるアサインはスキップ
             if (summonKeys.has(`${tick.staffId}_${resId}_${slotIndex}`)) return;
@@ -398,7 +433,8 @@ export class SummonEngine {
               time: tick.time,
               resId,
               slotIndex: parseInt(slotIndex, 10),
-              stylistId
+              stylistId,
+              badges: tick.badges || []
             });
           });
         });
@@ -434,7 +470,8 @@ export class SummonEngine {
               slotIndex: tick.slotIndex,
               stylistId: tick.stylistId,
               startMin: tickStartMin,
-              endMin: tickEndMin
+              endMin: tickEndMin,
+              isGapHelp: true // helperBlocksに流れてきたものは一律で隙間ヘルプ扱いとする
             };
           }
         });

@@ -1280,8 +1280,8 @@ export class MainView {
       const targetStylist = targetRes ? staffMap.get(targetRes.stylistId) : null;
       const targetName = targetStylist ? (targetStylist.nickname || targetStylist.name) : '';
 
-      // 特殊召喚の場合はメニュー名を「特殊召喚」に変更
-      const summonMenuName = summon.isSpecialSummon ? '特殊召喚' : '召喚';
+      // 特殊召喚の場合はメニュー名を「救援」に変更
+      const summonMenuName = '救援';
       const summonColor = summon.isSpecialSummon ? '#f59e0b' : '#ef4444'; // 特殊=金色、通常=赤
 
       const virtualRes = {
@@ -1301,7 +1301,7 @@ export class MainView {
       const timelineArea = this.container.querySelector('#timeline-area');
       if (!timelineArea) return;
       const cellsContainer = timelineArea.querySelector(
-        `.timeline-row[data-stylist-id="${summon.stylistId}"] .timeline-cells`
+        `.timeline-row[data-staff-type="stylist"][data-stylist-id="${summon.stylistId}"] .timeline-cells`
       );
       if (!cellsContainer) return; // 描画先の行が存在しない場合は安全にスキップ（timelineAreaへのフォールバックを廃止）
       const container = cellsContainer;
@@ -1421,21 +1421,49 @@ export class MainView {
           isVirtualActivity: true,
           activityType: 'helper',
           colorCode: isStylist ? '#f59e0b' : colorCode,
-          activityLabel: isStylist ? `特殊召喚 (${stylistName}へ)` : stylistName
+          activityLabel: hb.isGapHelp ? `☆${stylistName}` : (isStylist ? `特殊召喚 (${stylistName}へ)` : stylistName)
         };
 
         const timelineArea = this.container.querySelector('#timeline-area');
-        if (!timelineArea) return;
-        const cellsContainer = timelineArea.querySelector(
-          `.timeline-row[data-stylist-id="${hb.staffId}"] .timeline-cells`
-        );
-        const container = cellsContainer || timelineArea;
+        let cellsContainer = null;
+
+        if (timelineArea) {
+          // 【厳守事項2】スタイリスト行を優先して検索し、無ければアシスタント行を検索
+          cellsContainer = timelineArea.querySelector(
+            `.timeline-row[data-staff-type="stylist"][data-stylist-id="${hb.staffId}"] .timeline-cells`
+          );
+          if (!cellsContainer) {
+            cellsContainer = timelineArea.querySelector(
+              `.timeline-row[data-staff-type="assistant"][data-stylist-id="${hb.staffId}"] .timeline-cells`
+            );
+          }
+        }
+
+        // 行が存在しない場合は、無駄な迷子ブロックを作らないようスキップ（厳守事項2）
+        if (!cellsContainer) {
+          console.warn(`[HelperBlocks] Target row for ${hb.staffId} not found. Skipping virtual block.`);
+          return;
+        }
+        
+        const container = cellsContainer;
 
         const block = new ReservationBlock(virtualRes, null, container);
         block.render();
 
         if (block._element) {
           block._element.classList.add('activity-virtual-block');
+          if (hb.isGapHelp) {
+            block._element.classList.add('gap-help-block');
+          }
+          
+          if (hb.isGapHelp || !isStylist) {
+            block._element.style.border = '2px dashed var(--accent-warning)';
+            block._element.style.background = 'rgba(245, 158, 11, 0.1)';
+            block._element.style.boxShadow = 'none';
+          } else {
+            block._element.style.border = '2px solid var(--accent-danger)';
+            block._element.style.background = 'rgba(239, 68, 68, 0.1)';
+          }
         }
 
         this.reservationBlocks.push(block);

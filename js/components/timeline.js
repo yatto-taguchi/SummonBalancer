@@ -418,6 +418,7 @@ export class Timeline {
       const row = document.createElement('div');
       row.className = 'timeline-row';
       row.dataset.stylistId = stylist.id;
+      row.dataset.staffType = 'stylist';
 
       // スタッフ情報セル
       const staffInfo = document.createElement('div');
@@ -684,6 +685,7 @@ export class Timeline {
         const row = document.createElement('div');
         row.className = 'timeline-row off-duty-row';
         row.dataset.stylistId = stylist.id;
+        row.dataset.staffType = 'stylist';
         row.style.opacity = '0.4';
         row.style.background = 'rgba(0, 0, 0, 0.15)';
 
@@ -748,6 +750,7 @@ export class Timeline {
         const row = document.createElement('div');
         row.className = 'timeline-row';
         row.dataset.stylistId = assistant.id; // カウンターパートとの一致用に stylistId とする
+        row.dataset.staffType = 'assistant';
 
         // スタッフ情報セル
         const staffInfo = document.createElement('div');
@@ -794,6 +797,7 @@ export class Timeline {
         const row = document.createElement('div');
         row.className = 'timeline-row off-duty-row';
         row.dataset.stylistId = assistant.id;
+        row.dataset.staffType = 'assistant';
         row.style.opacity = '0.4';
         row.style.background = 'rgba(0, 0, 0, 0.15)';
 

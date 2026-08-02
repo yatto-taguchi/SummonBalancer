@@ -271,9 +271,9 @@ export class ReservationBlock {
         backgroundStyle = `linear-gradient(135deg, ${colorCode}44, ${colorCode}22)`;
         borderStyle = `1px solid ${colorCode}88`;
       } else if (isSummon) {
-        // 召喚ブロック: 赤色
-        colorCode = '#ef4444';
-        blockLabel = '召喚';
+        // 召喚ブロック: 指定された色と名称（特殊召喚/召喚）を尊重する
+        colorCode = menu ? (menu.colorCode || '#ef4444') : '#ef4444';
+        blockLabel = menu ? menu.name : '召喚';
         backgroundStyle = `linear-gradient(135deg, ${colorCode}44, ${colorCode}22)`;
         borderStyle = `1px solid ${colorCode}88`;
       } else {
@@ -454,9 +454,10 @@ export class ReservationBlock {
     menuNameEl.style.textOverflow = 'ellipsis';
     
     if (res.isVirtualSummon) {
-      // 召喚ブロック: 「召喚」+改行+「（担当スタイリスト名）」
+      // 召喚ブロック: 指定された名称（特殊召喚/召喚）+改行+「（担当スタイリスト名）」
       const targetName = res.summonTargetName || '';
-      menuNameEl.innerHTML = `召喚<br><span style="font-size: 8px; font-weight: normal;">（${targetName}）</span>`;
+      const summonLabel = blockLabel || '救援';
+      menuNameEl.innerHTML = `${summonLabel}<br><span style="font-size: 8px; font-weight: normal;">（→${targetName}）</span>`;
       menuNameEl.style.whiteSpace = 'normal';
       menuNameEl.style.lineHeight = '1.2';
       menuNameEl.style.textAlign = 'center';
