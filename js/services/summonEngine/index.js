@@ -1,6 +1,7 @@
 import { EngineState } from './EngineState.js?v=4';
 import { executeRequirementPhase } from './pipeline/01_requirementPhase.js?v=3';
 import { executePrimaryAssign } from './pipeline/02_primaryAssign.js?v=3';
+import { executeHorizontalSwap } from './pipeline/02_5_horizontalSwap.js?v=1';
 import { executeHelpAndSpecialSummon } from './pipeline/03_helpAndSpecialSummon.js?v=3';
 import { executeManncellCompression } from './pipeline/04_manncellCompression.js?v=3';
 import { executeFallbackReassign } from './pipeline/05_fallbackReassign.js?v=3';
@@ -83,6 +84,7 @@ export class SummonEngine {
     //    各Phaseは内部で state.freezeBoundary を参照し、フリーズ対象のTickをスキップする
     state = executeRequirementPhase(state);
     state = executePrimaryAssign(state);
+    state = executeHorizontalSwap(state);    // Phase 2.5: 水平スワップ（1-hop玉突き最適化）
     state = executeHelpAndSpecialSummon(state);
     state = executeManncellCompression(state);
     state = executeFallbackReassign(state);

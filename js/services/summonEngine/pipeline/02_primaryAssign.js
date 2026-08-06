@@ -186,17 +186,20 @@ export function executePrimaryAssign(state) {
       }
 
       candidates.sort((a, b) => {
+        // 1. 直前Tickからの継続性（最優先・細切れ防止）
         if (ongoingAssistantId) {
           if (a.id === ongoingAssistantId) return -1;
           if (b.id === ongoingAssistantId) return 1;
         }
-        const aLevel = getSkillLevel(a, req.requiredSkill);
-        const bLevel = getSkillLevel(b, req.requiredSkill);
-        if (aLevel !== bLevel) return aLevel - bLevel;
-
+        // 2. 累計アサイン数の少ない順（空いている人を優先的に使う＝お客様ファースト）
         const aCount = nextState.tracker[a.id]?.totalAssignedSlots || 0;
         const bCount = nextState.tracker[b.id]?.totalAssignedSlots || 0;
         if (aCount !== bCount) return aCount - bCount;
+
+        // 3. スキルレベル低い順（タイブレーカー: 高スキル温存は副次的な目的に留める）
+        const aLevel = getSkillLevel(a, req.requiredSkill);
+        const bLevel = getSkillLevel(b, req.requiredSkill);
+        if (aLevel !== bLevel) return aLevel - bLevel;
 
         return a.id.localeCompare(b.id);
       });
