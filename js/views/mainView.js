@@ -647,7 +647,7 @@ export class MainView {
     // アラートエリア
     const alertsArea = document.createElement('div');
     alertsArea.id = 'alerts-area';
-    alertsArea.style.cssText = 'display: flex; gap: 6px; flex-wrap: nowrap; align-items: center;';
+    alertsArea.style.cssText = 'display: flex; gap: 6px; flex-wrap: nowrap; align-items: center; overflow-x: auto; max-width: 50vw; flex-shrink: 1;';
     toolbar.appendChild(alertsArea);
 
     // 区切り線
@@ -1721,7 +1721,7 @@ export class MainView {
         }
         const item = document.createElement('div');
         item.className = 'alert-item danger';
-        item.innerHTML = `⚠️ ${alert.message}（${label}）`;
+        item.innerHTML = `⚠️ 不足${alert.message.match(/(\d+)分/)?.[0] || '?分'}（${label}）`;
         alertsArea.appendChild(item);
       });
     }
