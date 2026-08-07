@@ -118,7 +118,66 @@ export function executeBackwardSweep(state) {
         if (blockingTaskKey) break;
       }
 
-      if (!blockingTaskKey) continue; // A はギャップ時間帯に何もしていない
+      if (!blockingTaskKey) {
+        // ═══ A がギャップ時間帯で空いている → 直接置き換え ═══
+        // チェーンスワップ不要。ギャップアシスタント → メインアシスタント(A) に直接変更
+        let directSwapOK = true;
+        for (const gapEntry of gapSeg.entries) {
+          const gapTS = nextState.timeSlots[gapEntry.time];
+          if (!gapTS) { directSwapOK = false; break; }
+          // A が本当にこのTickで空いているか（assignmentsベースで正確に判定）
+          const aIsBusy = gapTS.assignments.some(a =>
+            a.assistantId === mainAstId &&
+            a.assistantId !== 'MANNCELL_STANDBY' &&
+            a.assistantId !== '__none__'
+          );
+          if (aIsBusy) { directSwapOK = false; break; }
+        }
+
+        if (directSwapOK) {
+          console.log(
+            `[Phase 5.6 直接置き換え] タスク ${taskKey}: ` +
+            `${gapAstId}(${gapSeg.entries.length}Tick) → ${mainAstId} に直接統一（A は空き）`
+          );
+
+          // ギャップTickで gapAst → A に置き換え
+          for (const gapEntry of gapSeg.entries) {
+            const gapTS = nextState.timeSlots[gapEntry.time];
+            for (const ga of gapTS.assignments) {
+              if (ga.assistantId !== gapAstId || ga.requirementId !== gapEntry.requirementId) continue;
+              ga.assistantId = mainAstId;
+              break;
+            }
+            // gapAst を解放（freePool に戻す）
+            if (!gapTS.freePoolStaffIds.includes(gapAstId)) {
+              gapTS.freePoolStaffIds.push(gapAstId);
+            }
+            // A を freePool から除外
+            gapTS.freePoolStaffIds = gapTS.freePoolStaffIds.filter(id => id !== mainAstId);
+          }
+
+          // tracker更新（スプレッド構文でイミュータブル）
+          const gapLen = gapSeg.entries.length;
+          const aT = nextState.tracker[mainAstId] || { totalAssignedSlots: 0, hasLunch: false, hasBreak: false };
+          nextState.tracker = {
+            ...nextState.tracker,
+            [mainAstId]: { ...aT, totalAssignedSlots: aT.totalAssignedSlots + gapLen }
+          };
+          const gT = nextState.tracker[gapAstId] || { totalAssignedSlots: 0, hasLunch: false, hasBreak: false };
+          nextState.tracker = {
+            ...nextState.tracker,
+            [gapAstId]: { ...gT, totalAssignedSlots: Math.max(0, gT.totalAssignedSlots - gapLen) }
+          };
+
+          // ongoingTasks更新
+          if (!nextState.ongoingTasks) nextState.ongoingTasks = {};
+          nextState.ongoingTasks[taskKey] = mainAstId;
+
+          resolved = true;
+          break;
+        }
+        continue;
+      }
 
       // ── A のブロッキングチェーン全体を特定 ──
       const refIdx = gapSeg.entries[0].timeIdx;
@@ -161,8 +220,15 @@ export function executeBackwardSweep(state) {
       );
       if (!chainStartReq) continue;
 
-      // 候補 F をソート: 累計アサイン数が少ない順
-      const candidateIds = [...(chainStartTS.freePoolStaffIds || [])];
+      // 候補 F をソート: 累計アサイン数が少ない順（assignmentsベースで空き判定）
+      const chainStartAssignedIds = new Set(
+        chainStartTS.assignments
+          .filter(a => a.assistantId !== 'MANNCELL_STANDBY' && a.assistantId !== '__none__')
+          .map(a => a.assistantId)
+      );
+      const candidateIds = assistants
+        .map(a => a.id)
+        .filter(id => !chainStartAssignedIds.has(id));
       candidateIds.sort((idA, idB) => {
         const cA = nextState.tracker[idA]?.totalAssignedSlots || 0;
         const cB = nextState.tracker[idB]?.totalAssignedSlots || 0;
@@ -177,14 +243,17 @@ export function executeBackwardSweep(state) {
         // F がブロッキングタスクのスキルを満たすか
         if (!hasSkill(freeAst, chainStartReq.requiredSkill, chainStartReq.minSkillLevel)) continue;
 
-        // F がチェーン全期間にわたって空いているか
+        // F がチェーン全期間にわたって空いているか（assignmentsベースで正確に判定）
         let freeForChain = true;
         for (const chainTime of fullChainTicks) {
           const chainTS = nextState.timeSlots[chainTime];
-          if (!chainTS || !(chainTS.freePoolStaffIds || []).includes(freeAst.id)) {
-            freeForChain = false;
-            break;
-          }
+          if (!chainTS) { freeForChain = false; break; }
+          const isAssigned = chainTS.assignments.some(a =>
+            a.assistantId === freeAst.id &&
+            a.assistantId !== 'MANNCELL_STANDBY' &&
+            a.assistantId !== '__none__'
+          );
+          if (isAssigned) { freeForChain = false; break; }
         }
         if (!freeForChain) continue;
 
@@ -354,7 +423,14 @@ export function executeBackwardSweep(state) {
         );
         if (!chainStartReq) continue;
 
-        const candidateIds = [...(chainStartTS.freePoolStaffIds || [])];
+        const chainStartAssignedIds2 = new Set(
+          chainStartTS.assignments
+            .filter(a => a.assistantId !== 'MANNCELL_STANDBY' && a.assistantId !== '__none__')
+            .map(a => a.assistantId)
+        );
+        const candidateIds = assistants
+          .map(a => a.id)
+          .filter(id => !chainStartAssignedIds2.has(id));
         candidateIds.sort((a, b) =>
           (nextState.tracker[a]?.totalAssignedSlots || 0) - (nextState.tracker[b]?.totalAssignedSlots || 0)
         );
@@ -367,10 +443,13 @@ export function executeBackwardSweep(state) {
           let freeForChain = true;
           for (const chainTime of fullChainTicks) {
             const chainTS = nextState.timeSlots[chainTime];
-            if (!chainTS || !(chainTS.freePoolStaffIds || []).includes(freeAst.id)) {
-              freeForChain = false;
-              break;
-            }
+            if (!chainTS) { freeForChain = false; break; }
+            const isAssigned = chainTS.assignments.some(a =>
+              a.assistantId === freeAst.id &&
+              a.assistantId !== 'MANNCELL_STANDBY' &&
+              a.assistantId !== '__none__'
+            );
+            if (isAssigned) { freeForChain = false; break; }
           }
           if (!freeForChain) continue;
 
