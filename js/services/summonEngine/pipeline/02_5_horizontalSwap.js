@@ -99,6 +99,7 @@ export function executeBackwardSweep(state) {
     // 各ギャップセグメント（メイン以外）を解消
     for (const gapSeg of sortedSegs.slice(1)) {
       const gapAstId = gapSeg.assistantId;
+      let resolved = false;
 
       // A がギャップ時間帯で何をしているか特定
       let blockingTaskKey = null;
@@ -235,7 +236,6 @@ export function executeBackwardSweep(state) {
         return cA - cB;
       });
 
-      let resolved = false;
       for (const freeId of candidateIds) {
         const freeAst = assistantMap.get(freeId);
         if (!freeAst) continue;
