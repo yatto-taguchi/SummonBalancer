@@ -82,14 +82,14 @@ export class SummonEngine {
 
     // 2. パイプライン（Chain of Responsibility）の実行
     //    各Phaseは内部で state.freezeBoundary を参照し、フリーズ対象のTickをスキップする
-    state = executeRequirementPhase(state);
-    state = executePrimaryAssign(state);
-    state = executeBackwardSweep(state);     // Phase 2.5: 後方スイープ（チェーンスワップ最適化）
-    state = executeHelpAndSpecialSummon(state);
-    state = executeManncellCompression(state);
-    state = executeFallbackReassign(state);
-    state = executeGapAssignment(state);
-    state = executeFreeTimeAllocation(state);
+    state = executeRequirementPhase(state);      // Phase 1:   要件定義
+    state = executePrimaryAssign(state);          // Phase 2:   基本配置
+    state = executeHelpAndSpecialSummon(state);   // Phase 3:   ヘルプ・特殊召喚
+    state = executeManncellCompression(state);    // Phase 4:   マンセル圧縮
+    state = executeFallbackReassign(state);       // Phase 5:   フォールバック再配置
+    state = executeGapAssignment(state);          // Phase 5.5: 隙間配置
+    state = executeBackwardSweep(state);          // Phase 5.6: 最終最適化（ハンドオフ解消 + 不足解消）
+    state = executeFreeTimeAllocation(state);     // Phase 6:   空き時間配置
 
     console.log('[SummonEngine Pipeline] Calculation finished.');
 

@@ -1,11 +1,11 @@
 import { hasSkill } from '../utils/skillUtils.js?v=3';
 
 /**
- * Phase 2.5: 後方スイープ（Backward Sweep + ハンドオフ検出）
+ * Phase 5.6: 最終最適化（Backward Sweep — ハンドオフ解消 + 不足解消）
  *
- * Phase 2（基本配置）が全Tickを処理し終えた後に実行する最適化フェーズ。
+ * Phase 1〜5.5 の全アサインが確定した後に実行するグローバル最適化フェーズ。
  *
- * 2つのトリガーで最適化を実行する:
+ * 2つのパスで最適化を実行する:
  *
  *   Pass 1 — ハンドオフ検出:
  *     同一タスク（予約+スロット）を複数アシスタントがリレーする「細切れ」パターンを検出。
@@ -14,7 +14,7 @@ import { hasSkill } from '../utils/skillUtils.js?v=3';
  *     例: しょ(10分)→なぎ(20分) → なぎ(30分)に統一
  *
  *   Pass 2 — 未アサイン解消:
- *     Phase 2 で Tier 1 要件がアサインされなかったTick（unassignedReqs）について、
+ *     Phase 2〜5.5 で Tier 1 要件がアサインされなかったTick（unassignedReqs）について、
  *     忙しいアシスタントのブロッキングチェーンを空きアシスタントに移行し、不足を解消。
  *
  * 設計原則:
@@ -22,6 +22,7 @@ import { hasSkill } from '../utils/skillUtils.js?v=3';
  *   - 1-hop のみ（多段連鎖スワップは行わない）
  *   - EngineState のイミュータブル原則を遵守（state.clone() + スプレッド構文）
  *   - 交代禁止タスクもチェーン全体を置き換えるため、途中交代は発生しない
+ *   - Phase 5.5（隙間配置）の結果を含む全アサインを対象とする
  */
 export function executeBackwardSweep(state) {
   const nextState = state.clone();
@@ -191,7 +192,7 @@ export function executeBackwardSweep(state) {
         //  ハンドオフ解消スワップ成立！
         // ═══════════════════════════════════════════
         console.log(
-          `[Phase 2.5 ハンドオフ解消] タスク ${taskKey}: ` +
+          `[Phase 5.6 ハンドオフ解消] タスク ${taskKey}: ` +
           `${gapAstId}(${gapSeg.entries.length}Tick)→${mainAstId}(${mainSeg.entries.length}Tick) を検出。` +
           `${mainAstId} のブロック (${blockingTaskKey}, ${fullChainTicks[0]}〜${fullChainTicks[chainLength - 1]}) を ` +
           `${freeAst.id} に移行 → ハンドオフ解消`
@@ -375,7 +376,7 @@ export function executeBackwardSweep(state) {
 
           // ═══ スワップ成立 ═══
           console.log(
-            `[Phase 2.5 不足解消] ${busyAst.id} のブロック (${busyTaskKey}, ` +
+            `[Phase 5.6 不足解消] ${busyAst.id} のブロック (${busyTaskKey}, ` +
             `${fullChainTicks[0]}〜${fullChainTicks[chainLength - 1]}) を ` +
             `${freeAst.id} に移行 → ${busyAst.id} を @${shortfallTime} の不足に配置`
           );
@@ -429,7 +430,7 @@ export function executeBackwardSweep(state) {
       shortfallTS.unassignedReqs = shortfallTS.unassignedReqs.filter(
         u => !resolvedReqIds.has(u.requirementId)
       );
-      console.log(`[Phase 2.5 不足解消] @${shortfallTime}: ${resolvedReqIds.size}件解消`);
+      console.log(`[Phase 5.6 不足解消] @${shortfallTime}: ${resolvedReqIds.size}件解消`);
     }
   }
 
