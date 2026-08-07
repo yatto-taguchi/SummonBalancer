@@ -1,4 +1,4 @@
-import { hasSkill } from '../utils/skillUtils.js?v=3';
+import { hasSkill, getTotalSkillLevel } from '../utils/skillUtils.js?v=3';
 
 /**
  * Phase 5.6: 最終最適化（Backward Sweep — ハンドオフ解消 + 不足解消）
@@ -39,6 +39,93 @@ export function executeBackwardSweep(state) {
     const [h, m] = time.split(':').map(Number);
     return ((h - 9) * 60 + m) <= nextState.freezeBoundary;
   };
+
+  /** 予約優先大原則に基づく剥がし・移動可能アサイン判定 (gap_help, お昼ご飯, 練習/大掃除) */
+  const isRemovableAssignment = (assign, timeSlot) => {
+    if (!assign) return false;
+
+    // 1. バッジでの判定 (gap_help, sp_special_summon_gap, lunch, break)
+    if (assign.badges && assign.badges.length > 0) {
+      const isRemovableBadge = assign.badges.some(b =>
+        b === 'gap_help' ||
+        b === 'sp_special_summon_gap' ||
+        b.includes('lunch') ||
+        b.includes('break')
+      );
+      if (isRemovableBadge) return true;
+    }
+
+    // 2. requirementId や タスクキーワードでの判定
+    const reqId = (assign.requirementId || '').toLowerCase();
+    if (
+      reqId.includes('lunch') ||
+      reqId.includes('break') ||
+      reqId.includes('practice') ||
+      reqId.includes('cleaning') ||
+      reqId.includes('training')
+    ) {
+      return true;
+    }
+
+    // 3. timeSlot 内の requirements のプロパティチェック
+    if (timeSlot && timeSlot.requirements) {
+      const req = timeSlot.requirements.find(r => r.id === assign.requirementId);
+      if (req) {
+        if (req.isInternalTask || req.isLunch || req.isBreak || req.isPractice || req.isCleaning) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  };
+
+  // ═══════════════════════════════════════════════════════
+  //  【修正C】10:10〜10:50 可視化確定診断ログ（強化版）
+  // ═══════════════════════════════════════════════════════
+  /** スタッフの特定スキルレベルを取得するヘルパー */
+  const getSkillLevel = (staff, skillId) => {
+    if (!staff) return '?';
+    if (staff.type === 'stylist') return 'MAX(stylist)';
+    if (!staff.skills) return '0';
+    const skill = staff.skills.find(s => s.id === skillId);
+    return skill ? String(skill.proficiency) : '0';
+  };
+
+  /** スタッフ名取得ヘルパー（スタイリスト含む） */
+  const getStaffName = (staffId) => {
+    const staff = assistantMap.get(staffId) || (nextState.master?.staff || []).find(s => s.id === staffId);
+    return staff ? (staff.nickname || staff.name || staffId) : staffId;
+  };
+
+  console.log('==== [Phase 5.6 10:10〜10:50 可視化確定診断ログ（強化版）] ====');
+  const targetTimes = sortedTimes.filter(t => t >= '10:10' && t <= '10:50');
+  for (const time of targetTimes) {
+    const ts = nextState.timeSlots[time];
+    if (!ts) continue;
+    const logDetails = (ts.assignments || [])
+      .filter(a => a.assistantId !== 'MANNCELL_STANDBY' && a.assistantId !== '__none__')
+      .map(a => {
+        const staff = assistantMap.get(a.assistantId) || (nextState.master?.staff || []).find(s => s.id === a.assistantId);
+        const name = staff ? (staff.nickname || staff.name || a.assistantId) : a.assistantId;
+        const req = (ts.requirements || []).find(r => r.id === a.requirementId);
+        const skillInfo = req ? `${req.requiredSkill}Lv${req.minSkillLevel}` : '?';
+        const badgesStr = a.badges ? `[${a.badges.join(',')}]` : '[]';
+        const isRemovable = isRemovableAssignment(a, ts) ? '(剥がし可)' : '(固定)';
+        return `${name}:${skillInfo}${badgesStr}${isRemovable}`;
+      });
+    console.log(`@${time}: ${logDetails.join(' | ')}`);
+  }
+
+  // スキル診断: 全アシスタントのシャンプー/カラーのスキルレベルを表示
+  console.log('=== スキル診断 ===');
+  for (const ast of assistants) {
+    const name = ast.nickname || ast.name || ast.id;
+    const shampooLv = getSkillLevel(ast, 'shampoo');
+    const colorLv = getSkillLevel(ast, 'color');
+    console.log(`  ${name}: shampoo=Lv${shampooLv} | color=Lv${colorLv}`);
+  }
+  console.log('==================================================');
 
   // ═══════════════════════════════════════════════════════
   //  Pass 1: ハンドオフ（細切れ）検出と解消
@@ -107,6 +194,8 @@ export function executeBackwardSweep(state) {
       console.log('[Phase 5.6 診断] ③ メイン=' + mainAstId + '(' + mainSeg.entries.length + 'T), ギャップ=' + gapAstId + '(' + gapSeg.entries.length + 'T), ギャップ時間=[' + gapSeg.entries.map(e => e.time).join(',') + ']');
 
       // A がギャップ時間帯で何をしているか特定
+      // 【修正A】gap_help等の剥がし可能アサインは「ブロッキング」ではない。
+      // 本来の固定アサイン（シャンプー等）のみを検出する。
       let blockingTaskKey = null;
       let blockingReq = null;
 
@@ -115,16 +204,23 @@ export function executeBackwardSweep(state) {
         if (!ts) continue;
         for (const assign of ts.assignments) {
           if (assign.assistantId !== mainAstId) continue;
+          // 【修正A】剥がし可能アサイン（gap_help, 内部タスク）はスキップ
+          if (isRemovableAssignment(assign, ts)) {
+            const skipReq = (ts.requirements || []).find(r => r.id === assign.requirementId);
+            console.log(`[Phase 5.6 診断] ④-skip @${gapEntry.time} ${getStaffName(mainAstId)} のアサイン: ${skipReq ? skipReq.requiredSkill : '?'}[${(assign.badges || []).join(',')}] → 剥がし可 → スキップ`);
+            continue;
+          }
           const req = (ts.requirements || []).find(r => r.id === assign.requirementId);
           if (!req) continue;
           blockingTaskKey = `${req.reservationId}_${req.slotIndex}`;
           blockingReq = req;
+          console.log(`[Phase 5.6 診断] ④-found @${gapEntry.time} ${getStaffName(mainAstId)} のアサイン: ${req.requiredSkill}Lv${req.minSkillLevel}[] → 固定 → ★採用★`);
           break;
         }
         if (blockingTaskKey) break;
       }
 
-      console.log('[Phase 5.6 診断] ④ blockingTaskKey=' + (blockingTaskKey || 'null(A空き)'));
+      console.log('[Phase 5.6 診断] ④ blockingTaskKey=' + (blockingTaskKey || 'null(A空き)') + (blockingReq ? ` (${blockingReq.requiredSkill} Lv${blockingReq.minSkillLevel})` : ''));
 
       if (!blockingTaskKey) {
         // ═══ A がギャップ時間帯で空いている → 直接置き換え ═══
@@ -133,11 +229,12 @@ export function executeBackwardSweep(state) {
         for (const gapEntry of gapSeg.entries) {
           const gapTS = nextState.timeSlots[gapEntry.time];
           if (!gapTS) { directSwapOK = false; break; }
-          // A が本当にこのTickで空いているか（assignmentsベースで正確に判定）
+          // A が本当にこのTickで空いているか（剥がし不能な本アサインがないか判定）
           const aIsBusy = gapTS.assignments.some(a =>
             a.assistantId === mainAstId &&
             a.assistantId !== 'MANNCELL_STANDBY' &&
-            a.assistantId !== '__none__'
+            a.assistantId !== '__none__' &&
+            !isRemovableAssignment(a, gapTS)
           );
           if (aIsBusy) { directSwapOK = false; break; }
         }
@@ -153,6 +250,12 @@ export function executeBackwardSweep(state) {
           // ギャップTickで gapAst → A に置き換え
           for (const gapEntry of gapSeg.entries) {
             const gapTS = nextState.timeSlots[gapEntry.time];
+
+            // A がもしこのTickで 剥がし可能アサイン（gap_help, 内部タスク）を持っていたら剥がす
+            gapTS.assignments = gapTS.assignments.filter(a =>
+              !(a.assistantId === mainAstId && isRemovableAssignment(a, gapTS))
+            );
+
             for (const ga of gapTS.assignments) {
               if (ga.assistantId !== gapAstId || ga.requirementId !== gapEntry.requirementId) continue;
               ga.assistantId = mainAstId;
@@ -230,10 +333,14 @@ export function executeBackwardSweep(state) {
       );
       if (!chainStartReq) continue;
 
-      // 候補 F をソート: 累計アサイン数が少ない順（assignmentsベースで空き判定）
+      // 候補 F をソート: 累計アサイン数が少ない順（剥がし可能以外のアサインを基準に判定）
       const chainStartAssignedIds = new Set(
         chainStartTS.assignments
-          .filter(a => a.assistantId !== 'MANNCELL_STANDBY' && a.assistantId !== '__none__')
+          .filter(a =>
+            a.assistantId !== 'MANNCELL_STANDBY' &&
+            a.assistantId !== '__none__' &&
+            !isRemovableAssignment(a, chainStartTS)
+          )
           .map(a => a.assistantId)
       );
       const candidateIds = assistants
@@ -254,21 +361,24 @@ export function executeBackwardSweep(state) {
         // F がブロッキングタスクのスキルを満たすか
         const skillOK = hasSkill(freeAst, chainStartReq.requiredSkill, chainStartReq.minSkillLevel);
         if (!skillOK) {
-          console.log('[Phase 5.6 診断] ⑦ 候補 ' + (freeAst.nickname || freeId) + ': スキル=NG → スキップ');
+          const freeName = freeAst.nickname || freeAst.name || freeId;
+          const heldLv = getSkillLevel(freeAst, chainStartReq.requiredSkill);
+          console.log(`[Phase 5.6 診断] ⑦ 候補 ${freeName}: スキル=NG (要求: ${chainStartReq.requiredSkill} Lv${chainStartReq.minSkillLevel} → 保有: Lv${heldLv}) → スキップ`);
           continue;
         }
 
-        // F がチェーン全期間にわたって空いているか（assignmentsベースで正確に判定）
+        // F がチェーン全期間にわたって空いているか（剥がし不能な本アサインがないか判定）
         let freeForChain = true;
         for (const chainTime of fullChainTicks) {
           const chainTS = nextState.timeSlots[chainTime];
           if (!chainTS) { freeForChain = false; break; }
-          const isAssigned = chainTS.assignments.some(a =>
+          const hasNonGap = chainTS.assignments.some(a =>
             a.assistantId === freeAst.id &&
             a.assistantId !== 'MANNCELL_STANDBY' &&
-            a.assistantId !== '__none__'
+            a.assistantId !== '__none__' &&
+            !isRemovableAssignment(a, chainTS)
           );
-          if (isAssigned) { freeForChain = false; break; }
+          if (hasNonGap) { freeForChain = false; break; }
         }
         if (!freeForChain) {
           console.log('[Phase 5.6 診断] ⑦ 候補 ' + (freeAst.nickname || freeId) + ': スキル=OK, 全期間空き=NG → スキップ');
@@ -288,9 +398,15 @@ export function executeBackwardSweep(state) {
 
         const gapTimeSet = new Set(gapSeg.entries.map(e => e.time));
 
-        // ── 1. 全チェーンTickで A → F に置き換え ──
+        // ── 1. 全チェーンTickで A → F に置き換え（F の持っていた 剥がし可能アサイン は剥がす） ──
         for (const chainTime of fullChainTicks) {
           const chainTS = nextState.timeSlots[chainTime];
+
+          // F がこのTickで持っていた 剥がし可能アサイン（gap_help, 内部タスク）を剥がす
+          chainTS.assignments = chainTS.assignments.filter(a =>
+            !(a.assistantId === freeAst.id && isRemovableAssignment(a, chainTS))
+          );
+
           for (const ca of chainTS.assignments) {
             if (ca.assistantId !== mainAstId) continue;
             const caReq = (chainTS.requirements || []).find(r => r.id === ca.requirementId);
@@ -444,7 +560,11 @@ export function executeBackwardSweep(state) {
 
         const chainStartAssignedIds2 = new Set(
           chainStartTS.assignments
-            .filter(a => a.assistantId !== 'MANNCELL_STANDBY' && a.assistantId !== '__none__')
+            .filter(a =>
+              a.assistantId !== 'MANNCELL_STANDBY' &&
+              a.assistantId !== '__none__' &&
+              !isRemovableAssignment(a, chainStartTS)
+            )
             .map(a => a.assistantId)
         );
         const candidateIds = assistants
@@ -463,12 +583,13 @@ export function executeBackwardSweep(state) {
           for (const chainTime of fullChainTicks) {
             const chainTS = nextState.timeSlots[chainTime];
             if (!chainTS) { freeForChain = false; break; }
-            const isAssigned = chainTS.assignments.some(a =>
+            const hasNonGap = chainTS.assignments.some(a =>
               a.assistantId === freeAst.id &&
               a.assistantId !== 'MANNCELL_STANDBY' &&
-              a.assistantId !== '__none__'
+              a.assistantId !== '__none__' &&
+              !isRemovableAssignment(a, chainTS)
             );
-            if (isAssigned) { freeForChain = false; break; }
+            if (hasNonGap) { freeForChain = false; break; }
           }
           if (!freeForChain) continue;
 
@@ -481,6 +602,12 @@ export function executeBackwardSweep(state) {
 
           for (const chainTime of fullChainTicks) {
             const chainTS = nextState.timeSlots[chainTime];
+
+            // freeAst の持っていた 剥がし可能アサイン（gap_help, 内部タスク）を剥がす
+            chainTS.assignments = chainTS.assignments.filter(a =>
+              !(a.assistantId === freeAst.id && isRemovableAssignment(a, chainTS))
+            );
+
             for (const ca of chainTS.assignments) {
               if (ca.assistantId !== busyAst.id) continue;
               const caReq = (chainTS.requirements || []).find(r => r.id === ca.requirementId);

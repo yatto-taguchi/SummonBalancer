@@ -13,6 +13,10 @@
       "label": "トリートメント"
     },
     {
+      "id": "spa",
+      "label": "スパ"
+    },
+    {
       "id": "perm_liquid",
       "label": "1.2液"
     },
@@ -27,10 +31,6 @@
     {
       "id": "straight_2",
       "label": "2液"
-    },
-    {
-      "id": "spa",
-      "label": "スパ"
     }
   ],
   "sb_menus": [
@@ -3679,6 +3679,72 @@
     },
     {
       "id": "res_1786062486130_x9g4k0",
+      "menuItemId": "cut_color_cut_first",
+      "stylistId": "stylist_1784677572837_trrikn",
+      "startTime": 60,
+      "endTime": 180,
+      "assignedAssistants": {},
+      "menuVariant": "",
+      "fixedAssistants": {},
+      "ganbare": {},
+      "nonOverlapSummonEnabled": true,
+      "slotTimeOverrides": {},
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": true
+    }
+  ],
+  "sb_reservations_2026-08-08": [
+    {
+      "id": "res_1786077283745_figu0b",
+      "menuItemId": "cut_color_cut_first",
+      "stylistId": "stylist_1784677557052_zojf98",
+      "startTime": 0,
+      "endTime": 120,
+      "assignedAssistants": {},
+      "menuVariant": "",
+      "fixedAssistants": {},
+      "ganbare": {},
+      "nonOverlapSummonEnabled": true,
+      "slotTimeOverrides": {},
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": true
+    },
+    {
+      "id": "res_1786077285364_vw6a9d",
+      "menuItemId": "cut_color_cut_first",
+      "stylistId": "stylist_1784677557052_zojf98",
+      "startTime": 60,
+      "endTime": 180,
+      "assignedAssistants": {},
+      "menuVariant": "",
+      "fixedAssistants": {},
+      "ganbare": {},
+      "nonOverlapSummonEnabled": true,
+      "slotTimeOverrides": {},
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": true
+    },
+    {
+      "id": "res_1786077286789_sonyft",
+      "menuItemId": "cut_color_cut_first",
+      "stylistId": "stylist_1784677572837_trrikn",
+      "startTime": 0,
+      "endTime": 120,
+      "assignedAssistants": {},
+      "menuVariant": "",
+      "fixedAssistants": {},
+      "ganbare": {},
+      "nonOverlapSummonEnabled": true,
+      "slotTimeOverrides": {},
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": true
+    },
+    {
+      "id": "res_1786077291589_pf6tq5",
       "menuItemId": "cut_color_cut_first",
       "stylistId": "stylist_1784677572837_trrikn",
       "startTime": 60,

@@ -1454,12 +1454,31 @@ export class MainView {
           block._element.classList.add('activity-virtual-block');
           if (hb.isGapHelp) {
             block._element.classList.add('gap-help-block');
+            // 【修正B】CSSクラスに加え、setPropertyでinline !importantを確実に適用
+            block._element.style.setProperty('border', '2px dashed #FFD700', 'important');
+            block._element.style.setProperty('background-color', 'rgba(255, 215, 0, 0.15)', 'important');
+            block._element.style.setProperty('box-shadow', '0 0 6px rgba(255, 215, 0, 0.3)', 'important');
+
+            // 【修正B】「隙間」バッジを物理的に追加（視認性フェイルセーフ）
+            const gapBadge = document.createElement('div');
+            gapBadge.textContent = '隙間';
+            gapBadge.style.cssText = `
+              position: absolute; top: 1px; right: 2px;
+              font-size: 8px; color: #FFD700;
+              background: rgba(0,0,0,0.6); padding: 1px 3px;
+              border-radius: 2px; z-index: 20;
+              pointer-events: none;
+            `;
+            block._element.appendChild(gapBadge);
           }
           
           if (hb.isGapHelp || !isStylist) {
-            block._element.style.border = '2px dashed var(--accent-warning)';
-            block._element.style.background = 'rgba(245, 158, 11, 0.1)';
-            block._element.style.boxShadow = 'none';
+            if (!hb.isGapHelp) {
+              // gap_help でない通常ヘルプ（スタイリスト以外）の場合のみ既存スタイル適用
+              block._element.style.border = '2px dashed var(--accent-warning)';
+              block._element.style.background = 'rgba(245, 158, 11, 0.1)';
+              block._element.style.boxShadow = 'none';
+            }
           } else {
             block._element.style.border = '2px solid var(--accent-danger)';
             block._element.style.background = 'rgba(239, 68, 68, 0.1)';

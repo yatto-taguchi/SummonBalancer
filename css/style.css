@@ -2036,5 +2036,14 @@ body.is-resizing .reservation-resize-handle {
   background: var(--bg-hover);
 }
 
-/* Gap Help */
-.gap-help-block { border: 2px dashed #FFD700 !important; background-color: rgba(255, 215, 0, 0.1) !important; z-index: 5 !important; }
+/* Gap Help - 隙間配置ブロック（黄色の点線枠 + グロー） */
+.gap-help-block {
+  border: 2px dashed #FFD700 !important;
+  background-color: rgba(255, 215, 0, 0.15) !important;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.3) !important;
+  z-index: 5 !important;
+}
+
+.gap-help-block .reservation-header {
+  background: rgba(255, 215, 0, 0.1) !important;
+}

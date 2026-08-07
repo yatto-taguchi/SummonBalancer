@@ -1,7 +1,7 @@
 import { EngineState } from './EngineState.js?v=4';
 import { executeRequirementPhase } from './pipeline/01_requirementPhase.js?v=3';
 import { executePrimaryAssign } from './pipeline/02_primaryAssign.js?v=4';
-import { executeBackwardSweep } from './pipeline/02_5_horizontalSwap.js?v=4';
+import { executeBackwardSweep } from './pipeline/02_5_horizontalSwap.js?v=6';
 import { executeHelpAndSpecialSummon } from './pipeline/03_helpAndSpecialSummon.js?v=3';
 import { executeManncellCompression } from './pipeline/04_manncellCompression.js?v=3';
 import { executeFallbackReassign } from './pipeline/05_fallbackReassign.js?v=3';
