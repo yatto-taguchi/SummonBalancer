@@ -69,12 +69,15 @@ export function executeBackwardSweep(state) {
   }
 
   // Step 2: ハンドオフ検出と解消
+  console.log('[Phase 5.6 診断] ===== 開始: タスク数=' + taskAssignments.size + ' =====');
   for (const [taskKey, entries] of taskAssignments) {
     entries.sort((a, b) => a.time.localeCompare(b.time));
 
     // 同一タスクに複数アシスタントが存在するか
     const uniqueAsts = new Set(entries.map(e => e.assistantId));
     if (uniqueAsts.size <= 1) continue; // ハンドオフなし → スキップ
+
+    console.log('[Phase 5.6 診断] ② ハンドオフ検出: ' + taskKey + ' → ' + uniqueAsts.size + '人: [' + [...uniqueAsts].join(', ') + ']');
 
     // 連続セグメントに分割
     const segments = [];
@@ -101,6 +104,8 @@ export function executeBackwardSweep(state) {
       const gapAstId = gapSeg.assistantId;
       let resolved = false;
 
+      console.log('[Phase 5.6 診断] ③ メイン=' + mainAstId + '(' + mainSeg.entries.length + 'T), ギャップ=' + gapAstId + '(' + gapSeg.entries.length + 'T), ギャップ時間=[' + gapSeg.entries.map(e => e.time).join(',') + ']');
+
       // A がギャップ時間帯で何をしているか特定
       let blockingTaskKey = null;
       let blockingReq = null;
@@ -119,6 +124,8 @@ export function executeBackwardSweep(state) {
         if (blockingTaskKey) break;
       }
 
+      console.log('[Phase 5.6 診断] ④ blockingTaskKey=' + (blockingTaskKey || 'null(A空き)'));
+
       if (!blockingTaskKey) {
         // ═══ A がギャップ時間帯で空いている → 直接置き換え ═══
         // チェーンスワップ不要。ギャップアシスタント → メインアシスタント(A) に直接変更
@@ -134,6 +141,8 @@ export function executeBackwardSweep(state) {
           );
           if (aIsBusy) { directSwapOK = false; break; }
         }
+
+        console.log('[Phase 5.6 診断] ⑤ 直接置き換え判定: directSwapOK=' + directSwapOK);
 
         if (directSwapOK) {
           console.log(
@@ -236,12 +245,18 @@ export function executeBackwardSweep(state) {
         return cA - cB;
       });
 
+      console.log('[Phase 5.6 診断] ⑥ チェーン ' + fullChainTicks[0] + '〜' + fullChainTicks[chainLength - 1] + ' (' + chainLength + 'T), 候補数=' + candidateIds.length + ', スキル要件=' + chainStartReq.requiredSkill + ' Lv' + chainStartReq.minSkillLevel);
+
       for (const freeId of candidateIds) {
         const freeAst = assistantMap.get(freeId);
         if (!freeAst) continue;
 
         // F がブロッキングタスクのスキルを満たすか
-        if (!hasSkill(freeAst, chainStartReq.requiredSkill, chainStartReq.minSkillLevel)) continue;
+        const skillOK = hasSkill(freeAst, chainStartReq.requiredSkill, chainStartReq.minSkillLevel);
+        if (!skillOK) {
+          console.log('[Phase 5.6 診断] ⑦ 候補 ' + (freeAst.nickname || freeId) + ': スキル=NG → スキップ');
+          continue;
+        }
 
         // F がチェーン全期間にわたって空いているか（assignmentsベースで正確に判定）
         let freeForChain = true;
@@ -255,7 +270,11 @@ export function executeBackwardSweep(state) {
           );
           if (isAssigned) { freeForChain = false; break; }
         }
-        if (!freeForChain) continue;
+        if (!freeForChain) {
+          console.log('[Phase 5.6 診断] ⑦ 候補 ' + (freeAst.nickname || freeId) + ': スキル=OK, 全期間空き=NG → スキップ');
+          continue;
+        }
+        console.log('[Phase 5.6 診断] ⑦ 候補 ' + (freeAst.nickname || freeId) + ': スキル=OK, 全期間空き=OK → スワップ実行!');
 
         // ═══════════════════════════════════════════
         //  ハンドオフ解消スワップ成立！
