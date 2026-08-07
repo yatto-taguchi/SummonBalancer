@@ -300,7 +300,7 @@ export class SummonEngine {
             // 4. 通常の隙間ヘルプ判定
             // ※「スタイリストであっても、特殊なバッジがなければ通常のアシスタント稼働とみなす」ため、
             // 召喚バッジがなければ一律で gap_help 扱いとする。
-            const isGapHelp = badges.includes('gap_help') || (!isAnySummon && staffObj && staffObj.type === 'stylist');
+            const isGapHelp = badges.includes('gap_help');
 
             // 【厳守事項2】隙間ヘルプであっても、元のタスクは本来「不足」であるため、
             // カウントを加算し、アラート生成の条件を満たすようにする。
@@ -473,7 +473,8 @@ export class SummonEngine {
               stylistId: tick.stylistId,
               startMin: tickStartMin,
               endMin: tickEndMin,
-              isGapHelp: true // helperBlocksに流れてきたものは一律で隙間ヘルプ扱いとする
+              isGapHelp: (tick.badges || []).includes('gap_help'),
+              badges: tick.badges || []
             };
           }
         });

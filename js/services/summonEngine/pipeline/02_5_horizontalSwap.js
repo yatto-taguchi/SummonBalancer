@@ -624,7 +624,8 @@ export function executeBackwardSweep(state) {
 
           shortfallTS.assignments.push({
             requirementId: shortfallReq.id,
-            assistantId: busyAst.id
+            assistantId: busyAst.id,
+            badges: []
           });
 
           const aTracker = nextState.tracker[busyAst.id] || { totalAssignedSlots: 0, hasLunch: false, hasBreak: false };

@@ -81,7 +81,8 @@ export function executePrimaryAssign(state) {
       if (req.skipAssignment) {
         timeSlot.assignments.push({
           requirementId: req.id,
-          assistantId: '__none__'
+          assistantId: '__none__',
+          badges: []
         });
         return true;
       }
@@ -102,7 +103,8 @@ export function executePrimaryAssign(state) {
         if (isInFreePool || isStylistFree) {
           timeSlot.assignments.push({
             requirementId: req.id,
-            assistantId: fixedId
+            assistantId: fixedId,
+            badges: []
           });
           // freePool から除外（アシスタントの場合のみ）
           if (isInFreePool) {
@@ -136,7 +138,8 @@ export function executePrimaryAssign(state) {
       if (req.designatedStaffId) {
         timeSlot.assignments.push({
           requirementId: req.id,
-          assistantId: req.designatedStaffId
+          assistantId: req.designatedStaffId,
+          badges: []
         });
         const currentTracker = nextState.tracker[req.designatedStaffId] || { totalAssignedSlots: 0, hasLunch: false, hasBreak: false };
         nextState.tracker = {
@@ -208,7 +211,8 @@ export function executePrimaryAssign(state) {
 
       timeSlot.assignments.push({
         requirementId: req.id,
-        assistantId: selected.id
+        assistantId: selected.id,
+        badges: []
       });
 
       nextState.ongoingTasks[taskKey] = selected.id;
