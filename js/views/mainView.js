@@ -647,6 +647,7 @@ export class MainView {
     // アラートエリア
     const alertsArea = document.createElement('div');
     alertsArea.id = 'alerts-area';
+    alertsArea.className = 'slim-scrollbar';
     alertsArea.style.cssText = 'display: flex; gap: 6px; flex-wrap: nowrap; align-items: center; overflow-x: auto; max-width: 50vw; flex-shrink: 1;';
     toolbar.appendChild(alertsArea);
 
@@ -1817,7 +1818,7 @@ export class MainView {
     const specialSummons = summons.filter(s => s.isSpecialSummon);
     if (specialSummons.length > 0) {
       const historySection = document.createElement('div');
-      historySection.className = 'special-summon-history';
+      historySection.className = 'special-summon-history slim-scrollbar';
       historySection.style.cssText = [
         'margin-top: 8px',
         'padding: 8px 12px',
@@ -1825,6 +1826,8 @@ export class MainView {
         'border: 1px solid rgba(245,158,11,0.3)',
         'border-radius: 8px',
         'font-size: 11px',
+        'max-height: 50px',
+        'overflow-y: auto'
       ].join(';');
 
       const title = document.createElement('div');
@@ -1871,6 +1874,8 @@ export class MainView {
       });
 
       alertsArea.appendChild(historySection);
+      // 最新の履歴（一番下）に自動スクロール
+      historySection.scrollTop = historySection.scrollHeight;
     }
   }
 
