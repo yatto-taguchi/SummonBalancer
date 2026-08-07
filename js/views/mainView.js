@@ -6,7 +6,7 @@
  */
 
 import * as Storage from '../services/storage.js?v=18';
-import { summonEngine as SummonEngineInstance } from '../services/summonEngine/engineShadowRunner.js?v=35';
+import { summonEngine as SummonEngineInstance } from '../services/summonEngine/engineShadowRunner.js?v=36';
 import { FatigueManager } from '../services/fatigueManager.js';
 import { Timeline } from '../components/timeline.js?v=32';
 import { MenuBar } from '../components/menuBar.js?v=5';

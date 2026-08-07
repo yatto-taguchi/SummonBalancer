@@ -1,5 +1,5 @@
 import { SummonEngine as LegacySummonEngine } from '../summonEngine.js';
-import { SummonEngine as NewPipelineEngine } from './index.js?v=7';
+import { SummonEngine as NewPipelineEngine } from './index.js?v=8';
 import { EngineAdapter } from './engineAdapter.js?v=5';
 
 export const summonEngine = {

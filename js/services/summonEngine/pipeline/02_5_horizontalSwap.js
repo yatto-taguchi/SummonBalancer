@@ -1,142 +1,237 @@
 import { hasSkill } from '../utils/skillUtils.js?v=3';
 
 /**
- * Phase 2.5: 水平スワップ（1-hop 玉突き配置最適化）
- * 
- * Phase 2 の配置完了後に実行。各Tick内で「不足」が発生している場合にのみ発動し、
- * 「空いているアシスタント」と「既にアサイン済みのアシスタント」を1対1で入れ替えることで
- * 不足を解消する。スタイリスト召喚（Phase 3）に頼る前にアシスタント同士で解決する。
- * 
+ * Phase 2.5: 後方スイープ（Backward Sweep — 1-hop チェーンスワップ）
+ *
+ * Phase 2（基本配置）が全Tickを処理し終えた後に実行する最適化フェーズ。
+ *
+ * 問題:
+ *   Phase 2 は各Tickを独立に処理するため、交代禁止タスク（シャンプー等）が
+ *   アシスタントを長時間ロックし、後のTickで不足を引き起こすケースがある。
+ *   例: 10:00でなぎがシャンプー(交代禁止)に入る → 10:40でなぎ不在 → 不足発生
+ *
+ * 解決:
+ *   不足Tickから「過去をたどって」ロックの原因となったタスクチェーンを特定し、
+ *   チェーン全体を空いている別のアシスタントに移行する。
+ *   これにより元のアシスタントが解放され、不足が解消される。
+ *
  * 設計原則:
- *   - 1-hop（1段階の入れ替え）のみ。多段の連鎖スワップは行わない
- *   - 不足がないTickはスキップ（計算量O(1)）
- *   - EngineStateのイミュータブル原則を遵守
+ *   - 不足がないTick群は即スキップ（O(1)）
+ *   - 1-hop のみ（多段連鎖スワップは行わない）
+ *   - チェーン長が1の場合は従来の水平スワップと同等に機能（統合）
+ *   - EngineState のイミュータブル原則を遵守（state.clone() + スプレッド構文）
+ *   - 交代禁止タスクもチェーン全体を置き換えるため、途中交代は発生しない
  */
-export function executeHorizontalSwap(state) {
-  let nextState = state.clone();
+export function executeBackwardSweep(state) {
+  const nextState = state.clone();
 
   if (!nextState.timeSlots) return nextState;
 
   const assistants = (nextState.master?.staff || []).filter(s => s.type === 'assistant');
   const assistantMap = new Map(assistants.map(a => [a.id, a]));
 
-  Object.keys(nextState.timeSlots).forEach(time => {
-    // フリーズ境界以前のTickはスキップ（確定済みデータを維持）
-    const [fH, fM] = time.split(':').map(Number);
-    const tickMinsFrom9 = (fH - 9) * 60 + fM;
-    if (nextState.freezeBoundary !== null && tickMinsFrom9 <= nextState.freezeBoundary) {
-      return;
+  // 全Tickをソート済みリストとして保持（時間順）
+  const sortedTimes = Object.keys(nextState.timeSlots).sort();
+
+  // ── Step 1: 不足があるTickを収集 ──
+  const shortfallTimeIndices = [];
+  for (let i = 0; i < sortedTimes.length; i++) {
+    const time = sortedTimes[i];
+
+    // フリーズ境界チェック
+    const [h, m] = time.split(':').map(Number);
+    const tickMins = (h - 9) * 60 + m;
+    if (nextState.freezeBoundary !== null && tickMins <= nextState.freezeBoundary) continue;
+
+    const ts = nextState.timeSlots[time];
+    if (ts && ts.unassignedReqs && ts.unassignedReqs.length > 0) {
+      shortfallTimeIndices.push(i);
     }
+  }
 
-    const timeSlot = nextState.timeSlots[time];
-    if (!timeSlot) return;
+  // 不足なし → 即リターン（軽量化の核心）
+  if (shortfallTimeIndices.length === 0) return nextState;
 
-    // 不足がない場合は即座にスキップ（軽量化の核心）
-    if (!timeSlot.unassignedReqs || timeSlot.unassignedReqs.length === 0) return;
+  // ── Step 2: 各不足Tickについて後方スイープ ──
+  for (const timeIdx of shortfallTimeIndices) {
+    const shortfallTime = sortedTimes[timeIdx];
+    const shortfallTS = nextState.timeSlots[shortfallTime];
+    if (!shortfallTS || !shortfallTS.unassignedReqs || shortfallTS.unassignedReqs.length === 0) continue;
 
-    // 空いているアシスタントのリスト（freePoolStaffIds に残っているもの）
-    const freeIds = [...(timeSlot.freePoolStaffIds || [])];
-    const freeAssistants = freeIds
-      .map(id => assistantMap.get(id))
-      .filter(Boolean);
-
-    if (freeAssistants.length === 0) return;
-
-    // スワップ対象外の要件を除外するフィルタ
-    const isSwappableReq = (req) => {
-      if (!req) return false;
-      if (req.fixedAssistantId) return false;    // 固定モードは触らない
-      if (req.skipAssignment) return false;       // __none__ 固定は触らない
-      if (req.isHandoffProhibited) return false;  // 交代禁止タスクは途中交代不可
-      return true;
-    };
-
-    // 解決済みの不足を追跡
     const resolvedReqIds = new Set();
-    // 使用済みの空きアシスタントを追跡
-    const usedFreeIds = new Set();
 
-    // 各不足要件に対してスワップを試行
-    for (const unassigned of timeSlot.unassignedReqs) {
-      const shortfallReq = timeSlot.requirements.find(r => r.id === unassigned.requirementId);
+    for (const unassigned of [...shortfallTS.unassignedReqs]) {
+      const shortfallReq = shortfallTS.requirements.find(r => r.id === unassigned.requirementId);
       if (!shortfallReq) continue;
-      // 不足要件自体がスワップ対象外なら（固定モード等）スキップ
+      // 固定モード・スキップ対象は除外
       if (shortfallReq.fixedAssistantId || shortfallReq.skipAssignment) continue;
 
-      let swapped = false;
+      let resolved = false;
 
-      // 空きアシスタント F × アサイン済み要件 の全ペアを探索
-      for (const freeAst of freeAssistants) {
-        if (usedFreeIds.has(freeAst.id)) continue;
+      // 不足Tickで忙しい各アシスタント(A)を検査:「Aが空けば不足を解消できるか?」
+      for (const assignment of shortfallTS.assignments) {
+        if (assignment.assistantId === 'MANNCELL_STANDBY' || assignment.assistantId === '__none__') continue;
 
-        for (const assignment of timeSlot.assignments) {
-          // 特殊マーカーは除外
-          if (assignment.assistantId === 'MANNCELL_STANDBY' || assignment.assistantId === '__none__') continue;
+        const busyAst = assistantMap.get(assignment.assistantId);
+        if (!busyAst) continue;
 
-          const assignedReq = timeSlot.requirements.find(r => r.id === assignment.requirementId);
-          if (!isSwappableReq(assignedReq)) continue;
+        // A が不足タスクのスキルを持っているか
+        if (!hasSkill(busyAst, shortfallReq.requiredSkill, shortfallReq.minSkillLevel)) continue;
 
-          const assignedAst = assistantMap.get(assignment.assistantId);
-          if (!assignedAst) continue;
+        // A が現在やっているタスクの要件を特定
+        const busyReq = shortfallTS.requirements.find(r => r.id === assignment.requirementId);
+        if (!busyReq) continue;
+        const busyTaskKey = `${busyReq.reservationId}_${busyReq.slotIndex}`;
 
-          // 条件A: 空きアシスタント F が、アサイン済みタスクのスキルを満たすか
-          if (!hasSkill(freeAst, assignedReq.requiredSkill, assignedReq.minSkillLevel)) continue;
+        // ── A のタスクチェーン全体（過去＋未来）を特定 ──
+        // 後方探索: shortfallTime から過去へ、同じ A × 同じタスクキー の連続を探す
+        let chainStartIdx = timeIdx;
+        for (let i = timeIdx - 1; i >= 0; i--) {
+          const prevTS = nextState.timeSlots[sortedTimes[i]];
+          if (!prevTS) break;
+          const found = prevTS.assignments.some(a =>
+            a.assistantId === busyAst.id &&
+            prevTS.requirements.some(r => r.id === a.requirementId &&
+              `${r.reservationId}_${r.slotIndex}` === busyTaskKey)
+          );
+          if (found) { chainStartIdx = i; } else { break; }
+        }
 
-          // 条件B: アサイン済みアシスタント A が、不足タスクのスキルを満たすか
-          if (!hasSkill(assignedAst, shortfallReq.requiredSkill, shortfallReq.minSkillLevel)) continue;
+        // 前方探索: shortfallTime から未来へ、同じチェーンの継続を探す
+        let chainEndIdx = timeIdx;
+        for (let i = timeIdx + 1; i < sortedTimes.length; i++) {
+          const nextTS = nextState.timeSlots[sortedTimes[i]];
+          if (!nextTS) break;
+          const found = nextTS.assignments.some(a =>
+            a.assistantId === busyAst.id &&
+            nextTS.requirements.some(r => r.id === a.requirementId &&
+              `${r.reservationId}_${r.slotIndex}` === busyTaskKey)
+          );
+          if (found) { chainEndIdx = i; } else { break; }
+        }
 
-          // === スワップ成立 ===
-          console.log(`[Phase 2.5] 水平スワップ成立 @${time}: ` +
-            `${freeAst.id}→${assignedReq.reservationId}(slot${assignedReq.slotIndex}), ` +
-            `${assignedAst.id}→${shortfallReq.reservationId}(slot${shortfallReq.slotIndex})`);
+        const fullChainTicks = sortedTimes.slice(chainStartIdx, chainEndIdx + 1);
+        const chainLength = fullChainTicks.length;
 
-          // 1. 既存アサインの担当者を F に置き換え
-          assignment.assistantId = freeAst.id;
+        // ── チェーン開始Tickで空いているアシスタント(F)を探す ──
+        const chainStartTS = nextState.timeSlots[fullChainTicks[0]];
+        if (!chainStartTS) continue;
 
-          // 2. 解放された A を不足箇所にアサイン
-          timeSlot.assignments.push({
+        // チェーン開始Tickのタスク要件（F に必要なスキルの判定用）
+        const chainStartReq = chainStartTS.requirements.find(r =>
+          `${r.reservationId}_${r.slotIndex}` === busyTaskKey
+        );
+        if (!chainStartReq) continue;
+
+        // 候補 F をソート: 累計アサイン数が少ない順（お客様ファースト原則）
+        const candidateFreeIds = [...(chainStartTS.freePoolStaffIds || [])];
+        candidateFreeIds.sort((idA, idB) => {
+          const countA = nextState.tracker[idA]?.totalAssignedSlots || 0;
+          const countB = nextState.tracker[idB]?.totalAssignedSlots || 0;
+          return countA - countB;
+        });
+
+        for (const freeId of candidateFreeIds) {
+          const freeAst = assistantMap.get(freeId);
+          if (!freeAst) continue;
+
+          // F がチェーンタスクのスキルを持つか
+          if (!hasSkill(freeAst, chainStartReq.requiredSkill, chainStartReq.minSkillLevel)) continue;
+
+          // F がチェーン全期間にわたって空いているか確認
+          let freeForEntireChain = true;
+          for (const chainTime of fullChainTicks) {
+            const chainTS = nextState.timeSlots[chainTime];
+            if (!chainTS || !(chainTS.freePoolStaffIds || []).includes(freeAst.id)) {
+              freeForEntireChain = false;
+              break;
+            }
+          }
+          if (!freeForEntireChain) continue;
+
+          // ═══════════════════════════════════════════
+          //  チェーンスワップ成立！
+          // ═══════════════════════════════════════════
+          console.log(
+            `[Phase 2.5 Backward Sweep] チェーンスワップ成立: ` +
+            `${busyAst.id} → ${freeAst.id} (タスク ${busyTaskKey}, ` +
+            `${fullChainTicks[0]}〜${fullChainTicks[chainLength - 1]}, ${chainLength}Tick) ` +
+            `→ ${busyAst.id} を @${shortfallTime} の不足に配置`
+          );
+
+          // ── 全チェーンTickで A → F に置き換え ──
+          for (const chainTime of fullChainTicks) {
+            const chainTS = nextState.timeSlots[chainTime];
+
+            // アサインの担当者を A → F に変更
+            for (const ca of chainTS.assignments) {
+              if (ca.assistantId !== busyAst.id) continue;
+              const caReq = chainTS.requirements.find(r => r.id === ca.requirementId);
+              if (caReq && `${caReq.reservationId}_${caReq.slotIndex}` === busyTaskKey) {
+                ca.assistantId = freeAst.id;
+                break;
+              }
+            }
+
+            // freePoolStaffIds の更新
+            chainTS.freePoolStaffIds = chainTS.freePoolStaffIds.filter(id => id !== freeAst.id);
+            if (chainTime !== shortfallTime && !chainTS.freePoolStaffIds.includes(busyAst.id)) {
+              // shortfallTime 以外では A は解放（freePool に復帰）
+              chainTS.freePoolStaffIds.push(busyAst.id);
+            }
+          }
+
+          // ── shortfallTime で A を不足タスクにアサイン ──
+          shortfallTS.assignments.push({
             requirementId: shortfallReq.id,
-            assistantId: assignedAst.id
+            assistantId: busyAst.id
           });
 
-          // 3. freePoolStaffIds から F を除外（A は元々プールにいないので操作不要）
-          timeSlot.freePoolStaffIds = timeSlot.freePoolStaffIds.filter(id => id !== freeAst.id);
+          // ── tracker の更新（イミュータブル） ──
+          // A: チェーンから外れ(-N)、不足に配置(+1) → 純減 -(N-1)
+          //    ただし shortfallTime の分は「タスク入替」なので±0 → 純減 -(chainLength-1)
+          const aTracker = nextState.tracker[busyAst.id] || { totalAssignedSlots: 0, hasLunch: false, hasBreak: false };
+          nextState.tracker = {
+            ...nextState.tracker,
+            [busyAst.id]: {
+              ...aTracker,
+              totalAssignedSlots: Math.max(0, aTracker.totalAssignedSlots - (chainLength - 1))
+            }
+          };
 
-          // 4. tracker の更新（F に +1、A は既にカウント済みなので変更なし）
+          // F: チェーン全Tickに新規配置(+chainLength)
           const fTracker = nextState.tracker[freeAst.id] || { totalAssignedSlots: 0, hasLunch: false, hasBreak: false };
           nextState.tracker = {
             ...nextState.tracker,
             [freeAst.id]: {
               ...fTracker,
-              totalAssignedSlots: fTracker.totalAssignedSlots + 1
+              totalAssignedSlots: fTracker.totalAssignedSlots + chainLength
             }
           };
 
-          // 5. ongoingTasks の更新
+          // ── ongoingTasks の更新 ──
           if (!nextState.ongoingTasks) nextState.ongoingTasks = {};
-          const assignedTaskKey = `${assignedReq.reservationId}_${assignedReq.slotIndex}`;
+          nextState.ongoingTasks[busyTaskKey] = freeAst.id;
           const shortfallTaskKey = `${shortfallReq.reservationId}_${shortfallReq.slotIndex}`;
-          nextState.ongoingTasks[assignedTaskKey] = freeAst.id;
-          nextState.ongoingTasks[shortfallTaskKey] = assignedAst.id;
+          nextState.ongoingTasks[shortfallTaskKey] = busyAst.id;
 
           // マーキング
           resolvedReqIds.add(unassigned.requirementId);
-          usedFreeIds.add(freeAst.id);
-          swapped = true;
-          break;
+          resolved = true;
+          break; // F が見つかったので候補探索終了
         }
-        if (swapped) break;
+        if (resolved) break; // 不足が解消されたのでアシスタント探索終了
       }
     }
 
-    // 解決された不足要件を unassignedReqs から除去
+    // 解消された不足を unassignedReqs から除去
     if (resolvedReqIds.size > 0) {
-      timeSlot.unassignedReqs = timeSlot.unassignedReqs.filter(
+      shortfallTS.unassignedReqs = shortfallTS.unassignedReqs.filter(
         u => !resolvedReqIds.has(u.requirementId)
       );
-      console.log(`[Phase 2.5] @${time}: ${resolvedReqIds.size}件の不足を水平スワップで解消`);
+      console.log(`[Phase 2.5 Backward Sweep] @${shortfallTime}: ${resolvedReqIds.size}件の不足を解消`);
     }
-  });
+  }
 
   return nextState;
 }
