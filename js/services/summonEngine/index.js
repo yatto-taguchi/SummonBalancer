@@ -234,7 +234,8 @@ export class SummonEngine {
         }
 
         // === セグメントから表示テキストを時系列順に生成 ===
-        const displayParts = [];
+        const displayParts = [];    // 通常アサイン名
+        const gapHelpParts = [];    // スキマヘルプ名（分離表示用）
         let totalUnassignedTicks = 0;
         const hasManncell = data.manncells.length > 0;
         const isCoveredByManncell = hasManncell || manncellSlotKeys.has(`${resId}_${slotIndex}`);
@@ -314,11 +315,14 @@ export class SummonEngine {
             if (!isSelf) {
               // 通常のアサインセグメント（自身以外、またはSP特殊召喚）
               const staffName = staffObj ? (staffObj.nickname || staffObj.name) : seg.staffId;
-              
-              let namePrefix = '';
-              if (isGapHelp) namePrefix = '☆';
 
-              displayParts.push(`${namePrefix}${staffName}(${minutes}分)`);
+              if (isGapHelp) {
+                // スキマヘルプ → 専用配列に分離して追加
+                gapHelpParts.push(`☆${staffName}(${minutes}分)`);
+              } else {
+                // 通常アサイン → displayParts に追加
+                displayParts.push(`${staffName}(${minutes}分)`);
+              }
               
               // アサインされたのがスタイリストであり、かつ「召喚バッジ」を持っている場合のみ uiStylistSummons に登録する
               // （バッジなしの場合は単なるアシスタント枠として helperBlocks へ流れる）
@@ -378,15 +382,18 @@ export class SummonEngine {
           seg.staffId === fixedReqInSlot.fixedAssistantId
         );
 
+        // === uiAssignments の出力: 全面オブジェクト化 { text, gapHelps } ===
+        const gapHelpsText = gapHelpParts.join(' → ');
+
         if (hasFixedSegment && fixedReqInSlot) {
           // 固定スタッフが実際にアサインされている → スタッフ実IDを直接出力
-          uiAssignments[resId][slotIndex] = fixedReqInSlot.fixedAssistantId;
+          uiAssignments[resId][slotIndex] = { text: fixedReqInSlot.fixedAssistantId, gapHelps: gapHelpsText, isFixedId: true };
         } else if (hasManncell) {
           // 固定なし + マンセル → チーム全員の名前で統一表示
-          uiAssignments[resId][slotIndex] = `__manncell__::${manncellTeamText}`;
+          uiAssignments[resId][slotIndex] = { text: `__manncell__::${manncellTeamText}`, gapHelps: gapHelpsText };
         } else {
           // 固定なし + 非マンセル → 通常の表示テキスト
-          uiAssignments[resId][slotIndex] = displayParts.join(' → ');
+          uiAssignments[resId][slotIndex] = { text: displayParts.join(' → '), gapHelps: gapHelpsText };
         }
       });
     });

@@ -908,11 +908,170 @@ export class MainView {
       // レーンに応じてtopを設定
       const lane = laneMap.get(res.id) || 0;
       if (block._element) {
+        block._element.dataset.lane = lane;
         block._element.style.top = `${lane * CELL_HEIGHT + 2}px`;
         block._element.style.height = `${CELL_HEIGHT - 4}px`;
       }
 
       this.reservationBlocks.push(block);
+    });
+  }
+
+  /**
+   * 同一レーン内のブロック高さを最大値に揃え、タイムライン行の高さも再計算する
+   * updateAssistants / updateGanbare の呼び出し後に実行する
+   * @private
+   */
+  _equalizeBlockHeights() {
+    const CELL_HEIGHT = 60;
+    const timelineArea = this.container.querySelector('#timeline-area');
+    if (!timelineArea) return;
+
+    // スタイリストごと・レーンごとにブロックをグループ化
+    const blocksByRow = new Map(); // stylistId -> Map(lane -> [blockElement])
+    this.reservationBlocks.forEach(block => {
+      if (!block._element || !block.reservation) return;
+      const stylistId = block.reservation.stylistId;
+      
+      // dataset.laneからレーン情報を取得（動的なtop変更に依存しないため）
+      let lane = 0;
+      if (block._element.dataset.lane !== undefined) {
+        lane = parseInt(block._element.dataset.lane, 10);
+      } else {
+        const topPx = parseFloat(block._element.style.top) || 0;
+        lane = Math.round(topPx / CELL_HEIGHT);
+      }
+
+      if (!blocksByRow.has(stylistId)) blocksByRow.set(stylistId, new Map());
+      const laneMap = blocksByRow.get(stylistId);
+      if (!laneMap.has(lane)) laneMap.set(lane, []);
+      laneMap.get(lane).push(block._element);
+    });
+
+    // 各レーン内で最大高さに揃える ＋ 上段から累積してtop座標を押し下げる
+    blocksByRow.forEach((laneMap, stylistId) => {
+      let neededHeight = 0;
+      const maxLane = Math.max(...laneMap.keys());
+      let currentTop = 2; // レーン0の開始Y座標（上部余白）
+
+      for (let l = 0; l <= maxLane; l++) {
+        const elements = laneMap.get(l) || [];
+        let maxHeight = CELL_HEIGHT - 4; // 最低保証高さ
+        
+        elements.forEach(el => {
+          // auto伸張による暴走を防ぐため、reservation.js で明示的に設定された height プロパティを読む
+          const currentHeight = parseFloat(el.style.height) || (CELL_HEIGHT - 4);
+          if (currentHeight > maxHeight) maxHeight = currentHeight;
+        });
+
+        // 同一レーン内の全ブロックを最大高さに統一し、直前までの累積高さ(currentTop)に配置
+        elements.forEach(el => {
+          el.style.height = `${maxHeight}px`;
+          el.style.top = `${currentTop}px`;
+        });
+
+        const laneH = maxHeight + 4; // ブロックの高さ + ブロック間の隙間(4px)
+        currentTop += laneH;
+        neededHeight += laneH;
+      }
+      neededHeight += 15; // ドロップ用の隙間
+
+      const rowEl = timelineArea.querySelector(`.timeline-row[data-stylist-id="${stylistId}"]`);
+      if (rowEl) {
+        rowEl.style.minHeight = `${neededHeight}px`;
+        const cells = rowEl.querySelectorAll('.timeline-cell');
+        cells.forEach(cell => { cell.style.height = `${neededHeight}px`; });
+      }
+    });
+  }
+
+  /**
+   * レーン未割り当ての全仮想ブロックを対象に、重ならないように統合レーンを計算する
+   * @private
+   */
+  _assignLanesToVirtualBlocks() {
+    // 1. 各スタッフごと（行ごと）に、すでにレーンが確定しているブロックと未確定のブロックを分ける
+    const byRow = new Map();
+    
+    this.reservationBlocks.forEach(block => {
+      if (!block._element || !block.reservation) return;
+      const staffId = block.reservation.stylistId; // 行のIDとして機能する
+      
+      if (!byRow.has(staffId)) {
+        byRow.set(staffId, { hasLane: [], needsLane: [] });
+      }
+      
+      if (block._element.dataset.lane !== undefined) {
+        byRow.get(staffId).hasLane.push(block);
+      } else {
+        byRow.get(staffId).needsLane.push(block);
+      }
+    });
+
+    // 2. スタッフごとにレーン割り当てを処理
+    byRow.forEach((group) => {
+      if (group.needsLane.length === 0) return; // 新規割り当て不要
+
+      // 既存のレーン状況を把握（lanes配列: インデックス=レーン番号、値=そのレーンに配置された全ブロックの区間リスト）
+      const lanes = [];
+      group.hasLane.forEach(block => {
+        const lane = parseInt(block._element.dataset.lane, 10);
+        const startMin = parseFloat(block._element.dataset.startMin) || 0;
+        const endMin = parseFloat(block._element.dataset.endMin) || (startMin + 30);
+        
+        while (lanes.length <= lane) {
+          lanes.push([]);
+        }
+        lanes[lane].push({ start: startMin, end: endMin });
+      });
+
+      // 優先度判定（1:確定タスク, 2:フリータイム等, 3:流動的タスク）※数値が小さいほど高優先
+      const getPriority = (res) => {
+        if (!res) return 99;
+        if (res.activityType === 'helper') return 1;
+        if (res.activityType === 'ganbare') return 3;
+        return 2; // その他（free_time等）
+      };
+
+      // 未割り当てのブロックを「優先度（高→低）」次に「開始時間（早→遅）」でソート
+      group.needsLane.sort((a, b) => {
+        const pA = getPriority(a.reservation);
+        const pB = getPriority(b.reservation);
+        if (pA !== pB) return pA - pB;
+        
+        const aStart = parseFloat(a._element.dataset.startMin) || 0;
+        const bStart = parseFloat(b._element.dataset.startMin) || 0;
+        return aStart - bStart;
+      });
+
+      // レーンの割り当て
+      group.needsLane.forEach(block => {
+        const startMin = parseFloat(block._element.dataset.startMin) || 0;
+        const endMin = parseFloat(block._element.dataset.endMin) || (startMin + 30);
+
+        let assignedLane = -1;
+        // 既存のレーンで空いている場所（区間が被らない場所）を探す
+        for (let i = 0; i < lanes.length; i++) {
+          const overlaps = lanes[i].some(interval => interval.start < endMin && interval.end > startMin);
+          if (!overlaps) {
+            assignedLane = i;
+            break;
+          }
+        }
+        
+        // 空きがなければ新しいレーンを追加
+        if (assignedLane === -1) {
+          assignedLane = lanes.length;
+          lanes.push([]);
+        }
+        
+        lanes[assignedLane].push({ start: startMin, end: endMin });
+
+        // ブロックにレーン情報を登録し、Y座標の初期値をセット（_equalizeBlockHeightsで累積補正される）
+        const CELL_HEIGHT = 60;
+        block._element.dataset.lane = assignedLane;
+        block._element.style.top = `${assignedLane * CELL_HEIGHT + 2}px`;
+      });
     });
   }
 
@@ -1095,7 +1254,10 @@ export class MainView {
       const resConcurrent = result.concurrentAssignments ? result.concurrentAssignments[res.id] : null;
       res.assignedAssistants = {};
       if (resAssign) {
-        for (const [slotIdx, astId] of Object.entries(resAssign)) {
+        for (const [slotIdx, rawAssign] of Object.entries(resAssign)) {
+          // === 新オブジェクト形式 { text, gapHelps } からデータを抽出 ===
+          const astId = (typeof rawAssign === 'object' && rawAssign !== null) ? rawAssign.text : rawAssign;
+
           // マンセル（チーム制）マーカーの検出: "__manncell__::チーム名" 形式
           if (typeof astId === 'string' && astId.startsWith('__manncell__::')) {
             const manncellTeam = astId.substring('__manncell__::'.length);
@@ -1221,8 +1383,19 @@ export class MainView {
       const blockAlerts = result.alerts.filter(a => a.reservationId === block.reservation?.id);
       
       const mappedAssign = {};
+      const mappedGapHelps = {};  // スキマヘルプ情報（スロットごと）
       if (resAssign) {
-        for (const [slotIdx, astId] of Object.entries(resAssign)) {
+        for (const [slotIdx, rawAssign] of Object.entries(resAssign)) {
+          // === 新オブジェクト形式 { text, gapHelps, isFixedId? } からデータを抽出 ===
+          const astId = (typeof rawAssign === 'object' && rawAssign !== null) ? rawAssign.text : rawAssign;
+          const gapHelps = (typeof rawAssign === 'object' && rawAssign !== null) ? (rawAssign.gapHelps || '') : '';
+          const isFixedId = (typeof rawAssign === 'object' && rawAssign !== null) ? !!rawAssign.isFixedId : false;
+
+          // スキマヘルプ情報を保存
+          if (gapHelps) {
+            mappedGapHelps[slotIdx] = gapHelps;
+          }
+
           // マンセル（チーム制）マーカーの検出: "__manncell__::チーム名" 形式
           if (typeof astId === 'string' && astId.startsWith('__manncell__::')) {
             const manncellTeam = astId.substring('__manncell__::'.length);
@@ -1234,7 +1407,9 @@ export class MainView {
             continue;
           }
 
-          const staff = staffMap.get(astId);
+          // 固定ID形式の場合はスタッフIDとして解決
+          const resolveId = isFixedId ? astId : astId;
+          const staff = staffMap.get(resolveId);
           const cInfo = resConcurrent ? resConcurrent[slotIdx] : null;
           const isConcurrent = typeof cInfo === 'boolean' ? cInfo : !!(cInfo && cInfo.isConcurrent);
           const partnerIds = (typeof cInfo === 'object' && cInfo) ? (cInfo.partnerIds || []) : [];
@@ -1257,7 +1432,7 @@ export class MainView {
         }
       }
       const isInManncell = result.manncells && block.reservation && result.manncells.some(m => m.reservationIds.includes(block.reservation.id));
-      block.updateAssistants(mappedAssign, blockAlerts, isInManncell);
+      block.updateAssistants(mappedAssign, blockAlerts, isInManncell, mappedGapHelps);
       block.updateGanbare();  // 頑張れ配置の表示も更新
     });
 
@@ -1421,7 +1596,7 @@ export class MainView {
           isVirtualActivity: true,
           activityType: 'helper',
           colorCode: isStylist ? '#f59e0b' : colorCode,
-          activityLabel: hb.isGapHelp ? `☆${stylistName}` : (isStylist ? `特殊召喚 (${stylistName}へ)` : stylistName)
+          activityLabel: hb.isGapHelp ? `⭐${stylistName}` : (isStylist ? `特殊召喚 (${stylistName}へ)` : stylistName)
         };
 
         const timelineArea = this.container.querySelector('#timeline-area');
@@ -1485,6 +1660,12 @@ export class MainView {
 
     // === 頑張れ配置バーチャルブロック ===
     this._renderGanbareVirtualBlocks();
+
+    // タイムラインの全仮想ブロック（ヘルプ、活動、頑張れ等）のレーンを一括で計算し直す
+    this._assignLanesToVirtualBlocks();
+
+    // タイムライン行の高さを再計算（スタイリスト行・アシスタント行の両方のバーチャルブロックを含めて均等化）
+    this._equalizeBlockHeights();
 
     // スタイリスト召喚バッジ表示
     this._renderSummonBadges(result.stylistSummons, stylists);
@@ -2119,7 +2300,8 @@ export class MainView {
     const endStr = this._formatTime(reservation.endTime);
 
     let assignHtml = '';
-    Object.entries(assignInfo).forEach(([slotIdx, assistantId]) => {
+    Object.entries(assignInfo).forEach(([slotIdx, rawAssign]) => {
+      const assistantId = (typeof rawAssign === 'object' && rawAssign !== null) ? rawAssign.text : rawAssign;
       const assistant = staffMap.get(assistantId);
       assignHtml += `<div style="font-size: 13px; color: var(--text-secondary); padding: 4px 0;">
         スロット${parseInt(slotIdx) + 1}: ${assistant ? assistant.name : assistantId}
@@ -2743,7 +2925,7 @@ export class MainView {
             isVirtualActivity: true,
             activityType: 'ganbare',
             colorCode: '#f97316',
-            activityLabel: `🔥 ${stylistName}へ応援`,
+            activityLabel: `🔥 ${stylistName}`,
             assignedAssistants: {}
           };
 
@@ -2756,7 +2938,21 @@ export class MainView {
             block._element.style.background = 'rgba(249,115,22,0.15)';
             block._element.style.border = '1.5px dashed #f97316';
             block._element.style.zIndex = '3';
+
+            // 「頑張れ」バッジを物理的に追加
+            const ganbareBadge = document.createElement('div');
+            ganbareBadge.textContent = '頑張れ';
+            ganbareBadge.style.cssText = `
+              position: absolute; top: 1px; right: 2px;
+              font-size: 8px; color: #fff;
+              background: #f97316; padding: 1px 3px;
+              border-radius: 2px; z-index: 20;
+              pointer-events: none;
+            `;
+            block._element.appendChild(ganbareBadge);
           }
+
+          this.reservationBlocks.push(block); // 統合レーン計算の対象に含めるために登録
         }
       }
     }

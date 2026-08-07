@@ -266,7 +266,7 @@ export class ReservationBlock {
           if (res.activityType === 'free_time' && res.freeTimeSelection) {
             colorCode = '#14b8a6'; // ティール: 選択済み
           }
-          blockLabel = style.label;
+          blockLabel = res.activityLabel || style.label;
         }
         backgroundStyle = `linear-gradient(135deg, ${colorCode}44, ${colorCode}22)`;
         borderStyle = `1px solid ${colorCode}88`;
@@ -312,6 +312,7 @@ export class ReservationBlock {
     block.style.width = `${widthPct}%`;
     block.style.top = '2px';
     block.style.height = `${CELL_HEIGHT - 4}px`;
+    // minHeightによる自動伸張はレイアウト崩れの原因になるため廃止
     block.style.background = backgroundStyle;
     block.style.border = borderStyle;
     if (isVirtual) {
@@ -1331,7 +1332,7 @@ export class ReservationBlock {
     }
   }
 
-  updateAssistants(assignments, blockAlerts, isInManncell = false) {
+  updateAssistants(assignments, blockAlerts, isInManncell = false, gapHelpsMap = {}) {
     this._reservation.assignedAssistants = assignments;
     if (this._element) {
       const slotsContainer = this._element.querySelector('.reservation-slots');
@@ -1341,6 +1342,10 @@ export class ReservationBlock {
           let assistantEl = slotEl.querySelector('.slot-assistant');
           const isFixed = this._reservation.fixedAssistants && this._reservation.fixedAssistants[idx];
           const slotAlert = blockAlerts ? blockAlerts.find(a => a.slotIndex === idx) : null;
+
+          // 既存のスキマヘルプ要素をクリーンアップ
+          const oldGapHelp = slotEl.querySelector('.slot-gap-help-text');
+          if (oldGapHelp) oldGapHelp.remove();
 
           if (!assistantEl) {
             assistantEl = document.createElement('span');
@@ -1422,6 +1427,15 @@ export class ReservationBlock {
             const oldBadge3 = slotEl.querySelector('.slot-concurrent-badge');
             if (oldBadge3) oldBadge3.remove();
           }
+
+          // === スキマヘルプの段を追加（通常アサイン名の下に表示） ===
+          const gapHelpText = gapHelpsMap[idx] || gapHelpsMap[String(idx)] || '';
+          if (gapHelpText) {
+            const gapHelpEl = document.createElement('span');
+            gapHelpEl.className = 'slot-gap-help-text';
+            gapHelpEl.textContent = gapHelpText;
+            slotEl.appendChild(gapHelpEl);
+          }
         });
       }
 
@@ -1468,6 +1482,38 @@ export class ReservationBlock {
         slotEl.appendChild(ganbareEl);
       }
     });
+
+    // 文字の段数に応じて高さをピクセル単位で明示的に調整する
+    this._adjustHeightForContent();
+  }
+
+  /**
+   * スロット内の段数（通常/スキマ/頑張れ）に応じてブロック高さをピクセル単位で明示的に設定する
+   * @private
+   */
+  _adjustHeightForContent() {
+    if (!this._element) return;
+    const slotsContainer = this._element.querySelector('.reservation-slots');
+    if (!slotsContainer) return;
+
+    let maxLines = 1; // 最低1段（通常アサインの枠）
+    const slotEls = slotsContainer.querySelectorAll('.assistant-slot');
+    slotEls.forEach(slotEl => {
+      let lines = 1;
+      if (slotEl.querySelector('.slot-gap-help-text')) lines++;
+      if (slotEl.querySelector('.slot-ganbare-text')) lines++;
+      if (lines > maxLines) maxLines = lines;
+    });
+
+    // 1段追加されるごとに +12px する
+    const extraHeight = (maxLines - 1) * 12;
+    
+    // ベース高さを固定値として取得 (CELL_HEIGHT=60 を前提)
+    const BASE_BLOCK_HEIGHT = 56; 
+    const BASE_SLOTS_HEIGHT = 36; 
+
+    this._element.style.height = `${BASE_BLOCK_HEIGHT + extraHeight}px`;
+    slotsContainer.style.height = `${BASE_SLOTS_HEIGHT + extraHeight}px`;
   }
 
   /**

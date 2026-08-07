@@ -2047,3 +2047,16 @@ body.is-resizing .reservation-resize-handle {
 .gap-help-block .reservation-header {
   background: rgba(255, 215, 0, 0.1) !important;
 }
+
+/* スキマヘルプ名の段（スロット内、通常アサイン名の下に表示） */
+.slot-gap-help-text {
+  font-size: 8px;
+  display: block;
+  color: #FFD700;
+  font-weight: bold;
+  white-space: nowrap;
+  margin-top: 1px;
+  transform: scale(0.85);
+  transform-origin: left top;
+  line-height: 1.2;
+}
