@@ -478,6 +478,17 @@ export function loadSOSRequests(date) {
   return data;
 }
 
+/**
+ * 指定日のSOS要請を削除する
+ * @param {string} date - 日付文字列（YYYY-MM-DD形式）
+ * @param {string} sosId - SOSのID
+ */
+export function deleteSOSRequest(date, sosId) {
+  const sosList = loadSOSRequests(date);
+  const filtered = sosList.filter(s => s.id !== sosId);
+  saveData(getSOSKey(date), filtered);
+}
+
 // ──────────────────────────────────────────────
 // スキル管理
 // ──────────────────────────────────────────────

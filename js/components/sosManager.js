@@ -94,7 +94,7 @@ class SOSManager {
       </h3>
       <p style="font-size: 13px; color: var(--text-secondary, #94a3b8); margin-bottom: 16px;">
         この予約に対して、アシスタント全員にヘルプを要請する時間を指定してください。<br>
-        <span style="color: #ef4444;">※一度要請したSOSは取り消せません。</span>
+        <span style="color: #ef4444;">※タイムライン上部の赤いテキスト帯をクリックすると解除できます。</span>
       </p>
       
       <div style="margin-bottom: 12px;">
@@ -273,9 +273,12 @@ class SOSManager {
         line-height: ${SOS_TEXT_HEIGHT - 4}px;
         height: ${SOS_TEXT_HEIGHT}px;
         box-sizing: border-box;
+        pointer-events: auto;
+        cursor: pointer;
       `;
-      text.textContent = `🚨 ${sos.stylistName} SOS ${sos.startTime}〜${sos.endTime}`;
-
+      text.textContent = `🚨 ${sos.stylistName} SOS ${sos.startTime}〜${sos.endTime} ✕`;
+      
+      // テンプレート用のテキストバッジ（クリックイベントは複製後に追加する）
       // 点線エリア（時間範囲の視覚マーク）
       const band = document.createElement('div');
       band.style.cssText = `
@@ -296,7 +299,22 @@ class SOSManager {
       const allRows = timelineArea.querySelectorAll('.timeline-row .timeline-cells');
       
       allRows.forEach(cellsContainer => {
-        cellsContainer.appendChild(wrapper.cloneNode(true));
+        const clonedWrapper = wrapper.cloneNode(true);
+        // clonedWrapperの最初の子要素がテキストバッジ
+        const clonedText = clonedWrapper.firstChild;
+        
+        // クローンされたテキストバッジに対してクリックイベントを登録
+        clonedText.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (window.confirm('このSOSを解除しますか？')) {
+            Storage.deleteSOSRequest(this.currentDate, sos.id);
+            if (this.mainView) {
+              this.mainView.refresh();
+            }
+          }
+        });
+
+        cellsContainer.appendChild(clonedWrapper);
       });
     });
   }
