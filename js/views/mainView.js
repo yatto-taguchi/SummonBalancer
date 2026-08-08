@@ -16,6 +16,7 @@ import { FatigueBar } from '../components/fatigueBar.js?v=6';
 import { AlertBadge } from '../components/alertBadge.js';
 import { FreeTimeModal } from '../components/freeTimeModal.js?v=2';
 import accordionManager from '../components/accordionManager.js';
+import { sosManager } from '../components/sosManager.js';
 
 export class MainView {
   /**
@@ -42,6 +43,9 @@ export class MainView {
 
     // コンポーネントからアクセスできるようにグローバル参照を保存
     window.__mainViewInstance = this;
+
+    // SOSモードの初期化
+    sosManager.init(this);
 
     /** @type {Timeline|null} */
     this.timeline = null;
@@ -678,12 +682,26 @@ export class MainView {
 
     toolbar.appendChild(modeWrapper);
 
+    // SOS・更新の2列ラッパー
+    const sosRefreshWrapper = document.createElement('div');
+    sosRefreshWrapper.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
+
+    // SOSボタン
+    const sosBtn = document.createElement('button');
+    sosBtn.className = 'menu-bar-toolbar-btn';
+    sosBtn.dataset.action = 'sos-mode';
+    sosBtn.innerHTML = '🆘 SOS';
+    if (sosManager.isSOSMode) sosBtn.classList.add('active');
+    sosRefreshWrapper.appendChild(sosBtn);
+
     // 更新ボタン
     const refreshBtn = document.createElement('button');
     refreshBtn.className = 'menu-bar-toolbar-btn';
     refreshBtn.dataset.action = 'refresh';
     refreshBtn.innerHTML = '🔄 更新';
-    toolbar.appendChild(refreshBtn);
+    sosRefreshWrapper.appendChild(refreshBtn);
+
+    toolbar.appendChild(sosRefreshWrapper);
 
     // 当日リセットボタン
     const resetBtn = document.createElement('button');
@@ -743,6 +761,10 @@ export class MainView {
           this.toggleGanbareMode();
           btn.classList.toggle('active', this.isGanbareMode);
           break;
+        case 'sos-mode':
+          const isActive = sosManager.toggleMode();
+          btn.classList.toggle('active', isActive);
+          break;
         case 'refresh':
           window.location.reload();
           break;
@@ -758,6 +780,9 @@ export class MainView {
    * @private
    */
   _initComponents() {
+    // 起動時および再描画時に、SOSマネージャーへ確実に今日の日付を同期する
+    sosManager.setDate(this.currentDate);
+
     const dateStr = this._formatDate(this.currentDate);
     const allStylists = Storage.loadStylists();
     const stylists = allStylists.filter(s => s.isWorkingOn(dateStr));
@@ -813,6 +838,11 @@ export class MainView {
 
     // 予約ブロック
     this._renderReservationBlocks(reservations, menus);
+
+    // サーバー更新等による再描画時にもSOS帯を復元する
+    if (timelineArea) {
+      sosManager.drawSOSBands(timelineArea);
+    }
   }
 
   /**
@@ -925,8 +955,18 @@ export class MainView {
    */
   _equalizeBlockHeights() {
     const CELL_HEIGHT = 60;
+    const SOS_BAND_OFFSET = 48; // テキスト飛び出し(20px) + 点線帯(24px) + 余白(4px)
     const timelineArea = this.container.querySelector('#timeline-area');
     if (!timelineArea) return;
+
+    // SOS帯が存在する行のIDを収集する
+    const rowsWithSOS = new Set();
+    timelineArea.querySelectorAll('.sos-band').forEach(band => {
+      const row = band.closest('.timeline-row');
+      if (row && row.dataset.stylistId) {
+        rowsWithSOS.add(row.dataset.stylistId);
+      }
+    });
 
     // スタイリストごと・レーンごとにブロックをグループ化
     const blocksByRow = new Map(); // stylistId -> Map(lane -> [blockElement])
@@ -953,7 +993,11 @@ export class MainView {
     blocksByRow.forEach((laneMap, stylistId) => {
       let neededHeight = 0;
       const maxLane = Math.max(...laneMap.keys());
-      let currentTop = 2; // レーン0の開始Y座標（上部余白）
+
+      // SOS帯が存在する行は、ブロックの開始位置を帯の高さ分だけ下にずらす
+      const hasSOSBand = rowsWithSOS.has(stylistId);
+      let currentTop = hasSOSBand ? (2 + SOS_BAND_OFFSET) : 2; // レーン0の開始Y座標
+      if (hasSOSBand) neededHeight += SOS_BAND_OFFSET;
 
       for (let l = 0; l <= maxLane; l++) {
         const elements = laneMap.get(l) || [];
@@ -1437,8 +1481,18 @@ export class MainView {
       block.updateGanbare();  // 頑張れ配置の表示も更新
     });
 
-    // 既存のバーチャルブロックをクリーンアップ
-    this.container.querySelectorAll('.reservation-block.summon-virtual-block, .reservation-block.activity-virtual-block').forEach(el => el.remove());
+    // 既存のバーチャルブロックをクリーンアップ（DOMおよび配列から完全に除去）
+    const virtualEls = this.container.querySelectorAll('.reservation-block.summon-virtual-block, .reservation-block.activity-virtual-block');
+    virtualEls.forEach(el => el.remove());
+
+    this.reservationBlocks = this.reservationBlocks.filter(b => {
+      const el = b._element;
+      if (el && (el.classList.contains('summon-virtual-block') || el.classList.contains('activity-virtual-block') || el.classList.contains('helper-virtual-block') || el.classList.contains('gap-help-block'))) {
+        b.destroy(); // DOMからの削除とイベントリスナー解除
+        return false;
+      }
+      return true;
+    });
 
     // 1. スタイリスト召喚用バーチャルブロックの描画
     const virtualMenus = [
@@ -1702,6 +1756,23 @@ export class MainView {
     if (window.eventBus) {
       window.eventBus.emit('summonRequested', result);
     }
+
+    // SOS帯の再描画（タイムラインDOM再構築後に確実に復元する）
+    sosManager.setDate(this.currentDate);
+    const timelineAreaForSOS = this.container.querySelector('#timeline-area');
+    if (timelineAreaForSOS) {
+      sosManager.drawSOSBands(timelineAreaForSOS);
+    }
+
+    // SOS帯描画後に、ブロック群をSOS帯の高さ分だけ押し下げる（再計算）
+    this._equalizeBlockHeights();
+
+    // 予約ブロック上の🆘バッジを再適用（updateAssistants等で消失するため、最後に確実に適用）
+    this.reservationBlocks.forEach(block => {
+      if (block._element && block.reservation && !block.reservation.isVirtualActivity && !block.reservation.isVirtualSummon) {
+        sosManager.applySOSMarkToReservation(block.reservation, block._element);
+      }
+    });
   }
 
   /**
@@ -3103,7 +3174,18 @@ export class MainView {
    * 画面全体をリフレッシュする
    */
   refresh() {
-    this._runSummon();
+    try {
+      this._runSummon();
+    } catch (err) {
+      console.error('[MainView] _runSummon中にエラーが発生しましたが、後続の描画を継続します:', err);
+    }
+    
+    // SOSバンドの再描画
+    sosManager.setDate(this.currentDate);
+    const timelineArea = this.container.querySelector('#timeline-area');
+    if (timelineArea) {
+      sosManager.drawSOSBands(timelineArea);
+    }
   }
 
   /**

@@ -28,6 +28,9 @@ const KEY_MENUS = 'sb_menus';
 /** @constant {string} 予約リストのストレージキープレフィックス */
 const KEY_RESERVATIONS_PREFIX = 'sb_reservations_';
 
+/** @constant {string} SOSリストのストレージキープレフィックス */
+const KEY_SOS_PREFIX = 'sb_sos_';
+
 /** @constant {string} スキルリストのストレージキー */
 const KEY_SKILLS = 'sb_skills';
 
@@ -421,6 +424,58 @@ export function deleteReservation(date, id) {
   const reservations = loadReservations(date);
   const filtered = reservations.filter(r => r.id !== id);
   saveData(getReservationKey(date), filtered.map(r => r.toJSON()));
+}
+
+// ──────────────────────────────────────────────
+// SOS管理（日別）
+// ──────────────────────────────────────────────
+
+/**
+ * 日付文字列からSOSストレージキーを生成する
+ * @param {string} date - 日付文字列（YYYY-MM-DD形式）
+ * @returns {string} ストレージキー
+ */
+function getSOSKey(date) {
+  return `${KEY_SOS_PREFIX}${date}`;
+}
+
+/**
+ * SOS要請を保存する
+ * @param {string} date - 日付文字列（YYYY-MM-DD形式）
+ * @param {Object} sos - SOSオブジェクト { id, reservationId, stylistName, startTime, endTime }
+ */
+export function saveSOSRequest(date, sos) {
+  if (!date || typeof date !== 'string') {
+    throw new Error('日付は "YYYY-MM-DD" 形式で指定してください');
+  }
+
+  const sosList = loadSOSRequests(date);
+  const index = sosList.findIndex(s => s.id === sos.id);
+
+  if (index >= 0) {
+    sosList[index] = sos;
+  } else {
+    sosList.push(sos);
+  }
+
+  saveData(getSOSKey(date), sosList);
+}
+
+/**
+ * 指定日の全SOSを読み込む
+ * @param {string} date - 日付文字列（YYYY-MM-DD形式）
+ * @returns {Object[]} SOSの配列
+ */
+export function loadSOSRequests(date) {
+  if (!date || typeof date !== 'string') {
+    return [];
+  }
+
+  const data = loadData(getSOSKey(date));
+  if (!Array.isArray(data)) {
+    return [];
+  }
+  return data;
 }
 
 // ──────────────────────────────────────────────

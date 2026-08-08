@@ -10,6 +10,7 @@ import { AlertBadge } from './alertBadge.js';
 import * as Storage from '../services/storage.js';
 import { getFreeTimeLabel } from './freeTimeModal.js';
 import accordionManager from './accordionManager.js';
+import { sosManager } from './sosManager.js';
 import { Reservation } from '../models/reservation.js';
 
 /** セル幅(px) */
@@ -549,6 +550,7 @@ export class ReservationBlock {
       // クリックで詳細ポップアップ
       block.addEventListener('click', (e) => {
         e.stopPropagation();
+        if (sosManager.handleReservationClick(res, e)) return;
         this.showDetailPopup();
       }, { signal });
 
@@ -763,6 +765,9 @@ export class ReservationBlock {
 
     this._element = block;
     this._container.appendChild(block);
+
+    // SOSマークの適用
+    sosManager.applySOSMarkToReservation(res, block);
   }
 
   /**

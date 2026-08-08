@@ -480,9 +480,6 @@ async function initApp() {
         if (typeof currentViewInstance.refresh === 'function') {
           currentViewInstance.refresh();
         }
-        if (typeof currentViewInstance._runSummon === 'function') {
-          currentViewInstance._runSummon();
-        }
       }
     });
 
