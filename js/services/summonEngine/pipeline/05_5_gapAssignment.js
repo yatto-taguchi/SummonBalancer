@@ -198,6 +198,10 @@ export function executeGapAssignment(state) {
         if (s.id === req.stylistId) continue;
         if (busyGapStylists.has(s.id)) continue;
         
+        // 【ルール】単独予約（Tier 2）のスタイリストは、自席を離れての直接救援（SP特殊召喚）を行わない
+        const isSingleReservation = (timeSlot.stylistOverlapCounts[s.id] || 0) < 2;
+        if (isSingleReservation) continue;
+
         const sReqs = timeSlot.requirements.filter(r => r.stylistId === s.id && !r.skipAssignment);
         if (sReqs.length === 0) continue;
 
@@ -235,9 +239,9 @@ export function executeGapAssignment(state) {
       const targetWorkerId = assignedAssistantId || assignedStylistId;
       if (targetWorkerId) {
         // 【厳守事項2】データ構造とUI層への分離
-        if (shortfall.type === 'normal') {
-          timeSlot.unassignedReqs = timeSlot.unassignedReqs.filter(u => u.requirementId !== req.id);
-        }
+        // 【修正】隙間ヘルプは「不足の一時カバー」であり「解決」ではない。
+        // unassignedReqs は残し、後続Phase（5.6等）が引き続き不足を検知可能にする。
+        // 仕様書: 「赤枠（不足エラー）を共存させて表示する」
 
         const badge = isSpSpecialSummon ? 'sp_special_summon_gap' : 'gap_help';
         

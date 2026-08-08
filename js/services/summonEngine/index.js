@@ -185,6 +185,16 @@ export class SummonEngine {
             if (req) {
               const resId = req.reservationId;
               const slotIdx = req.slotIndex !== undefined ? req.slotIndex : 0;
+
+              // 【修正B】gap_help でカバー済みの不足は tickDetail に追加しない（二重カウント防止）
+              // Phase 5.5 で gap_help アサイン後も unassignedReqs を残す設計のため、
+              // 同一Tick に null(不足) と gap_help(アサイン) が共存する。
+              // gap_help 側の tickDetail で不足カウント・表示を一元管理するため、null は追加しない。
+              const hasGapHelpCover = ts.assignments?.some(a =>
+                a.requirementId === unreq.requirementId &&
+                (a.badges || []).some(b => b === 'gap_help' || b === 'sp_special_summon_gap')
+              );
+              if (hasGapHelpCover) return;
               
               if (!aggregation[resId]) aggregation[resId] = {};
               if (!aggregation[resId][slotIdx]) aggregation[resId][slotIdx] = { tickDetails: [], manncells: [] };
@@ -317,7 +327,9 @@ export class SummonEngine {
               const staffName = staffObj ? (staffObj.nickname || staffObj.name) : seg.staffId;
 
               if (isGapHelp) {
-                // スキマヘルプ → 専用配列に分離して追加
+                // 【修正C】スキマヘルプ → 不足テキスト + 専用配列に分離して追加
+                // 仕様書: 「赤枠（不足エラー）を共存させて表示する」
+                displayParts.push(`<span style="color: var(--accent-danger)">⚠不足(${minutes}分)</span>`);
                 gapHelpParts.push(`☆${staffName}(${minutes}分)`);
               } else {
                 // 通常アサイン → displayParts に追加

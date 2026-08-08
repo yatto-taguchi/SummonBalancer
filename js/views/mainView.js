@@ -999,6 +999,9 @@ export class MainView {
       let currentTop = hasSOSBand ? (2 + SOS_BAND_OFFSET) : 2; // レーン0の開始Y座標
       if (hasSOSBand) neededHeight += SOS_BAND_OFFSET;
 
+      const laneTops = [];
+      const laneHeights = [];
+
       for (let l = 0; l <= maxLane; l++) {
         const elements = laneMap.get(l) || [];
         let maxHeight = CELL_HEIGHT - 4; // 最低保証高さ
@@ -1008,6 +1011,9 @@ export class MainView {
           const currentHeight = parseFloat(el.style.height) || (CELL_HEIGHT - 4);
           if (currentHeight > maxHeight) maxHeight = currentHeight;
         });
+
+        laneTops[l] = currentTop;
+        laneHeights[l] = maxHeight;
 
         // 同一レーン内の全ブロックを最大高さに統一し、直前までの累積高さ(currentTop)に配置
         elements.forEach(el => {
@@ -1026,6 +1032,30 @@ export class MainView {
         rowEl.style.minHeight = `${neededHeight}px`;
         const cells = rowEl.querySelectorAll('.timeline-cell');
         cells.forEach(cell => { cell.style.height = `${neededHeight}px`; });
+
+        // マンセル枠の位置・高さを正確な座標で再計算
+        const manncells = rowEl.querySelectorAll('.manncell-block');
+        manncells.forEach(mb => {
+          const mMin = parseInt(mb.dataset.minLane, 10);
+          const mMax = parseInt(mb.dataset.maxLane, 10);
+          if (!isNaN(mMin) && !isNaN(mMax)) {
+            const actualMin = Math.max(0, Math.min(mMin, maxLane));
+            const actualMax = Math.max(0, Math.min(mMax, maxLane));
+            
+            const startY = laneTops[actualMin] !== undefined ? laneTops[actualMin] : (hasSOSBand ? (actualMin * CELL_HEIGHT + SOS_BAND_OFFSET + 2) : (actualMin * CELL_HEIGHT + 2));
+            const endY = laneTops[actualMax] !== undefined ? (laneTops[actualMax] + laneHeights[actualMax]) : (hasSOSBand ? ((actualMax + 1) * CELL_HEIGHT + SOS_BAND_OFFSET - 2) : ((actualMax + 1) * CELL_HEIGHT - 2));
+            
+            mb.style.top = `${startY - 2}px`;
+            mb.style.height = `${endY - startY + 4}px`;
+          }
+
+          // SOS帯がある行のマンセル枠には特殊クラスを付与
+          if (hasSOSBand) {
+            mb.classList.add('sos-manncell');
+          } else {
+            mb.classList.remove('sos-manncell');
+          }
+        });
       }
     });
   }

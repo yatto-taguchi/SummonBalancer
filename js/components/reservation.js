@@ -1411,7 +1411,16 @@ export class ReservationBlock {
               const fixedId = this._reservation.fixedAssistants ? this._reservation.fixedAssistants[idx] : null;
               const actuallyFixed = isFixed && (assignedId === fixedId);
               const nameStr = assignments[idx].nickname || assignments[idx].name || assignments[idx];
-              assistantEl.style.color = actuallyFixed ? '#fcd34d' : 'var(--accent-success)';
+
+              // 【修正D】gap_help による不足共存表示: 
+              // displayParts に ⚠不足 が含まれている場合（HTMLスパン内のインラインスタイルで赤色表示）、
+              // 親要素の色をdanger色に設定し、赤枠の視認性を高める。
+              const hasShortageText = typeof nameStr === 'string' && nameStr.includes('⚠不足');
+              if (hasShortageText) {
+                assistantEl.style.color = 'var(--accent-danger)';
+              } else {
+                assistantEl.style.color = actuallyFixed ? '#fcd34d' : 'var(--accent-success)';
+              }
               assistantEl.innerHTML = (actuallyFixed ? '📌 ' : '') + nameStr;
 
               // 兼任バッジの表示制御

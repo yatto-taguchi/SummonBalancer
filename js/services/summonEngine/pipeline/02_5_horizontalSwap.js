@@ -229,6 +229,15 @@ export function executeBackwardSweep(state) {
         for (const gapEntry of gapSeg.entries) {
           const gapTS = nextState.timeSlots[gapEntry.time];
           if (!gapTS) { directSwapOK = false; break; }
+
+          // 【修正】スキルチェック: A がこのタスクの本来のスキル要件を満たしているか
+          const gapReq = (gapTS.requirements || []).find(r => r.id === gapEntry.requirementId);
+          // ※ チェーンスワップ時の緩和(Lv1)とは異なり、直接昇格なので本来の minSkillLevel で厳格に判定する
+          if (!gapReq || !hasSkill(mainAst, gapReq.requiredSkill, gapReq.minSkillLevel)) {
+            console.log(`[Phase 5.6 診断] 直接置き換え中止: A(${mainAstId}) は ${gapReq?.requiredSkill}Lv${gapReq?.minSkillLevel} を満たさない`);
+            directSwapOK = false;
+            break;
+          }
           // A が本当にこのTickで空いているか（剥がし不能な本アサインがないか判定）
           const aIsBusy = gapTS.assignments.some(a =>
             a.assistantId === mainAstId &&
@@ -620,6 +629,30 @@ export function executeBackwardSweep(state) {
             if (chainTime !== shortfallTime && !chainTS.freePoolStaffIds.includes(busyAst.id)) {
               chainTS.freePoolStaffIds.push(busyAst.id);
             }
+          }
+
+          // 【修正E】通常アサインで不足を解消する場合、
+          // 同じ要件の既存 gap_help/sp_special_summon_gap を除去する
+          // （仕様書: 「通常の召喚が優先される」）
+          const removedGapHelps = shortfallTS.assignments.filter(a =>
+            a.requirementId === shortfallReq.id && isRemovableAssignment(a, shortfallTS)
+          );
+          shortfallTS.assignments = shortfallTS.assignments.filter(a =>
+            !(a.requirementId === shortfallReq.id && isRemovableAssignment(a, shortfallTS))
+          );
+          // 除去した gap_help アシスタントを freePool に戻し、tracker を減算
+          for (const removed of removedGapHelps) {
+            if (!shortfallTS.freePoolStaffIds.includes(removed.assistantId)) {
+              shortfallTS.freePoolStaffIds.push(removed.assistantId);
+            }
+            const rTracker = nextState.tracker[removed.assistantId] || { totalAssignedSlots: 0, hasLunch: false, hasBreak: false };
+            nextState.tracker = {
+              ...nextState.tracker,
+              [removed.assistantId]: {
+                ...rTracker,
+                totalAssignedSlots: Math.max(0, rTracker.totalAssignedSlots - 1)
+              }
+            };
           }
 
           shortfallTS.assignments.push({

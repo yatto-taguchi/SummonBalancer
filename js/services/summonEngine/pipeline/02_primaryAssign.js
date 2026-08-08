@@ -272,13 +272,17 @@ export function executePrimaryAssign(state) {
 
         const stylist = stylists.find(s => s.id === req.stylistId);
         const isOwner = stylist?.rank === 'owner';
+        const isJunior = stylist?.rank === 'junior';
         const utilization = stylistUtilization[req.stylistId] || 0;
 
         let shouldAssign = false;
         
         // 既に lockedReqs で処理されているものはここには来ないが、
         // 念のため未アサインのロック(lockedUnassigned)なども考慮
-        if (utilization >= 0.5 || isOwner) {
+        if (isJunior) {
+          // 【ルール】ジュニアスタイリストの単独予約は強制的に本人対応（アシスタントをつけない）
+          shouldAssign = false;
+        } else if (utilization >= 0.5 || isOwner) {
           // 条件B: 稼働率50%以上またはオーナーなら1人でも余っていればアサイン
           shouldAssign = freeCount >= 1;
         } else {

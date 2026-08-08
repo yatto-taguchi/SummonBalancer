@@ -639,6 +639,10 @@ export class Timeline {
         manncellBlock.style.top = `${minLane * CELL_HEIGHT_FOR_LANE}px`;
         manncellBlock.style.height = `${(maxLane - minLane + 1) * CELL_HEIGHT_FOR_LANE}px`;
         
+        // mainView.jsでの再計算用にレーン情報を記録
+        manncellBlock.dataset.minLane = String(minLane);
+        manncellBlock.dataset.maxLane = String(maxLane);
+        
         manncellBlock.style.pointerEvents = 'none';
         // z-indexを設定しない（スタッキングコンテキストを作らず、バッジがstickyヘッダーの上に出られるようにする）
         // 予約ブロック(z-index:3)はDOM順で後に追加されるため自然に上に描画される

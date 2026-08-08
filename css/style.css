@@ -626,6 +626,16 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 12px rgba(0, 255, 128, 0.3), inset 0 0 10px rgba(0, 255, 128, 0.1);
 }
 
+.manncell-block.sos-manncell {
+  border-color: rgba(255, 140, 0, 0.9);
+  background: rgba(255, 140, 0, 0.1);
+  box-shadow: 0 0 12px rgba(255, 140, 0, 0.4), inset 0 0 10px rgba(255, 140, 0, 0.2);
+}
+
+.manncell-block.sos-manncell .manncell-badge {
+  background: linear-gradient(135deg, #FF8C00, #D2691E);
+}
+
 .manncell-badge {
   background: linear-gradient(135deg, #FFD700, #B8860B);
   color: #000;
