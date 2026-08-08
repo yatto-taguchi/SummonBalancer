@@ -3708,7 +3708,11 @@
       "assignedAssistants": {},
       "menuVariant": "",
       "fixedAssistants": {},
-      "ganbare": {},
+      "ganbare": {
+        "0": [
+          "assistant_1784762178214_mhwaa8"
+        ]
+      },
       "nonOverlapSummonEnabled": true,
       "slotTimeOverrides": {},
       "items": null,
@@ -4265,7 +4269,88 @@
       "startTime": 450,
       "endTime": 540,
       "assignedAssistants": {},
-      "menuVariant": null
+      "menuVariant": "",
+      "fixedAssistants": {},
+      "ganbare": {},
+      "nonOverlapSummonEnabled": true,
+      "slotTimeOverrides": {},
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false
+    }
+  ],
+  "sb_sos_2026-08-07": [
+    {
+      "id": "sos_1786144919272",
+      "reservationId": "res_1786077283745_figu0b",
+      "stylistName": "田口　隼人",
+      "startTime": "09:30",
+      "endTime": "09:40"
+    }
+  ],
+  "sb_sos_2026-08-08": [
+    {
+      "id": "sos_1786144947263",
+      "reservationId": "res_1786077283745_figu0b",
+      "stylistName": "田口　隼人",
+      "startTime": "09:00",
+      "endTime": "09:20"
+    },
+    {
+      "id": "sos_1786144974695",
+      "reservationId": "res_1786077283745_figu0b",
+      "stylistName": "田口　隼人",
+      "startTime": "09:10",
+      "endTime": "09:20"
+    },
+    {
+      "id": "sos_1786144989487",
+      "reservationId": "res_1786077283745_figu0b",
+      "stylistName": "田口　隼人",
+      "startTime": "09:00",
+      "endTime": "09:10"
+    },
+    {
+      "id": "sos_1786146025174",
+      "reservationId": "res_1786077283745_figu0b",
+      "stylistName": "田口　隼人",
+      "startTime": "09:00",
+      "endTime": "09:10"
+    },
+    {
+      "id": "sos_1786146036790",
+      "reservationId": "res_1786077283745_figu0b",
+      "stylistName": "田口　隼人",
+      "startTime": "09:00",
+      "endTime": "09:20"
+    },
+    {
+      "id": "sos_1786147011693",
+      "reservationId": "res_1786077283745_figu0b",
+      "stylistName": "田口　隼人",
+      "startTime": "09:00",
+      "endTime": "09:10"
+    },
+    {
+      "id": "sos_1786147033588",
+      "reservationId": "res_1786077283745_figu0b",
+      "stylistName": "田口　隼人",
+      "startTime": "09:00",
+      "endTime": "09:20"
+    },
+    {
+      "id": "sos_1786147811939",
+      "reservationId": "res_1786077283745_figu0b",
+      "stylistName": "田口　隼人",
+      "startTime": "09:00",
+      "endTime": "09:20"
+    },
+    {
+      "id": "sos_1786156354815",
+      "reservationId": "res_1786097765727_351pyv",
+      "stylistName": "田口　隼人",
+      "startTime": "13:50",
+      "endTime": "14:30"
     }
   ]
 }
