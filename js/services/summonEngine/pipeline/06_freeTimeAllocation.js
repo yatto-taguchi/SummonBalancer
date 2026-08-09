@@ -220,9 +220,57 @@ export function executeFreeTimeAllocation(state) {
     baseBusyCounts[staff.id] = occ.reduce((sum, val) => sum + (val ? 1 : 0), 0);
   });
 
+  // ─── 1.5. フリーズ済み過去活動の復元（過去=復元、未来=新規計算の原則） ───
+  // フリーズ境界以前の確定済み活動をそのまま復元し、占有マップに反映する。
+  // これにより後付けマージ（旧セクション8）が不要になり、重複増殖を原理的に排除する。
+  const frozenPracticeAssigned = {};  // staffId → boolean（過去に練習済みか）
+  const frozenCleaningAssigned = {}; // staffId → boolean（過去に大掃除済みか）
+
+  if (freezeTick >= 0 && nextState.frozenFreeTimeActivities && nextState.frozenFreeTimeActivities.length > 0) {
+    nextState.frozenFreeTimeActivities.forEach(act => {
+      const startT = Math.floor(act.startTime / 5);
+      // フリーズ境界以前の活動のみ復元（未来分は新規計算に任せる）
+      if (startT > freezeTick) return;
+
+      // 過去の活動をそのまま復元
+      activities.push(act);
+
+      // 占有マップに反映（未来の新規計算時に同じ時間帯を空きと誤認しないように）
+      if (staffOccupancies[act.staffId]) {
+        const endT = Math.ceil(act.endTime / 5);
+        for (let t = startT; t < endT && t < TOTAL_TICKS; t++) {
+          staffOccupancies[act.staffId][t] = true;
+        }
+      }
+
+      // お昼・休憩のトラッキング辞書に登録（後続の配置判定で「配置済み」として認識させる）
+      if (act.activity === 'lunch') {
+        allocatedLunch[act.staffId] = {
+          startTick: startT,
+          endTick: startT + BLOCK_TICKS
+        };
+      }
+      if (act.activity === 'rest') {
+        allocatedRest[act.staffId] = {
+          startTick: startT,
+          endTick: startT + BLOCK_TICKS
+        };
+      }
+
+      // 練習・大掃除の割り当て済みフラグ（未来の新規計算で2つ目が出ないように）
+      if (act.activity === 'practice') {
+        frozenPracticeAssigned[act.staffId] = true;
+      }
+      if (act.activity === 'cleaning') {
+        frozenCleaningAssigned[act.staffId] = true;
+      }
+    });
+  }
+
   // ─── 2. お昼ご飯アサイン ───
   // 2a. 手動オーバーライド
   allStaff.forEach(staff => {
+    if (allocatedLunch[staff.id]) return; // フリーズ済み過去活動で配置済みならスキップ
     const manualStartMin = (nextState.lunchOverrides || {})[staff.id];
     if (manualStartMin == null) return;
 
@@ -265,6 +313,7 @@ export function executeFreeTimeAllocation(state) {
   // 3a. 手動オーバーライド
   allStaff.forEach(staff => {
     if (!allocatedLunch[staff.id]) return; // お昼未配置なら休憩もスキップ
+    if (allocatedRest[staff.id]) return; // フリーズ済み過去活動で配置済みならスキップ
 
     const manualRestMin = (nextState.restOverrides || {})[staff.id];
     if (manualRestMin == null) return;
@@ -308,8 +357,8 @@ export function executeFreeTimeAllocation(state) {
   // ─── 4. その他の活動アサイン（練習・大掃除・空き時間） ───
   allStaff.forEach(staff => {
     const isOwner = isOwnerStaff(staff);
-    let practiceAssigned = false;
-    let cleaningAssigned = false;
+    let practiceAssigned = !!frozenPracticeAssigned[staff.id]; // 過去に練習済みならtrue
+    let cleaningAssigned = !!frozenCleaningAssigned[staff.id]; // 過去に大掃除済みならtrue
     const occupied = staffOccupancies[staff.id];
 
     let t = Math.max(0, freezeTick + 1);
@@ -408,35 +457,11 @@ export function executeFreeTimeAllocation(state) {
   });
 
 
-
-  // ─── 8. フリーズ済み過去活動の結合 ───
-  const mergedActivities = [...activities];
-  if (nextState.frozenFreeTimeActivities && nextState.frozenFreeTimeActivities.length > 0) {
-    // 過去の活動のうち、現在の freezeTick 以前に終了しているものを抽出して結合
-    const frozenTickMax = freezeTick >= 0 ? freezeTick : 0;
-    const pastActivities = nextState.frozenFreeTimeActivities.filter(a => {
-      const startT = Math.floor(a.startTime / 5);
-      return startT <= frozenTickMax;
-    });
-    
-    pastActivities.forEach(a => {
-      mergedActivities.push(a);
-      // 過去にお昼・休憩を取っていた場合は tracker を更新
-      if (a.activity === 'lunch') {
-        const current = updatedTracker[a.staffId] || { totalAssignedSlots: 0, hasLunch: false, hasBreak: false };
-        current.hasLunch = true;
-        updatedTracker[a.staffId] = current;
-      }
-      if (a.activity === 'rest') {
-        const current = updatedTracker[a.staffId] || { totalAssignedSlots: 0, hasLunch: false, hasBreak: false };
-        current.hasBreak = true;
-        updatedTracker[a.staffId] = current;
-      }
-    });
-  }
-
   // ─── 9. 新しいstateを生成して返却（イミュータブル） ───
-  nextState.freeTimeActivities = mergedActivities;
+  // ※ 旧セクション8（後付けマージ処理）は完全削除済み。
+  //    過去活動の復元はセクション1.5で占有マップ反映と共に事前実行されるため、
+  //    activities には「過去の復元分 + 未来の新規計算分」が既に正しく格納されている。
+  nextState.freeTimeActivities = activities;
   nextState.tracker = updatedTracker;
   // ─── 10. カスタム稼働率の計算 ───
   // lunch/rest は稼働率に含める（必須権利枠）
