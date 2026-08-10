@@ -1915,6 +1915,18 @@ export class SummonEngine {
       if (stylist.id === slot.stylistId) return false;
       if (!stylist.isWorking) return false;
 
+      // 勤務時間（不在）のチェック
+      if (typeof stylist.isWorkingAtTime === 'function') {
+        const slotStart = slot.startTime;
+        const slotEndCheck = slot.endTime instanceof Date 
+          ? new Date(slot.endTime.getTime() - 1000)
+          : (typeof slot.endTime === 'number' ? slot.endTime - 1 : slot.endTime);
+        
+        if (!stylist.isWorkingAtTime(slotStart) || !stylist.isWorkingAtTime(slotEndCheck)) {
+          return false;
+        }
+      }
+
       const hasBusyReservation = reservations.some(res => {
         if (res.stylistId !== stylist.id) return false;
         const resStart = this._toTimestamp(res.startTime);
