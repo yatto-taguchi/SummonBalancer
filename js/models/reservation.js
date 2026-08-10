@@ -316,14 +316,18 @@ export class Reservation {
       }
 
       if (!hasReplaced) {
-        // 1つ目の対象追加メニュー：ベースのシャンプー等を置き換え
+        // 1つ目の対象追加メニュー：ベースのシャンプー等を置き換え（一番最後の対象スロットのみ）
         let replacedAny = false;
-        effectiveMenu.assistantSlots.forEach(slot => {
-          if (replaceableSkills.includes(slot.requiredSkill)) {
-            slot.requiredSkill = targetSkill;
-            replacedAny = true;
+        if (effectiveMenu.assistantSlots && effectiveMenu.assistantSlots.length > 0) {
+          for (let i = effectiveMenu.assistantSlots.length - 1; i >= 0; i--) {
+            const slot = effectiveMenu.assistantSlots[i];
+            if (replaceableSkills.includes(slot.requiredSkill)) {
+              slot.requiredSkill = targetSkill;
+              replacedAny = true;
+              break;
+            }
           }
-        });
+        }
         if (replacedAny) {
           hasReplaced = true;
         } else {
