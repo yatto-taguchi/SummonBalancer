@@ -27,7 +27,7 @@ export class Reservation {
    * @param {string} [params.menuVariant=''] - メニューバリエーション名（例: "カットのみ（メンズ）"）
    * @throws {Error} 必須パラメータが不足している場合
    */
-  constructor({ id, menuItemId, stylistId, startTime, endTime, assignedAssistants = {}, menuVariant = '', fixedAssistants = {}, ganbare = {}, nonOverlapSummonEnabled = true, slotTimeOverrides = {}, items = null, manualVariantSelection = false, autoSwitchedVariant = false }) {
+  constructor({ id, menuItemId, stylistId, startTime, endTime, assignedAssistants = {}, menuVariant = '', fixedAssistants = {}, ganbare = {}, nonOverlapSummonEnabled, slotTimeOverrides = {}, items = null, manualVariantSelection = false, autoSwitchedVariant = false }) {
     // 必須パラメータのバリデーション
     if (!id) {
       throw new Error('予約IDは必須です');
@@ -75,11 +75,8 @@ export class Reservation {
       this.ganbare[k] = Array.isArray(v) ? [...v] : [v];
     }
 
-    /**
-     * @type {boolean} 非掛け持ち時間帯のアシスタント自動配置の有効・無効
-     * falseにすると、掛け持ちしていない時間帯でのアシスタント自動配置をスキップする。
-     */
-    this.nonOverlapSummonEnabled = nonOverlapSummonEnabled !== false;
+    // nonOverlapSummonEnabled は廃止済み（fixedAssistants による __none__ 一括設定に一本化）
+    // 後方互換: 既存データに含まれていても無視する
 
     /**
      * @type {Object.<number, {startMinute: number, endMinute: number}>}
@@ -243,7 +240,6 @@ export class Reservation {
       ganbare: Object.fromEntries(
         Object.entries(this.ganbare).map(([k, v]) => [k, [...v]])
       ),
-      nonOverlapSummonEnabled: this.nonOverlapSummonEnabled,
       slotTimeOverrides: { ...this.slotTimeOverrides },
       items: this.items ? this.items.map(item => ({ ...item })) : null,
       manualVariantSelection: this.manualVariantSelection,

@@ -1268,7 +1268,7 @@ export class ReservationBlock {
 
     menu.appendChild(deleteBtn);
 
-    // 非掛け持ち時間帯のアシスタント自動配置トグル
+    // アシスタント配置OFF/ONトグル（fixedAssistants 一括/個別 __none__ 方式）
     const res = this._reservation;
     if (!res.isVirtualSummon) {
       // 区切り線
@@ -1276,34 +1276,126 @@ export class ReservationBlock {
       divider.style.cssText = 'height:1px; background:var(--border-glass); margin:4px 0;';
       menu.appendChild(divider);
 
-      const currentEnabled = res.nonOverlapSummonEnabled !== false;
-      const toggleBtn = document.createElement('div');
-      toggleBtn.textContent = currentEnabled
-        ? '🔕 アシスタント配置 OFF'
-        : '🔔 アシスタント配置 ON';
-      toggleBtn.title = currentEnabled
-        ? '掛け持ちなしの時間帯でのアシスタント自動配置を無効にする'
-        : '掛け持ちなしの時間帯でのアシスタント自動配置を有効にする';
-      toggleBtn.style.padding = '8px 16px';
-      toggleBtn.style.fontSize = '12px';
-      toggleBtn.style.color = currentEnabled ? 'var(--accent-warning)' : 'var(--accent-success)';
-      toggleBtn.style.cursor = 'pointer';
-      toggleBtn.style.transition = 'background var(--transition-fast)';
-      toggleBtn.addEventListener('mouseenter', () => { toggleBtn.style.background = 'var(--bg-tertiary)'; });
-      toggleBtn.addEventListener('mouseleave', () => { toggleBtn.style.background = 'transparent'; });
-      toggleBtn.addEventListener('click', () => {
-        const newVal = !currentEnabled;
-        res.nonOverlapSummonEnabled = newVal;
+      const menus = Storage.loadMenus();
+      const effectiveMenu = typeof res.getEffectiveMenu === 'function'
+        ? res.getEffectiveMenu(menus)
+        : menus.find(m => m.id === res.menuItemId);
+      const slots = effectiveMenu?.assistantSlots || [];
+      const isAllOff = slots.length > 0 && slots.every((_, i) => res.fixedAssistants && res.fixedAssistants[i] === '__none__');
+
+      const isCombined = res.items && Array.isArray(res.items) && res.items.length > 1;
+
+      // 結合予約（複数メニュー）の場合、各メニューごとのトグルを生成
+      if (isCombined) {
+        let currentSlotIdx = 0;
+        res.items.forEach(item => {
+          const itemMenu = menus.find(m => m.id === item.menuItemId);
+          if (!itemMenu || !itemMenu.assistantSlots || itemMenu.assistantSlots.length === 0) return;
+
+          const numSlots = itemMenu.assistantSlots.length;
+          const indices = Array.from({ length: numSlots }, (_, i) => currentSlotIdx + i);
+          currentSlotIdx += numSlots;
+
+          const isMenuOff = indices.every(idx => res.fixedAssistants && res.fixedAssistants[idx] === '__none__');
+
+          const toggleBtn = document.createElement('div');
+          toggleBtn.textContent = isMenuOff
+            ? `🔔 [${itemMenu.name}] の配置をON`
+            : `🔕 [${itemMenu.name}] の配置をOFF`;
+          toggleBtn.title = `${itemMenu.name} のアシスタント配置を切り替えます`;
+          toggleBtn.style.padding = '8px 16px';
+          toggleBtn.style.fontSize = '12px';
+          toggleBtn.style.color = isMenuOff ? 'var(--accent-success)' : 'var(--accent-warning)';
+          toggleBtn.style.cursor = 'pointer';
+          toggleBtn.style.transition = 'background var(--transition-fast)';
+          toggleBtn.addEventListener('mouseenter', () => { toggleBtn.style.background = 'var(--bg-tertiary)'; });
+          toggleBtn.addEventListener('mouseleave', () => { toggleBtn.style.background = 'transparent'; });
+          toggleBtn.addEventListener('click', () => {
+            if (window.eventBus) {
+              window.eventBus.emit('reservationUpdated', {
+                reservationId: res.id,
+                changes: { targetSlotIndices: indices, turnOff: !isMenuOff }
+              });
+            }
+            menu.remove();
+            backdrop.remove();
+          });
+          menu.appendChild(toggleBtn);
+        });
+
+        // 結合予約用の区切り線
+        const innerDivider = document.createElement('div');
+        innerDivider.style.cssText = 'height:1px; background:var(--border-glass); margin:4px 0;';
+        menu.appendChild(innerDivider);
+      } else if (slots.length > 1) {
+        // 【ハイブリッド型拡張】単一メニューだが、複数スロットを持つ場合（例：ダブルカラー）
+        // スロット単位での個別トグルを生成する
+        const skillsData = Storage.loadData('sb_skills') || [];
+        
+        slots.forEach((slot, idx) => {
+          const isSlotOff = res.fixedAssistants && res.fixedAssistants[idx] === '__none__';
+          // スキルの表示名を解決
+          const skillName = skillsData.find(s => s.id === slot.requiredSkill)?.label || slot.requiredSkill || 'アシスタント';
+          
+          const toggleBtn = document.createElement('div');
+          toggleBtn.textContent = isSlotOff
+            ? `🔔 [${skillName}] の配置をON`
+            : `🔕 [${skillName}] の配置をOFF`;
+          toggleBtn.title = `${skillName} のアシスタント配置を切り替えます`;
+          toggleBtn.style.padding = '8px 16px';
+          toggleBtn.style.fontSize = '12px';
+          toggleBtn.style.color = isSlotOff ? 'var(--accent-success)' : 'var(--accent-warning)';
+          toggleBtn.style.cursor = 'pointer';
+          toggleBtn.style.transition = 'background var(--transition-fast)';
+          toggleBtn.addEventListener('mouseenter', () => { toggleBtn.style.background = 'var(--bg-tertiary)'; });
+          toggleBtn.addEventListener('mouseleave', () => { toggleBtn.style.background = 'transparent'; });
+          toggleBtn.addEventListener('click', () => {
+            if (window.eventBus) {
+              window.eventBus.emit('reservationUpdated', {
+                reservationId: res.id,
+                changes: { targetSlotIndices: [idx], turnOff: !isSlotOff }
+              });
+            }
+            menu.remove();
+            backdrop.remove();
+          });
+          menu.appendChild(toggleBtn);
+        });
+
+        // スロット用の区切り線
+        const innerDivider = document.createElement('div');
+        innerDivider.style.cssText = 'height:1px; background:var(--border-glass); margin:4px 0;';
+        menu.appendChild(innerDivider);
+      }
+
+      // 全体の一括ON/OFFボタン
+      const allToggleBtn = document.createElement('div');
+      
+      allToggleBtn.textContent = isAllOff
+        ? (isCombined ? '🔔 すべての配置をON（自動）に戻す' : '🔔 アシスタント配置 ON')
+        : (isCombined ? '🔕 すべての配置を一括OFFにする' : '🔕 アシスタント配置 OFF');
+      
+      allToggleBtn.title = isAllOff
+        ? 'アシスタントの自動配置を有効にする'
+        : 'この予約のアシスタント配置をOFFにする';
+      allToggleBtn.style.padding = '8px 16px';
+      allToggleBtn.style.fontSize = '12px';
+      allToggleBtn.style.color = isAllOff ? 'var(--accent-success)' : 'var(--accent-warning)';
+      allToggleBtn.style.cursor = 'pointer';
+      allToggleBtn.style.transition = 'background var(--transition-fast)';
+      allToggleBtn.addEventListener('mouseenter', () => { allToggleBtn.style.background = 'var(--bg-tertiary)'; });
+      allToggleBtn.addEventListener('mouseleave', () => { allToggleBtn.style.background = 'transparent'; });
+      allToggleBtn.addEventListener('click', () => {
         if (window.eventBus) {
           window.eventBus.emit('reservationUpdated', {
             reservationId: res.id,
-            changes: { nonOverlapSummonEnabled: newVal }
+            changes: { allSlotsOff: !isAllOff }
           });
         }
         menu.remove();
         backdrop.remove();
       });
-      menu.appendChild(toggleBtn);
+      menu.appendChild(allToggleBtn);
     }
 
     document.body.appendChild(backdrop);
@@ -1352,6 +1444,10 @@ export class ReservationBlock {
           const oldGapHelp = slotEl.querySelector('.slot-gap-help-text');
           if (oldGapHelp) oldGapHelp.remove();
 
+          // 旧バージョンのスロット内えらいバッジをクリーンアップ（ブロックレベルに移行済み）
+          const oldSlotErai = slotEl.querySelector('.slot-erai-badge');
+          if (oldSlotErai) oldSlotErai.remove();
+
           if (!assistantEl) {
             assistantEl = document.createElement('span');
             assistantEl.className = 'slot-assistant';
@@ -1394,11 +1490,12 @@ export class ReservationBlock {
             const isConcurrent = !!assignments[idx].isConcurrent;
             
             if (assignedId === '__none__') {
-              // 「召喚の必要がない」スロット
+              // 「アシスタント配置OFF」スロット
               assistantEl.style.color = '#94a3b8';
-              assistantEl.textContent = '🚫 不要';
+              assistantEl.textContent = '🚫 OFF';
               const oldBadge = slotEl.querySelector('.slot-concurrent-badge');
               if (oldBadge) oldBadge.remove();
+              // えらいバッジはブロックレベルで管理（updateAssistants末尾）
             } else if (assignedId === '__manncell__') {
               // マンセル（チーム連携）の場合は【チーム制】+ 担当者名の2段表示
               const teamName = assignments[idx].manncellTeam || 'チーム';
@@ -1407,7 +1504,9 @@ export class ReservationBlock {
               assistantEl.innerHTML = `<span class="manncell-label">【チーム制】</span><span class="manncell-team-name">${teamName}</span>`;
               const oldBadge = slotEl.querySelector('.slot-concurrent-badge');
               if (oldBadge) oldBadge.remove();
+
             } else {
+
               const fixedId = this._reservation.fixedAssistants ? this._reservation.fixedAssistants[idx] : null;
               const actuallyFixed = isFixed && (assignedId === fixedId);
               const nameStr = assignments[idx].nickname || assignments[idx].name || assignments[idx];
@@ -1453,6 +1552,37 @@ export class ReservationBlock {
         });
       }
 
+      // === ブロックレベルの「えらい！」バッジ管理 ===
+      // いずれかのスロットが __none__ であればブロック右上に表示
+      const hasAnyOff = assignments && Object.keys(assignments).length > 0 &&
+        Object.values(assignments).some(a => (a.id || a) === '__none__');
+      let eraiBadge = this._element.querySelector('.reservation-erai-badge');
+      if (hasAnyOff) {
+        if (!eraiBadge) {
+          eraiBadge = document.createElement('span');
+          eraiBadge.className = 'reservation-erai-badge';
+          eraiBadge.textContent = '🏆 えらい！';
+          eraiBadge.style.cssText = `
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            z-index: 25;
+            font-size: 8px;
+            font-weight: bold;
+            padding: 1px 5px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #f59e0b, #fbbf24, #f59e0b);
+            color: #1a1a2e;
+            text-shadow: 0 0 2px rgba(255,255,255,0.4);
+            box-shadow: 0 1px 4px rgba(245,158,11,0.4);
+            animation: eraiBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            pointer-events: none;
+          `;
+          this._element.appendChild(eraiBadge);
+        }
+      } else {
+        if (eraiBadge) eraiBadge.remove();
+      }
 
     }
   }

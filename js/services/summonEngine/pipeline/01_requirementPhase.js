@@ -107,11 +107,9 @@ function defineRequirements(state, timeStr, timeMs) {
           }
           requirements.push(finishReq);
         } else {
-          // 手動トグル（nonOverlapSummonEnabled === false）の判定
-          // 単独予約（任意タスク）かつトグルがOFFの場合は要件自体を生成せず、完全に本人対応とする
-          const isOptionalAndDisabled = !isStrictlyRequired && res.nonOverlapSummonEnabled === false;
-          
-          if (!isOptionalAndDisabled) {
+          // 通常スロット要件の生成
+          // ※ アシスタント配置OFFは fixedAssistants[index] = '__none__' で管理され、
+          //   上部の fixedId === '__none__' 分岐で skipAssignment として処理済み
             const requiredSkill = slot.requiredSkill || 'shampoo';
             const req = {
               id: `req_${timeStr}_${res.id}_slot${index}`,
@@ -129,7 +127,6 @@ function defineRequirements(state, timeStr, timeMs) {
               req.fixedAssistantId = fixedId;
             }
             requirements.push(req);
-          }
         }
       }
     });

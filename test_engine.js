@@ -480,13 +480,9 @@ class SummonEngine {
 
       let nonOverlapEval = null;
       if (!isOverlapping && stylist.canDoubleBook) {
-        if (res.nonOverlapSummonEnabled === false) {
-          nonOverlapEval = { skipSummon: true, priority: 0 };
-        } else {
-          nonOverlapEval = this._evaluateNonOverlappingSlot(
-            res, reservations, stylist, assistants, stylistRates, isMinutesMode, toUnit
-          );
-        }
+        nonOverlapEval = this._evaluateNonOverlappingSlot(
+          res, reservations, stylist, assistants, stylistRates, isMinutesMode, toUnit
+        );
       }
 
       menu.assistantSlots.forEach((slot, index) => {

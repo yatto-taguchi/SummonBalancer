@@ -1344,6 +1344,12 @@ export class MainView {
             continue;
           }
 
+          // アシスタント配置OFFマーカーの検出
+          if (astId === '__none__') {
+            res.assignedAssistants[slotIdx] = { id: '__none__', name: '__none__' };
+            continue;
+          }
+
           const staff = staffMap.get(astId);
           const cInfo = resConcurrent ? resConcurrent[slotIdx] : null;
           const isConcurrent = typeof cInfo === 'boolean' ? cInfo : !!(cInfo && cInfo.isConcurrent);
@@ -1479,6 +1485,12 @@ export class MainView {
               name: '__manncell__', 
               manncellTeam: manncellTeam  // チーム担当者名テキスト（例: "凪・らんらん"）
             };
+            continue;
+          }
+
+          // アシスタント配置OFFマーカーの検出: "__none__"
+          if (astId === '__none__') {
+            mappedAssign[slotIdx] = { id: '__none__', name: '__none__' };
             continue;
           }
 
@@ -2273,7 +2285,7 @@ export class MainView {
   }
 
   /**
-   * 予約の属性変更（nonOverlapSummonEnabled等）をStorageに保存して再計算する
+   * 予約の属性変更（アシスタント配置OFF等）をStorageに保存して再計算する
    * @param {{ reservationId: string, changes: Object }} data
    */
   _handleReservationUpdated(data) {
@@ -2284,6 +2296,61 @@ export class MainView {
     const reservations = Storage.loadReservations(dateStr);
     const target = reservations.find(r => r.id === reservationId);
     if (!target) return;
+
+    // 「アシスタント配置OFF/ON」一括/個別操作
+    if (changes.allSlotsOff !== undefined || changes.targetSlotIndices !== undefined) {
+      try {
+        if (!target.fixedAssistants) target.fixedAssistants = {};
+
+        if (changes.targetSlotIndices !== undefined) {
+          // 結合予約の個別メニュー単位のON/OFF
+          changes.targetSlotIndices.forEach(idx => {
+            if (changes.turnOff) {
+              target.fixedAssistants[idx] = '__none__';
+            } else {
+              if (target.fixedAssistants[idx] === '__none__') {
+                delete target.fixedAssistants[idx];
+              }
+            }
+          });
+        } else {
+          // 全体の一括ON/OFF
+          if (changes.allSlotsOff) {
+            // 全スロットを __none__ に設定
+            const menus = Storage.loadMenus();
+            const effectiveMenu = typeof target.getEffectiveMenu === 'function'
+              ? target.getEffectiveMenu(menus)
+              : menus.find(m => m.id === target.menuItemId);
+            const slots = effectiveMenu?.assistantSlots || [];
+            
+            slots.forEach((_, index) => {
+              target.fixedAssistants[index] = '__none__';
+            });
+          } else {
+            // 【新ルール適用】UI層でのONコマンド時は、スロット定義に依存せず
+            // fixedAssistants内のあらゆる形式の __none__ を完全に走査・パージする
+            for (const key of Object.keys(target.fixedAssistants)) {
+              if (target.fixedAssistants[key] === '__none__') {
+                delete target.fixedAssistants[key];
+              }
+            }
+          }
+        }
+
+        // 削除実行後は直ちにローカルストレージへ同期
+        Storage.saveReservation(dateStr, target);
+
+        // ブロックの内部データも更新
+        const block = this.reservationBlocks.find(b => b.reservation?.id === target.id);
+        if (block) block._reservation = target;
+
+        // 隠れエラーで中断しないよう保護した上で _runSummon を発火
+        this._runSummon();
+      } catch (error) {
+        console.error('[SummonBalancer] アシスタント配置一括ON/OFF処理でエラーが発生しました:', error);
+      }
+      return;
+    }
 
     // 変更内容をReservationインスタンスにマージしてStorage保存
     Object.assign(target, changes);
@@ -2558,9 +2625,9 @@ export class MainView {
     });
     popup.appendChild(autoOption);
 
-    // 「召喚の必要がない」オプション
+    // 「アシスタント配置OFF」オプション
     const noneOption = document.createElement('div');
-    noneOption.textContent = '🚫 召喚の必要がない';
+    noneOption.textContent = '🚫 アシスタント配置 OFF';
     noneOption.style.cssText = `
       padding: 6px 12px;
       font-size: 12px;

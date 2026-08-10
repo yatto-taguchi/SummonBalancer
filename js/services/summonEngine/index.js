@@ -277,6 +277,8 @@ export class SummonEngine {
         const targetRes = state.reservations ? state.reservations.find(r => r.id === resId) : null;
         const resStylistId = targetRes ? targetRes.stylistId : null;
 
+        let hasNoneFixed = false; // アシスタント配置OFFフラグ
+
         segments.forEach(seg => {
           const minutes = seg.ticks * 5;
 
@@ -287,8 +289,9 @@ export class SummonEngine {
               displayParts.push(`<span style="color: var(--accent-danger)">⚠不足(${minutes}分)</span>`);
             }
           } else if (seg.staffId === '__none__') {
-            // 召喚不要固定（📌固定モードで「召喚の必要がない」を選択）— 正常処理済みとして扱う
-            // displayParts には追加しない（UIのスロット表示は reservation.js 側で「🚫 不要」を表示する）
+            // アシスタント配置OFF（fixedAssistants[slot] = '__none__'）— 正常処理済みとして扱う
+            // displayParts には追加しない（UIのスロット表示は reservation.js 側で「🚫 OFF」+「🏆 えらい！」を表示する）
+            hasNoneFixed = true;
           } else if (seg.staffId === 'MANNCELL_STANDBY') {
             // マンセル（チーム対応）セグメント — 最終出力は hasManncell で統一上書きされる
             displayParts.push(`${manncellTeamText}(${minutes}分)`);
@@ -397,7 +400,10 @@ export class SummonEngine {
         // === uiAssignments の出力: 全面オブジェクト化 { text, gapHelps } ===
         const gapHelpsText = gapHelpParts.join(' → ');
 
-        if (hasFixedSegment && fixedReqInSlot) {
+        if (hasNoneFixed) {
+          // アシスタント配置OFF → '__none__' を明示的に出力
+          uiAssignments[resId][slotIndex] = { text: '__none__', gapHelps: gapHelpsText };
+        } else if (hasFixedSegment && fixedReqInSlot) {
           // 固定スタッフが実際にアサインされている → スタッフ実IDを直接出力
           uiAssignments[resId][slotIndex] = { text: fixedReqInSlot.fixedAssistantId, gapHelps: gapHelpsText, isFixedId: true };
         } else if (hasManncell) {

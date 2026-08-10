@@ -658,18 +658,12 @@ export class SummonEngine {
       const MIN_30 = toUnit(30);
 
       // NonOverlapEval は非掛け持ち時に召喚するかどうかの判定
-      // 各スロットが実際に重なり時間帯に入るかどうかは後で判定するが、
-      // 予約全体として「掛け持ち可能スタイリストの単独予約（または重なり前後の時間）」である可能性があるため
-      // 常に計算しておく。後で isOverlapping が false のスロットのみこれを利用する。
       let nonOverlapEval = null;
       if (stylist.canDoubleBook) {
-        if (res.nonOverlapSummonEnabled === false) {
-          nonOverlapEval = { skipSummon: true, priority: 0 };
-        } else {
-          nonOverlapEval = this._evaluateNonOverlappingSlot(
-            res, reservations, stylist, assistants, stylistRates, isMinutesMode, toUnit
-          );
-        }
+        // ※ nonOverlapSummonEnabled は廃止。配置OFFは fixedAssistants の __none__ で管理
+        nonOverlapEval = this._evaluateNonOverlappingSlot(
+          res, reservations, stylist, assistants, stylistRates, isMinutesMode, toUnit
+        );
       }
 
       menu.assistantSlots.forEach((slot, index) => {
