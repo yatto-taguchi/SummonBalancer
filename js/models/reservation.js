@@ -275,8 +275,6 @@ export class Reservation {
    * @returns {Object|null} 実効的なメニューオブジェクト（イミュータブル）
    */
   static getEffectiveMenu(resData, allMenus) {
-    if (!resData || !allMenus) return null;
-    
     const baseMenu = allMenus.find(m => m.id === resData.menuItemId);
     if (!baseMenu) return null;
 
@@ -284,85 +282,40 @@ export class Reservation {
       return baseMenu; // 結合されていない場合はベースをそのまま返す
     }
 
-    // 対象メニューと置換用スキルのマッピング
-    const replacementMap = {
-      'treatment': 'treatment',
-      'head_spa': 'spa'
-    };
-    
-    // 置き換え対象のベーススキル
-    const replaceableSkills = ['shampoo', 'straight_2', 'perm_liquid'];
-
-    // 純粋関数とするため、ディープコピー（JSONシリアライズ/デシリアライズ）
+    // 合成用の新しいメニューオブジェクトを作成
     const effectiveMenu = JSON.parse(JSON.stringify(baseMenu));
+    
+    // 名前は結合されたすべてのメニュー名を繋げる
+    effectiveMenu.name = resData.items.map(item => {
+      const m = allMenus.find(x => x.id === item.menuItemId);
+      return m ? m.name : '不明';
+    }).join(' + ');
+    
+    // 合成するスロットを空にしてから、順番に詰め直す
+    effectiveMenu.assistantSlots = [];
+    effectiveMenu.duration = 0;
 
-    // items に含まれる「ベースメニュー以外」の追加メニューを収集
-    const additionalItems = resData.items.filter(item => item.menuItemId !== resData.menuItemId);
+    let currentOffset = 0;
 
-    if (additionalItems.length === 0) {
-      return effectiveMenu;
-    }
+    resData.items.forEach(item => {
+      const menuDef = allMenus.find(m => m.id === item.menuItemId);
+      if (!menuDef) return;
 
-    let hasReplaced = false;
-
-    // 複数の追加メニューがある場合の処理
-    additionalItems.forEach((addedItem) => {
-      const addedMenuId = addedItem.menuItemId;
-      const targetSkill = replacementMap[addedMenuId];
-      
-      if (!targetSkill) {
-        // トリートメントやスパ以外のメニューが追加された場合は何もしない
-        return;
+      if (menuDef.assistantSlots && menuDef.assistantSlots.length > 0) {
+        menuDef.assistantSlots.forEach(slot => {
+          effectiveMenu.assistantSlots.push({
+            ...slot,
+            startMinute: slot.startMinute + currentOffset,
+            endMinute: slot.endMinute + currentOffset
+          });
+        });
       }
 
-      if (!hasReplaced) {
-        // 1つ目の対象追加メニュー：ベースのシャンプー等を置き換え（一番最後の対象スロットのみ）
-        let replacedAny = false;
-        if (effectiveMenu.assistantSlots && effectiveMenu.assistantSlots.length > 0) {
-          for (let i = effectiveMenu.assistantSlots.length - 1; i >= 0; i--) {
-            const slot = effectiveMenu.assistantSlots[i];
-            if (replaceableSkills.includes(slot.requiredSkill)) {
-              slot.requiredSkill = targetSkill;
-              replacedAny = true;
-              break;
-            }
-          }
-        }
-        if (replacedAny) {
-          hasReplaced = true;
-        } else {
-          // もしベースに置き換え対象のスキルがなかった場合は、新規スロットとして追加へフォールバック
-          addNewSlot(effectiveMenu, addedMenuId, targetSkill, allMenus);
-        }
-      } else {
-        // 2つ目以降の対象追加メニュー：スロットを新規追加（時間は後ろにずらす）
-        addNewSlot(effectiveMenu, addedMenuId, targetSkill, allMenus);
-      }
+      // 次のメニューの開始位置（オフセット）をこのメニューの所要時間分進める
+      currentOffset += item.duration;
+      effectiveMenu.duration += item.duration;
     });
 
     return effectiveMenu;
-
-    // ヘルパー: スロットの新規追加（時間が被らないように後ろにずらす）
-    function addNewSlot(menu, addedMenuId, targetSkill, menusDef) {
-      const addedMenuDef = menusDef.find(m => m.id === addedMenuId);
-      const addedSlotDuration = addedMenuDef?.assistantSlots?.[0] 
-        ? (addedMenuDef.assistantSlots[0].endMinute - addedMenuDef.assistantSlots[0].startMinute) 
-        : 30; // フォールバック
-      
-      let newStart = 0;
-      if (menu.assistantSlots && menu.assistantSlots.length > 0) {
-        // 既存スロットの最後尾を取得
-        const lastSlot = menu.assistantSlots[menu.assistantSlots.length - 1];
-        newStart = lastSlot.endMinute;
-      }
-      
-      if (!menu.assistantSlots) menu.assistantSlots = [];
-      menu.assistantSlots.push({
-        startMinute: newStart,
-        endMinute: newStart + addedSlotDuration,
-        requiredSkill: targetSkill,
-        requiredProficiency: 3
-      });
-    }
   }
 }

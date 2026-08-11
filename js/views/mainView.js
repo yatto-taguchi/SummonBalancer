@@ -3588,12 +3588,11 @@ export class MainView {
 
     if (position === 'before') {
       items.unshift(newItem);
-      const newStart = targetRes.startTime - newMenu.duration;
-      targetRes.startTime = Math.max(0, newStart);
     } else {
       items.push(newItem);
-      targetRes.endTime = targetRes.endTime + newMenu.duration;
     }
+    // 前につなげた場合も後ろにつなげた場合も、startTimeは固定してendTimeを延ばす
+    targetRes.endTime = targetRes.endTime + newMenu.duration;
 
     targetRes.items = items;
 
