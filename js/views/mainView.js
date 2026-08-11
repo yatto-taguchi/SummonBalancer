@@ -314,6 +314,12 @@ export class MainView {
   render(date) {
     if (date) this.currentDate = date;
 
+    // DOM再構築時にドラッグ中の状態が残らないよう確実にリセット（dragendが発火しなかった場合のフェールセーフ）
+    document.body.classList.remove('is-dragging-item');
+    document.querySelectorAll('.is-being-dragged').forEach(el => el.classList.remove('is-being-dragged'));
+    document.querySelectorAll('.timeline-cell.drag-over, .timeline-cell.drag-preview')
+      .forEach(el => el.classList.remove('drag-over', 'drag-preview'));
+
     this.container.innerHTML = '';
 
     // ルートラッパーを作成

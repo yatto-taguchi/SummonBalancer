@@ -550,6 +550,9 @@ export class Timeline {
             return;
           }
           e.preventDefault();
+          // ドラッグ中の状態を確実にリセット
+          document.body.classList.remove('is-dragging-item');
+          document.querySelectorAll('.is-being-dragged').forEach(el => el.classList.remove('is-being-dragged'));
           // 全プレビューハイライトをクリア
           document.querySelectorAll('.timeline-cell.drag-over, .timeline-cell.drag-preview')
             .forEach(el => el.classList.remove('drag-over', 'drag-preview'));

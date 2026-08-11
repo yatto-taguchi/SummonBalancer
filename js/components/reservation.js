@@ -448,6 +448,12 @@ export class ReservationBlock {
         e.preventDefault();
         e.stopPropagation();
 
+        // ドラッグ中の状態を確実にリセット
+        document.body.classList.remove('is-dragging-item');
+        document.querySelectorAll('.is-being-dragged').forEach(el => el.classList.remove('is-being-dragged'));
+        document.querySelectorAll('.timeline-cell.drag-over, .timeline-cell.drag-preview')
+          .forEach(el => el.classList.remove('drag-over', 'drag-preview'));
+
         // 一時的にブロックを非表示にして、その下にある timeline-cell を取得
         const originalDisplay = block.style.display;
         block.style.display = 'none';
