@@ -311,8 +311,11 @@ export class ReservationBlock {
           backdropFilterStyle = 'blur(4px)';
           textColorCode = '#ffffff';
         } else {
-          backgroundStyle = `linear-gradient(135deg, ${colorCode}99, ${colorCode}66)`;
+          // 練習や大掃除などのその他のアクティビティもクリアに
+          backgroundStyle = `linear-gradient(135deg, ${colorCode}88, ${colorCode}55)`;
           borderStyle = `1px solid ${colorCode}CC`; // 枠線はよりくっきりと
+          backdropFilterStyle = 'blur(4px)';
+          textColorCode = '#ffffff'; // 文字を白にして視認性アップ
         }
         
         // 隙間ヘルプ（gap_help）の場合は黄色点線枠を維持＆強調
