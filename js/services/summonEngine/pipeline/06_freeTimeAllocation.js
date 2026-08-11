@@ -101,8 +101,8 @@ function buildOccupancyMap(staffId, state) {
 
   // --- 5. ブロックされている時間 ---
   for (let t = 0; t < TOTAL_TICKS; t++) {
-    const absMinute = 540 + t * 5;
-    if (isStaffBlocked(staffId, absMinute, state.tracker)) {
+    const tickMinFrom9 = t * 5;
+    if (isStaffBlocked(staffId, tickMinFrom9, state.tracker)) {
       occupied[t] = true;
     }
   }

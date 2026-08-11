@@ -6,7 +6,14 @@ export function toTimestamp(timeStrOrNum) {
     // 既に数値(分)の場合はミリ秒に変換
     return timeStrOrNum * 60000;
   }
-  return new Date(timeStrOrNum).getTime();
+  if (typeof timeStrOrNum === 'string') {
+    if (timeStrOrNum.match(/^\d{1,2}:\d{2}$/)) {
+      const [h, m] = timeStrOrNum.split(':').map(Number);
+      return ((h - 9) * 60 + m) * 60000; // 9:00基準のミリ秒に変換
+    }
+    return new Date(timeStrOrNum).getTime();
+  }
+  return 0;
 }
 
 /**
