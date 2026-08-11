@@ -18,6 +18,7 @@ import { FreeTimeModal } from '../components/freeTimeModal.js?v=2';
 import accordionManager from '../components/accordionManager.js';
 import { sosManager } from '../components/sosManager.js';
 import { memoPopover } from '../components/memoPopover.js';
+import { Reservation } from '../models/reservation.js';
 
 export class MainView {
   /**
@@ -1606,6 +1607,13 @@ export class MainView {
       const targetStylist = targetRes ? staffMap.get(targetRes.stylistId) : null;
       const targetName = targetStylist ? (targetStylist.nickname || targetStylist.name) : '';
 
+      // 対象メニューから要求スキルを取得
+      const menu = targetRes ? Reservation.getEffectiveMenu(targetRes, menus) : null;
+      let requiredSkill = 'shampoo';
+      if (menu && menu.assistantSlots && menu.assistantSlots[summon.slotIndex]) {
+        requiredSkill = menu.assistantSlots[summon.slotIndex].requiredSkill || 'shampoo';
+      }
+
       // 特殊召喚の場合はメニュー名を「救援」に変更
       const summonMenuName = '救援';
       const summonColor = summon.isSpecialSummon ? '#f59e0b' : '#ef4444'; // 特殊=金色、通常=赤
@@ -1621,7 +1629,8 @@ export class MainView {
         isVirtualSummon: true,
         isSpecialSummon: summon.isSpecialSummon || false,
         specialSummonReason: summon.specialSummonReason || null,
-        summonTargetName: targetName
+        summonTargetName: targetName,
+        summonSkill: requiredSkill // 追加: 要求スキル
       };
 
       const timelineArea = this.container.querySelector('#timeline-area');
@@ -1730,8 +1739,14 @@ export class MainView {
       result.helperBlocks.forEach(hb => {
         const res = reservations.find(r => r.id === hb.resId);
         if (!res) return;
-        const menu = menus.find(m => m.id === res.menuItemId);
-        const colorCode = menu ? (menu.colorCode || '#6366f1') : '#6366f1';
+        const baseMenu = menus.find(m => m.id === res.menuItemId);
+        const colorCode = baseMenu ? (baseMenu.colorCode || '#6366f1') : '#6366f1';
+        
+        const effectiveMenu = Reservation.getEffectiveMenu(res, menus);
+        let requiredSkill = 'shampoo';
+        if (effectiveMenu && effectiveMenu.assistantSlots && effectiveMenu.assistantSlots[hb.slotIndex]) {
+          requiredSkill = effectiveMenu.assistantSlots[hb.slotIndex].requiredSkill || 'shampoo';
+        }
 
         const stylist = staffMap.get(hb.stylistId);
         const stylistName = stylist ? (stylist.nickname || stylist.name) : '';
@@ -1751,7 +1766,8 @@ export class MainView {
           isVirtualActivity: true,
           activityType: 'helper',
           colorCode: isStylist ? '#f59e0b' : colorCode,
-          activityLabel: hb.isGapHelp ? `⭐${stylistName}` : (isStylist ? `特殊召喚 (${stylistName}へ)` : stylistName)
+          activityLabel: hb.isGapHelp ? `⭐${stylistName}` : (isStylist ? `特殊召喚 (${stylistName}へ)` : stylistName),
+          summonSkill: requiredSkill // 追加: 要求スキル
         };
 
         const timelineArea = this.container.querySelector('#timeline-area');

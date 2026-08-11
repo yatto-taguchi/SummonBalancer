@@ -13,6 +13,21 @@ import accordionManager from './accordionManager.js';
 import { sosManager } from './sosManager.js';
 import { Reservation } from '../models/reservation.js';
 
+/**
+ * スキル（役割）に応じた背景色を取得する
+ * @param {string} skillId 
+ * @returns {string} color code
+ */
+export function getSkillBgColor(skillId) {
+  switch(skillId) {
+    case 'shampoo': return '#3b82f6'; // 純粋な青色に変更
+    case 'color': return '#ef4444'; // 赤色（既存カラーメニューと同じ）
+    case 'treatment': return '#10b981';
+    case 'spa': return '#10b981';
+    default: return '#6b7280';
+  }
+}
+
 /** セル幅(px) */
 const CELL_WIDTH = 80;
 /** セル高さ(px) */
@@ -213,6 +228,8 @@ export class ReservationBlock {
     let blockLabel = '';
     let backgroundStyle = '';
     let borderStyle = '';
+    let boxShadowStyle = ''; // 追加: box-shadow用
+    let textColorCode = null; // 追加: 文字色用
 
     const isCombined = !isVirtual && Array.isArray(res.items) && res.items.length >= 2;
 
@@ -273,24 +290,48 @@ export class ReservationBlock {
             if (res.activityType === 'rest') blockLabel = '☕ 休憩';
           }
         }
-        backgroundStyle = `linear-gradient(135deg, ${colorCode}44, ${colorCode}22)`;
-        borderStyle = `1px solid ${colorCode}88`;
+        
+        // ヘルプアクティビティの場合は要求スキルベースの色を使用
+        if (res.activityType === 'helper' && res.summonSkill) {
+          const skillColor = getSkillBgColor(res.summonSkill);
+          backgroundStyle = `linear-gradient(135deg, ${skillColor}99, ${skillColor}66)`;
+          textColorCode = '#ffffff'; // 濃い背景なので白文字
+        } else {
+          backgroundStyle = `linear-gradient(135deg, ${colorCode}99, ${colorCode}66)`;
+        }
+        borderStyle = `1px solid ${colorCode}CC`; // 枠線はよりくっきりと
+        
+        // 隙間ヘルプ（gap_help）の場合は黄色点線枠を維持＆強調
+        if (res.isGapHelp || (res.badges && res.badges.includes('gap_help'))) {
+          borderStyle = `2px dashed #facc15`; // より強固な黄色点線
+          boxShadowStyle = `0 0 8px rgba(250, 204, 21, 0.4)`; // 黄色のグロウ
+        }
       } else if (isSummon) {
-        // 召喚ブロック: 指定された色と名称（特殊召喚/召喚）を尊重する
+        // 召喚ブロック: 指定された色と名称（特殊召喚/召喚）を尊重する (枠線色用)
         colorCode = menu ? (menu.colorCode || '#ef4444') : '#ef4444';
+        if (res.isSpecialSummon) colorCode = '#f59e0b'; // 金色
         blockLabel = menu ? menu.name : '召喚';
-        backgroundStyle = `linear-gradient(135deg, ${colorCode}44, ${colorCode}22)`;
-        borderStyle = `1px solid ${colorCode}88`;
+        
+        // 召喚の背景色は要求スキルベース
+        let skillBgColor = colorCode;
+        if (res.summonSkill) {
+          skillBgColor = getSkillBgColor(res.summonSkill);
+        }
+        backgroundStyle = `linear-gradient(135deg, ${skillBgColor}99, ${skillBgColor}66)`;
+        // 緊急度を示す色（赤や金）の枠線は最前面で強固に描画（レイヤー分離）
+        borderStyle = `2px solid ${colorCode}EE`; // 緊急召喚なので少し太め＆明るめに
+        boxShadowStyle = `0 0 10px ${colorCode}66`; // 枠線を強調する立体的なシャドウ
+        textColorCode = '#ffffff'; // 文字を白にして視認性確保
       } else {
         colorCode = menu ? (menu.colorCode || '#6366f1') : '#6366f1';
         blockLabel = menu ? menu.name : '';
         const compositeGradient = menu ? getCompositeMenuGradient(menu.name) : null;
         if (compositeGradient) {
           backgroundStyle = compositeGradient;
-          borderStyle = `1px solid rgba(255, 255, 255, 0.35)`;
+          borderStyle = `1px solid rgba(255, 255, 255, 0.45)`;
         } else {
-          backgroundStyle = `linear-gradient(135deg, ${colorCode}44, ${colorCode}22)`;
-          borderStyle = `1px solid ${colorCode}88`;
+          backgroundStyle = `linear-gradient(135deg, ${colorCode}88, ${colorCode}55)`;
+          borderStyle = `1px solid ${colorCode}BB`;
         }
       }
     }
@@ -320,6 +361,9 @@ export class ReservationBlock {
     // minHeightによる自動伸張はレイアウト崩れの原因になるため廃止
     block.style.background = backgroundStyle;
     block.style.border = borderStyle;
+    if (boxShadowStyle) {
+      block.style.boxShadow = boxShadowStyle;
+    }
     if (isVirtual) {
       block.style.cursor = 'default';
     } else {
@@ -487,7 +531,7 @@ export class ReservationBlock {
     const menuNameEl = document.createElement('span');
     menuNameEl.className = 'reservation-menu-name';
     menuNameEl.style.fontWeight = 'bold';
-    menuNameEl.style.color = colorCode;
+    menuNameEl.style.color = textColorCode || colorCode;
     menuNameEl.style.overflow = 'hidden';
     menuNameEl.style.textOverflow = 'ellipsis';
     
@@ -537,7 +581,7 @@ export class ReservationBlock {
     timeEl.style.flexShrink = '0';
     if (isVirtual) {
       timeEl.style.fontSize = '8px';
-      timeEl.style.color = 'var(--text-muted)';
+      timeEl.style.color = textColorCode ? 'rgba(255, 255, 255, 0.8)' : 'var(--text-muted)';
     }
 
     leftSideContainer.appendChild(menuNameEl);
@@ -822,14 +866,19 @@ export class ReservationBlock {
     slotEl.style.flex = '1';
     slotEl.style.height = '100%';
     slotEl.style.boxSizing = 'border-box';
+    
+    // 背景色はメニュー全体のテーマカラーをベースに薄く描画（スタイリスト側の統一感維持）
+    const baseColorCode = colorCode || '#6366f1';
+    
     slotEl.style.background = `repeating-linear-gradient(
       45deg,
-      ${colorCode}11,
-      ${colorCode}11 4px,
-      ${colorCode}22 4px,
-      ${colorCode}22 8px
+      ${baseColorCode}11,
+      ${baseColorCode}11 4px,
+      ${baseColorCode}22 4px,
+      ${baseColorCode}22 8px
     )`;
-    slotEl.style.border = `1px solid ${colorCode}44`;
+    // 枠線はメニュー色をベースにする
+    slotEl.style.border = `1px solid ${baseColorCode}44`;
     slotEl.style.borderRadius = '3px';
     slotEl.style.display = 'flex';
     slotEl.style.flexDirection = 'column';
