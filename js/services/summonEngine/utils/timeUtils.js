@@ -77,3 +77,22 @@ export function formatTime(timeVal) {
   const d = new Date(timeVal);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
+
+/**
+ * 対象スタッフが指定された時間（Tick）にブロック（不在）設定されているか判定する
+ */
+export function isStaffBlocked(staffId, timeVal, tracker) {
+  if (!tracker || !tracker[staffId] || !tracker[staffId].blockedTimes) {
+    return false;
+  }
+  const tickMs = toTimestamp(timeVal);
+  for (const block of tracker[staffId].blockedTimes) {
+    const s = toTimestamp(block.startTime);
+    const e = toTimestamp(block.endTime);
+    // 時間帯が重なっているか (timeValは特定のTickを表すため、そのTickが含まれるか判定)
+    if (tickMs >= s && tickMs < e) {
+      return true;
+    }
+  }
+  return false;
+}

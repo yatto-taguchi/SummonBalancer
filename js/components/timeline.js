@@ -381,6 +381,8 @@ export class Timeline {
 
     // アシスタント一覧をストレージから取得
     const assistants = Storage.loadAssistants ? Storage.loadAssistants().filter(a => a.isWorkingOn(dateStr)) : [];
+    // ブロック一覧を取得
+    const blockedTimes = Storage.loadBlockedTimes ? Storage.loadBlockedTimes(dateStr) : [];
 
     for (let i = 0; i < TOTAL_SLOTS; i++) {
       const minutes = i * SLOT_MINUTES;
@@ -720,6 +722,47 @@ export class Timeline {
         cellsContainer.appendChild(manncellBlock);
       });
 
+      // ブロック時間（不在）のダミーブロック描画 (スタイリスト)
+      const stylistBlocks = blockedTimes.filter(b => b.staffId === stylist.id);
+      stylistBlocks.forEach(block => {
+        const startMin = block.startTime;
+        const endMin = block.endTime;
+        const leftPct = accordionManager.getWeightedPosition(startMin);
+        const endPct = accordionManager.getWeightedPosition(endMin);
+
+        const blockEl = document.createElement('div');
+        blockEl.className = 'timeline-dummy-block';
+        blockEl.style.position = 'absolute';
+        blockEl.style.top = '10px';
+        blockEl.style.height = `${CELL_HEIGHT - 20}px`;
+        blockEl.style.left = `${leftPct}%`;
+        blockEl.style.width = `${endPct - leftPct}%`;
+        blockEl.style.background = 'repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4) 10px, rgba(30, 30, 30, 0.4) 10px, rgba(30, 30, 30, 0.4) 20px)';
+        blockEl.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+        blockEl.style.borderRadius = '8px';
+        blockEl.style.display = 'flex';
+        blockEl.style.alignItems = 'center';
+        blockEl.style.justifyContent = 'center';
+        blockEl.style.color = '#fff';
+        blockEl.style.fontWeight = 'bold';
+        blockEl.style.fontSize = '12px';
+        blockEl.style.textShadow = '1px 1px 2px rgba(0,0,0,0.8)';
+        blockEl.style.zIndex = '10';
+        blockEl.innerHTML = '🚫 ブロック';
+        blockEl.title = 'ブロック（不在）: クリックで解除';
+        blockEl.style.cursor = 'pointer';
+
+        blockEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (confirm('このブロックを解除しますか？')) {
+            Storage.removeBlockedTime(dateStr, stylist.id, startMin);
+            if (window.eventBus) window.eventBus.emit('staffChanged');
+          }
+        }, { signal });
+
+        cellsContainer.appendChild(blockEl);
+      });
+
       row.appendChild(cellsContainer);
       body.appendChild(row);
     });
@@ -830,6 +873,47 @@ export class Timeline {
 
           cellsContainer.appendChild(cell);
         }
+
+        // ブロック時間（不在）のダミーブロック描画
+        const assistantBlocks = blockedTimes.filter(b => b.staffId === assistant.id);
+        assistantBlocks.forEach(block => {
+          const startMin = block.startTime;
+          const endMin = block.endTime;
+          const leftPct = accordionManager.getWeightedPosition(startMin);
+          const endPct = accordionManager.getWeightedPosition(endMin);
+
+          const blockEl = document.createElement('div');
+          blockEl.className = 'timeline-dummy-block';
+          blockEl.style.position = 'absolute';
+          blockEl.style.top = '10px';
+          blockEl.style.height = `${CELL_HEIGHT - 20}px`;
+          blockEl.style.left = `${leftPct}%`;
+          blockEl.style.width = `${endPct - leftPct}%`;
+          blockEl.style.background = 'repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4) 10px, rgba(30, 30, 30, 0.4) 10px, rgba(30, 30, 30, 0.4) 20px)';
+          blockEl.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+          blockEl.style.borderRadius = '8px';
+          blockEl.style.display = 'flex';
+          blockEl.style.alignItems = 'center';
+          blockEl.style.justifyContent = 'center';
+          blockEl.style.color = '#fff';
+          blockEl.style.fontWeight = 'bold';
+          blockEl.style.fontSize = '12px';
+          blockEl.style.textShadow = '1px 1px 2px rgba(0,0,0,0.8)';
+          blockEl.style.zIndex = '10';
+          blockEl.innerHTML = '🚫 ブロック';
+          blockEl.title = 'ブロック（不在）: クリックで解除';
+          blockEl.style.cursor = 'pointer';
+
+          blockEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm('このブロックを解除しますか？')) {
+              Storage.removeBlockedTime(dateStr, assistant.id, startMin);
+              if (window.eventBus) window.eventBus.emit('staffChanged');
+            }
+          }, { signal });
+
+          cellsContainer.appendChild(blockEl);
+        });
 
         row.appendChild(cellsContainer);
         body.appendChild(row);

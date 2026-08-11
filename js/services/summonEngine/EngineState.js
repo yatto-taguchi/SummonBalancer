@@ -1,7 +1,7 @@
 import { toTimestamp } from './utils/timeUtils.js';
 
 export class EngineState {
-  constructor(reservations, staff, menus, initialState = null) {
+  constructor(reservations, staff, menus, initialState = null, options = {}) {
     if (initialState) {
       // Clone from existing state
       this.reservations = initialState.reservations;
@@ -87,9 +87,22 @@ export class EngineState {
         this.tracker[s.id] = {
           totalAssignedSlots: 0,
           hasLunch: false,
-          hasBreak: false
+          hasBreak: false,
+          blockedTimes: []
         };
       });
+
+      if (options.blockedTimes && Array.isArray(options.blockedTimes)) {
+        options.blockedTimes.forEach(block => {
+          if (this.tracker[block.staffId]) {
+            this.tracker[block.staffId].blockedTimes.push({
+              startTime: block.startTime,
+              endTime: block.endTime
+            });
+          }
+        });
+      }
+
       this.freezeBoundary = null;
     }
   }

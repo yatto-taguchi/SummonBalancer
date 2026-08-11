@@ -1,5 +1,5 @@
 import { hasSkill } from '../utils/skillUtils.js?v=3';
-import { isStaffFree, toTimestamp } from '../utils/timeUtils.js?v=3';
+import { isStaffFree, toTimestamp, isStaffBlocked } from '../utils/timeUtils.js?v=3';
 
 /**
  * 対象スタッフの特定スキルのレベルを取得する
@@ -154,7 +154,7 @@ export function executePrimaryAssign(state) {
 
       let candidates = timeSlot.freePoolStaffIds
         .map(id => assistants.find(a => a.id === id))
-        .filter(a => a && hasSkill(a, req.requiredSkill, req.minSkillLevel));
+        .filter(a => a && hasSkill(a, req.requiredSkill, req.minSkillLevel) && !isStaffBlocked(a.id, time, nextState.tracker));
 
       const taskKey = `${req.reservationId}_${req.slotIndex}`;
       const ongoingAssistantId = nextState.ongoingTasks[taskKey] || null;

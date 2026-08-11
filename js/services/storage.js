@@ -31,6 +31,9 @@ const KEY_RESERVATIONS_PREFIX = 'sb_reservations_';
 /** @constant {string} SOSリストのストレージキープレフィックス */
 const KEY_SOS_PREFIX = 'sb_sos_';
 
+/** @constant {string} ブロック時間のストレージキープレフィックス */
+const KEY_BLOCKED_TIMES_PREFIX = 'sb_blocked_times_';
+
 /** @constant {string} スキルリストのストレージキー */
 const KEY_SKILLS = 'sb_skills';
 
@@ -487,6 +490,41 @@ export function deleteSOSRequest(date, sosId) {
   const sosList = loadSOSRequests(date);
   const filtered = sosList.filter(s => s.id !== sosId);
   saveData(getSOSKey(date), filtered);
+}
+
+// ──────────────────────────────────────────────
+// ブロック時間（不在設定）管理
+// ──────────────────────────────────────────────
+
+/**
+ * 指定日のブロック時間リストを保存する
+ * @param {string} dateString - 日付文字列（YYYY-MM-DD）
+ * @param {Array<{staffId: string, startTime: string|number, endTime: string|number}>} blocks
+ */
+export function saveBlockedTimes(dateString, blocks) {
+  saveData(KEY_BLOCKED_TIMES_PREFIX + dateString, blocks);
+}
+
+/**
+ * 指定日のブロック時間リストを読み込む
+ * @param {string} dateString - 日付文字列（YYYY-MM-DD）
+ * @returns {Array<{staffId: string, startTime: string|number, endTime: string|number}>}
+ */
+export function loadBlockedTimes(dateString) {
+  const data = loadData(KEY_BLOCKED_TIMES_PREFIX + dateString);
+  return Array.isArray(data) ? data : [];
+}
+
+/**
+ * 指定日のブロック時間リストから1件削除する
+ * @param {string} dateString - 日付文字列
+ * @param {string} staffId - スタッフID
+ * @param {string|number} startTime - 開始時間
+ */
+export function removeBlockedTime(dateString, staffId, startTime) {
+  const blocks = loadBlockedTimes(dateString);
+  const newBlocks = blocks.filter(b => !(b.staffId === staffId && b.startTime === startTime));
+  saveBlockedTimes(dateString, newBlocks);
 }
 
 // ──────────────────────────────────────────────

@@ -1,4 +1,5 @@
 import { hasSkill, getTotalSkillLevel } from '../utils/skillUtils.js?v=3';
+import { isStaffBlocked } from '../utils/timeUtils.js?v=3';
 
 /**
  * Phase 5.6: 最終最適化（Backward Sweep — ハンドオフ解消 + 不足解消）
@@ -376,9 +377,10 @@ export function executeBackwardSweep(state) {
           continue;
         }
 
-        // F がチェーン全期間にわたって空いているか（剥がし不能な本アサインがないか判定）
+        // F がチェーン全期間にわたって空いているか（ブロックされていないか、剥がし不能な本アサインがないか判定）
         let freeForChain = true;
         for (const chainTime of fullChainTicks) {
+          if (isStaffBlocked(freeAst.id, chainTime, nextState.tracker)) { freeForChain = false; break; }
           const chainTS = nextState.timeSlots[chainTime];
           if (!chainTS) { freeForChain = false; break; }
           const hasNonGap = chainTS.assignments.some(a =>
@@ -590,6 +592,7 @@ export function executeBackwardSweep(state) {
 
           let freeForChain = true;
           for (const chainTime of fullChainTicks) {
+            if (isStaffBlocked(freeAst.id, chainTime, nextState.tracker)) { freeForChain = false; break; }
             const chainTS = nextState.timeSlots[chainTime];
             if (!chainTS) { freeForChain = false; break; }
             const hasNonGap = chainTS.assignments.some(a =>

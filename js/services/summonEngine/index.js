@@ -26,7 +26,7 @@ export class SummonEngine {
     const allStaff = [...(stylists || []), ...(assistants || [])];
     
     // 1. 初期状態の生成
-    let state = new EngineState(reservations, allStaff, menus);
+    let state = new EngineState(reservations, allStaff, menus, null, options);
     
     // === フリーズ境界の計算（5分Tickへの丸め処理） ===
     let freezeBoundary = null;

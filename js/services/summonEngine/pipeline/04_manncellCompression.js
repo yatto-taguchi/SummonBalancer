@@ -1,4 +1,5 @@
 import { hasSkill } from '../utils/skillUtils.js?v=3';
+import { isStaffBlocked } from '../utils/timeUtils.js?v=3';
 
 export function executeManncellCompression(state) {
   let nextState = state.clone();
@@ -59,7 +60,10 @@ export function executeManncellCompression(state) {
           .filter(id => {
             if (id === 'MANNCELL_STANDBY') return false;
             const staffObj = (state.master?.staffMap || {})[id];
-            return staffObj && staffObj.type === 'assistant';
+            if (!staffObj || staffObj.type !== 'assistant') return false;
+            // ブロックされている場合はマンセルのチームメンバーから除外
+            if (isStaffBlocked(id, time, state.tracker)) return false;
+            return true;
           })
       ));
 

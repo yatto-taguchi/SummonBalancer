@@ -11,6 +11,7 @@
  *
  * @module pipeline/06_freeTimeAllocation
  */
+import { isStaffBlocked } from '../utils/timeUtils.js?v=3';
 
 /** 営業時間 9:00〜19:00 = 600分 = 120 ticks */
 const TOTAL_TICKS = 120;
@@ -95,6 +96,14 @@ function buildOccupancyMap(staffId, state) {
       if (!staffObj.isWorkingAtTime(absMinute)) {
         occupied[t] = true;
       }
+    }
+  }
+
+  // --- 5. ブロックされている時間 ---
+  for (let t = 0; t < TOTAL_TICKS; t++) {
+    const absMinute = 540 + t * 5;
+    if (isStaffBlocked(staffId, absMinute, state.tracker)) {
+      occupied[t] = true;
     }
   }
 

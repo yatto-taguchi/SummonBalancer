@@ -17,6 +17,7 @@ import { AlertBadge } from '../components/alertBadge.js';
 import { FreeTimeModal } from '../components/freeTimeModal.js?v=2';
 import accordionManager from '../components/accordionManager.js';
 import { sosManager } from '../components/sosManager.js';
+import { blockManager } from '../components/blockManager.js';
 import { memoPopover } from '../components/memoPopover.js';
 import { Reservation } from '../models/reservation.js';
 
@@ -46,8 +47,9 @@ export class MainView {
     // コンポーネントからアクセスできるようにグローバル参照を保存
     window.__mainViewInstance = this;
 
-    // SOSモードの初期化
+    // SOSモードとブロックマネージャーの初期化
     sosManager.init(this);
+    blockManager.init(this);
 
     /** @type {Timeline|null} */
     this.timeline = null;
@@ -730,6 +732,7 @@ export class MainView {
     const ganbareBtn = document.createElement('button');
     ganbareBtn.className = 'menu-bar-toolbar-btn ganbare-mode-btn';
     ganbareBtn.dataset.action = 'ganbare-mode';
+    ganbareBtn.id = 'btn-ganbare';
     ganbareBtn.innerHTML = '🔥 頑張れ配置';
     if (this.isGanbareMode) ganbareBtn.classList.add('active');
     modeWrapper.appendChild(ganbareBtn);
@@ -757,12 +760,28 @@ export class MainView {
 
     toolbar.appendChild(sosRefreshWrapper);
 
+    // ブロック設定・リセットの2列ラッパー (高さを揃えるためgap: 2px)
+    const blockResetWrapper = document.createElement('div');
+    blockResetWrapper.style.cssText = 'display: flex; flex-direction: column; gap: 2px; margin-left: 10px;';
+
+    // ブロックボタン (グレー系で目立ちすぎないように)
+    const blockBtn = document.createElement('button');
+    blockBtn.className = 'menu-bar-toolbar-btn';
+    blockBtn.dataset.action = 'block-mode';
+    blockBtn.id = 'btn-block';
+    blockBtn.style.background = 'rgba(75, 85, 99, 0.4)';
+    blockBtn.style.color = 'var(--text-secondary)';
+    blockBtn.innerHTML = '🧱 ブロック設定';
+    blockResetWrapper.appendChild(blockBtn);
+
     // 当日リセットボタン
     const resetBtn = document.createElement('button');
     resetBtn.className = 'menu-bar-toolbar-btn danger';
     resetBtn.dataset.action = 'reset-day';
     resetBtn.innerHTML = '🗑 リセット';
-    toolbar.appendChild(resetBtn);
+    blockResetWrapper.appendChild(resetBtn);
+
+    toolbar.appendChild(blockResetWrapper);
 
     // イベント設定
     this._setupToolbarEvents(toolbar);
@@ -815,6 +834,9 @@ export class MainView {
           this.toggleGanbareMode();
           btn.classList.toggle('active', this.isGanbareMode);
           break;
+        case 'block-mode':
+          blockManager.show();
+          break;
         case 'sos-mode':
           const isActive = sosManager.toggleMode();
           btn.classList.toggle('active', isActive);
@@ -846,6 +868,9 @@ export class MainView {
     const allAssistants = Storage.loadAssistants();
     const assistants = allAssistants.filter(a => a.isWorkingOn(dateStr));
     const offAssistants = allAssistants.filter(a => !a.isWorkingOn(dateStr));
+    
+    // ブロックマネージャーの初期化
+    blockManager.init(this);
 
     // タイムライン
     const timelineArea = this.container.querySelector('#timeline-area');
@@ -1329,6 +1354,7 @@ export class MainView {
     const lunchOverrides = Storage.loadLunchOverrides ? Storage.loadLunchOverrides(dateStr) : {};
     const restOverrides = Storage.loadRestOverrides ? Storage.loadRestOverrides(dateStr) : {};
     const forcedFreeTimes = Storage.loadForcedFreeTimes ? Storage.loadForcedFreeTimes(dateStr) : {};
+    const blockedTimes = Storage.loadBlockedTimes ? Storage.loadBlockedTimes(dateStr) : [];
     
     // タイムライン・フリーズ: 当日の場合は現在時刻を渡し、過去のアサインをロックする
     const now = new Date();
@@ -1339,29 +1365,9 @@ export class MainView {
     const result = this.summonEngine.calculate(
       reservations, stylists, assistants, menus,
       lunchOverrides, restOverrides,
-      { isToday, currentTime, forcedFreeTimes }
+      { isToday, currentTime, forcedFreeTimes, blockedTimes }
     );
     this.lastSummonResult = result;
-
-    // --- DEBUG: アラートがあったらトーストまたはコンソールに出力 ---
-    if (result.alerts && result.alerts.length > 0) {
-      console.warn("[DEBUG] 人数不足アラート発生: ", result.alerts);
-      const alertMessages = result.alerts.map(a => `予約ID:${a.reservationId} (スロット${a.slotIndex}) - ${a.message}`).join("\\n");
-      console.error("【不足アラート】\\n" + alertMessages);
-    }
-    if (result.manncells && result.manncells.length > 0) {
-      console.log("[DEBUG] 成立したマンセル: ", result.manncells);
-    }
-
-    // --- DEBUG: アラートがあったらトーストまたはコンソールに出力 ---
-    if (result.alerts && result.alerts.length > 0) {
-      console.warn("[DEBUG] 人数不足アラート発生: ", result.alerts);
-      const alertMessages = result.alerts.map(a => `予約ID:${a.reservationId} (スロット${a.slotIndex}) - ${a.message}`).join("\\n");
-      console.error("【不足アラート】\\n" + alertMessages);
-    }
-    if (result.manncells && result.manncells.length > 0) {
-      console.log("[DEBUG] 成立したマンセル: ", result.manncells);
-    }
 
     // --- DEBUG: アラートがあったらトーストまたはコンソールに出力 ---
     if (result.alerts && result.alerts.length > 0) {
@@ -2320,6 +2326,23 @@ export class MainView {
     const oldEnd = typeof reservation.endTime === 'number' ? reservation.endTime : oldStart + menu.duration;
     const duration = oldEnd - oldStart;
 
+    // ブロック（不在）時間との重複チェック
+    const blockedTimes = Storage.loadBlockedTimes ? Storage.loadBlockedTimes(dateStr) : [];
+    const targetStylistId = stylistId || reservation.stylistId;
+    const hasConflict = blockedTimes.some(b => {
+      if (b.staffId === targetStylistId) {
+        if (startMinutes < b.endTime && b.startTime < (startMinutes + duration)) {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    if (hasConflict) {
+      alert("指定した時間帯はスタイリストがブロック（不在）設定されているため、予約を移動できません。");
+      return;
+    }
+
     // 新しい位置に更新
     reservation.startTime = startMinutes;
     reservation.endTime = startMinutes + duration;
@@ -2964,7 +2987,7 @@ export class MainView {
 
     const dateStr = this._formatDate(this.currentDate);
     const assistants = Storage.loadAssistants().filter(a => a.isWorkingOn(dateStr));
-    const stylists = Storage.loadStylists().filter(s => s.isWorkingOn(dateStr));
+    const stylists = Storage.loadStylists().filter(s => s.isWorkingOn(s.id === dateStr));
     const reservations = Storage.loadReservations(dateStr);
     const currentRes = reservations.find(r => r.id === data.reservationId);
     if (!currentRes) return;
@@ -3215,7 +3238,7 @@ export class MainView {
     // 排他制御: 固定ON → 頑張れモードOFF
     if (this.isManualMode && this.isGanbareMode) {
       this.isGanbareMode = false;
-      const ganbareBtn = this.container.querySelector('[data-action="ganbare-mode"]');
+      const ganbareBtn = this.container.querySelector('#btn-ganbare');
       if (ganbareBtn) ganbareBtn.classList.remove('active');
       const ganbareOverlay = this.container.querySelector('.ganbare-mode-overlay');
       if (ganbareOverlay) ganbareOverlay.remove();
