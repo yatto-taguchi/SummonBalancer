@@ -17,6 +17,7 @@ import { AlertBadge } from '../components/alertBadge.js';
 import { FreeTimeModal } from '../components/freeTimeModal.js?v=2';
 import accordionManager from '../components/accordionManager.js';
 import { sosManager } from '../components/sosManager.js';
+import { memoPopover } from '../components/memoPopover.js';
 
 export class MainView {
   /**
@@ -243,7 +244,40 @@ export class MainView {
     this._eventHandlers.menuDroppedOnReservation = (data) => {
       this._showMenuCombineModal(data);
     };
+    
+    // 📝 メモポップオーバーを開く処理
+    this._eventHandlers.openMemoPopover = (data) => {
+      memoPopover.show(data.reservationId, data.memo, data.targetElement);
+    };
+
+    // 📝 メモ保存時の処理（サモンエンジンを再計算しない軽量なUI更新）
+    this._eventHandlers.memoUpdated = (data) => {
+      const dateStr = this._formatDate(this.currentDate);
+      const reservations = Storage.loadReservations(dateStr);
+      const res = reservations.find(r => r.id === data.reservationId);
+      if (res) {
+        res.memo = data.memo;
+        Storage.saveReservation(dateStr, res);
+        
+        // DOMを直接更新してアイコンを光らせる（_runSummonは呼ばない）
+        const blockEl = document.querySelector(`.reservation-block[data-reservation-id="${data.reservationId}"]`);
+        if (blockEl) {
+          const memoIcon = blockEl.querySelector('.memo-icon');
+          if (memoIcon) {
+            memoIcon.dataset.memo = data.memo;
+            if (data.memo) {
+              memoIcon.classList.add('has-memo');
+            } else {
+              memoIcon.classList.remove('has-memo');
+            }
+          }
+        }
+      }
+    };
+
     bus.on('menuDroppedOnReservation', this._eventHandlers.menuDroppedOnReservation);
+    bus.on('openMemoPopover', this._eventHandlers.openMemoPopover);
+    bus.on('memoUpdated', this._eventHandlers.memoUpdated);
 
     // ドラッグ中にDOMが再構築されてdragendが発火しないバグへの対策
     document.addEventListener('dragend', () => {

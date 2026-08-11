@@ -155,7 +155,7 @@ type AssignBadge = 'special_summon_lunch' | 'special_summon_break' | 'gambare' |
 
 interface Staff { id: string; rank: StaffRank; skills: Record<string, SkillLevel>; priorityToggle: boolean; }
 interface Menu { id: string; name: string; /* 要件定義用データ */ }
-interface Reservation { id: string; stylistId: string; menuId: string; startTime: string; endTime: string; }
+interface Reservation { id: string; stylistId: string; menuId: string; startTime: string; endTime: string; memo?: string; }
 interface StaffTracker { totalAssignedSlots: number; hasLunch: boolean; hasBreak: boolean; }
 
 

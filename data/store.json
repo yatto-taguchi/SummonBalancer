@@ -3472,7 +3472,8 @@
         }
       ],
       "manualVariantSelection": false,
-      "autoSwitchedVariant": false
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1785486517649_zysyf2",
@@ -3503,7 +3504,8 @@
         }
       ],
       "manualVariantSelection": false,
-      "autoSwitchedVariant": false
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1785539887146_7vbag6",
@@ -3525,7 +3527,8 @@
       "slotTimeOverrides": {},
       "items": null,
       "manualVariantSelection": false,
-      "autoSwitchedVariant": false
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1785539904914_ks99w9",
@@ -3542,7 +3545,8 @@
       "slotTimeOverrides": {},
       "items": null,
       "manualVariantSelection": false,
-      "autoSwitchedVariant": false
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1786404478802_rz3x7s",
@@ -3552,7 +3556,10 @@
       "endTime": 120,
       "assignedAssistants": {},
       "menuVariant": "",
-      "fixedAssistants": {},
+      "fixedAssistants": {
+        "0": "__none__",
+        "1": "__none__"
+      },
       "ganbare": {},
       "slotTimeOverrides": {},
       "items": [
@@ -3566,7 +3573,8 @@
         }
       ],
       "manualVariantSelection": true,
-      "autoSwitchedVariant": false
+      "autoSwitchedVariant": false,
+      "memo": "テスト"
     },
     {
       "id": "res_1786404498845_n6wkq1",
@@ -3590,7 +3598,8 @@
         }
       ],
       "manualVariantSelection": true,
-      "autoSwitchedVariant": false
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1786404548820_ce6bbw",
@@ -3614,7 +3623,8 @@
         }
       ],
       "manualVariantSelection": false,
-      "autoSwitchedVariant": false
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1786405709452_an5qm2",
@@ -3638,7 +3648,8 @@
         }
       ],
       "manualVariantSelection": false,
-      "autoSwitchedVariant": false
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1786405725004_odqqjz",
@@ -3662,7 +3673,8 @@
         }
       ],
       "manualVariantSelection": false,
-      "autoSwitchedVariant": true
+      "autoSwitchedVariant": true,
+      "memo": ""
     },
     {
       "id": "res_1786407238746_nku4pu",
@@ -3686,7 +3698,8 @@
         }
       ],
       "manualVariantSelection": false,
-      "autoSwitchedVariant": true
+      "autoSwitchedVariant": true,
+      "memo": ""
     },
     {
       "id": "res_1786407245136_stnm66",
@@ -3701,7 +3714,8 @@
       "slotTimeOverrides": {},
       "items": null,
       "manualVariantSelection": false,
-      "autoSwitchedVariant": true
+      "autoSwitchedVariant": true,
+      "memo": ""
     }
   ],
   "sb_reservations_2026-08-07": [

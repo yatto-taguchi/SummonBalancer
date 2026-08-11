@@ -27,7 +27,7 @@ export class Reservation {
    * @param {string} [params.menuVariant=''] - メニューバリエーション名（例: "カットのみ（メンズ）"）
    * @throws {Error} 必須パラメータが不足している場合
    */
-  constructor({ id, menuItemId, stylistId, startTime, endTime, assignedAssistants = {}, menuVariant = '', fixedAssistants = {}, ganbare = {}, nonOverlapSummonEnabled, slotTimeOverrides = {}, items = null, manualVariantSelection = false, autoSwitchedVariant = false }) {
+  constructor({ id, menuItemId, stylistId, startTime, endTime, assignedAssistants = {}, menuVariant = '', fixedAssistants = {}, ganbare = {}, nonOverlapSummonEnabled, slotTimeOverrides = {}, items = null, manualVariantSelection = false, autoSwitchedVariant = false, memo = '' }) {
     // 必須パラメータのバリデーション
     if (!id) {
       throw new Error('予約IDは必須です');
@@ -96,6 +96,9 @@ export class Reservation {
 
     /** @type {boolean} 掛け持ちによる自動切替フラグ */
     this.autoSwitchedVariant = Boolean(autoSwitchedVariant);
+
+    /** @type {string} 予約に関するメモ・申し送り事項 */
+    this.memo = memo || '';
   }
 
   /**
@@ -243,7 +246,8 @@ export class Reservation {
       slotTimeOverrides: { ...this.slotTimeOverrides },
       items: this.items ? this.items.map(item => ({ ...item })) : null,
       manualVariantSelection: this.manualVariantSelection,
-      autoSwitchedVariant: this.autoSwitchedVariant
+      autoSwitchedVariant: this.autoSwitchedVariant,
+      memo: this.memo
     };
   }
 

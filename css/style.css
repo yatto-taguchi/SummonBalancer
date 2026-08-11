@@ -2120,3 +2120,45 @@ body.is-resizing .reservation-resize-handle {
     transform: scale(1) translateY(0);
   }
 }
+
+/* 📝 メモアイコンのベーススタイル */
+.memo-icon {
+  display: inline-block;
+  cursor: pointer;
+  font-size: 13px; /* 少し大きめに */
+  margin-right: 4px;
+  padding: 2px 4px;
+  margin-left: -4px;
+  flex-shrink: 0;
+  opacity: 0.35;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s, filter 0.2s;
+  transform-origin: center center;
+}
+
+.memo-icon:hover {
+  transform: scale(1.25);
+  opacity: 0.8;
+}
+
+/* メモが入っている時のスタイル */
+.memo-icon.has-memo {
+  opacity: 1 !important;
+  font-size: 14px; /* さらに少し大きく */
+  animation: memoPulse 1.8s infinite alternate cubic-bezier(0.45, 0.05, 0.55, 0.95);
+}
+
+.memo-icon.has-memo:hover {
+  transform: scale(1.35) rotate(-5deg); /* ホバー時により飛び出る感じに */
+}
+
+/* メモアイコンのアニメーション (飛び出て光る) */
+@keyframes memoPulse {
+  0% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 2px rgba(251, 191, 36, 0.4));
+  }
+  100% {
+    transform: scale(1.15) translateY(-1px);
+    filter: drop-shadow(0 2px 10px rgba(251, 191, 36, 1)) drop-shadow(0 0 4px rgba(255, 255, 255, 0.6));
+  }
+}

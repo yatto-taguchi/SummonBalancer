@@ -448,6 +448,38 @@ export class ReservationBlock {
       header.style.padding = '2px 4px';
     }
 
+    const leftSideContainer = document.createElement('div');
+    leftSideContainer.style.display = 'flex';
+    leftSideContainer.style.alignItems = 'center';
+    leftSideContainer.style.overflow = 'hidden';
+    
+    if (!isVirtual) {
+      const memoIcon = document.createElement('span');
+      memoIcon.textContent = '📝';
+      memoIcon.className = 'memo-icon';
+      
+      if (res.memo) {
+        memoIcon.dataset.memo = res.memo;
+        memoIcon.classList.add('has-memo');
+      } else {
+        memoIcon.dataset.memo = '';
+        memoIcon.classList.remove('has-memo');
+      }
+
+      memoIcon.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (window.eventBus) {
+          window.eventBus.emit('openMemoPopover', {
+            reservationId: res.id,
+            memo: memoIcon.dataset.memo || '',
+            targetElement: memoIcon
+          });
+        }
+      }, { signal });
+
+      leftSideContainer.appendChild(memoIcon);
+    }
+
     const menuNameEl = document.createElement('span');
     menuNameEl.className = 'reservation-menu-name';
     menuNameEl.style.fontWeight = 'bold';
@@ -504,7 +536,8 @@ export class ReservationBlock {
       timeEl.style.color = 'var(--text-muted)';
     }
 
-    header.appendChild(menuNameEl);
+    leftSideContainer.appendChild(menuNameEl);
+    header.appendChild(leftSideContainer);
 
 
 
