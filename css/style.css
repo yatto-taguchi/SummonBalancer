@@ -584,6 +584,15 @@ input:focus, select:focus, textarea:focus {
   border: 1px dashed rgba(255, 255, 255, 0.5);
 }
 
+.reservation-block.forced-activity-block {
+  z-index: 5;
+  background: rgba(245, 158, 11, 0.6) !important; /* 半透明のオレンジベース */
+  backdrop-filter: blur(2px); /* 下のアサインが見えるように軽いぼかし */
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+  pointer-events: none; /* 下の予約ブロック等をクリック可能にする */
+}
+
 .reservation-block.special-summon-block {
   z-index: 5;
   border: 2px solid rgba(245, 158, 11, 0.8);

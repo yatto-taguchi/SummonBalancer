@@ -268,6 +268,10 @@ export class ReservationBlock {
             colorCode = '#14b8a6'; // ティール: 選択済み
           }
           blockLabel = res.activityLabel || style.label;
+          if (res.isForced) {
+            if (res.activityType === 'lunch') blockLabel = '🍙 お昼';
+            if (res.activityType === 'rest') blockLabel = '☕ 休憩';
+          }
         }
         backgroundStyle = `linear-gradient(135deg, ${colorCode}44, ${colorCode}22)`;
         borderStyle = `1px solid ${colorCode}88`;

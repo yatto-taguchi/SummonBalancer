@@ -150,6 +150,22 @@ export class MainView {
     this._eventHandlers.reservationUpdated = (data) => this._handleReservationUpdated(data);
     this._eventHandlers.reservationResized = (data) => this._handleReservationResized(data);
 
+    this._eventHandlers.forceFreeTime = (data) => {
+      if (data && data.staffId && data.type) {
+        const dateStr = this._formatDate(this.currentDate);
+        // 現在のエンジン上の時刻（または実時刻の9:00基準分数）を取得
+        const now = new Date();
+        let offsetMinutes = (now.getHours() * 60 + now.getMinutes()) - (9 * 60);
+        if (offsetMinutes < 0) offsetMinutes = 0;
+        
+        // 5分単位にスナップする
+        offsetMinutes = Math.floor(offsetMinutes / 5) * 5;
+
+        Storage.saveForcedFreeTime(dateStr, data.staffId, data.type, offsetMinutes);
+        this._runSummon();
+      }
+    };
+
     // 既にバインドされていれば一度解除する（重複登録防止）
     if (this._eventHandlers.assistantSlotClicked) {
       bus.off('assistantSlotClicked', this._eventHandlers.assistantSlotClicked);
@@ -225,6 +241,9 @@ export class MainView {
     bus.on('reservationDropped', this._eventHandlers.reservationDropped);
     bus.on('reservationMoved', this._eventHandlers.reservationMoved);
     bus.on('reservationDeleted', this._eventHandlers.reservationDeleted);
+    bus.on('reservationUpdated', this._eventHandlers.reservationUpdated);
+    bus.on('reservationResized', this._eventHandlers.reservationResized);
+    bus.on('forceFreeTime', this._eventHandlers.forceFreeTime);
     bus.on('assistantSlotClicked', this._eventHandlers.assistantSlotClicked);
     bus.on('assistantSlotUnfix', this._eventHandlers.assistantSlotUnfix);
     bus.on('convertActivityToLunch', this._eventHandlers.convertActivityToLunch);
@@ -1308,6 +1327,7 @@ export class MainView {
     // 召喚エンジン実行（手動お昼ご飯位置・休憩オーバーライドを反映）
     const lunchOverrides = Storage.loadLunchOverrides ? Storage.loadLunchOverrides(dateStr) : {};
     const restOverrides = Storage.loadRestOverrides ? Storage.loadRestOverrides(dateStr) : {};
+    const forcedFreeTimes = Storage.loadForcedFreeTimes ? Storage.loadForcedFreeTimes(dateStr) : {};
     
     // タイムライン・フリーズ: 当日の場合は現在時刻を渡し、過去のアサインをロックする
     const now = new Date();
@@ -1318,7 +1338,7 @@ export class MainView {
     const result = this.summonEngine.calculate(
       reservations, stylists, assistants, menus,
       lunchOverrides, restOverrides,
-      { isToday, currentTime }
+      { isToday, currentTime, forcedFreeTimes }
     );
     this.lastSummonResult = result;
 
@@ -1662,7 +1682,7 @@ export class MainView {
       const actEnd = typeof act.endTime === 'number' ? act.endTime : new Date(act.endTime).getTime();
       const staffBusy = busyTimeRanges[act.staffId] || [];
       const overlapsWithBusy = staffBusy.some(s => s.start < actEnd && s.end > actStart);
-      if (overlapsWithBusy) return; // 召喚・ヘルプと重複する空き時間・活動はスキップ
+      if (overlapsWithBusy && !act.isForced) return; // 召喚・ヘルプと重複する空き時間・活動はスキップ（強制の場合はスキップせず被せ表示）
 
       // free_timeブロックの場合、保存済みの選択をマージ
       const startMinutes = typeof act.startTime === 'number' ? act.startTime : null;
@@ -1681,7 +1701,8 @@ export class MainView {
         activityType: act.activity,
         isLunchConvertible: !!act.isLunchConvertible,
         isConvertibleToRest: !!act.isConvertibleToRest,
-        freeTimeSelection: savedSelection
+        freeTimeSelection: savedSelection,
+        isForced: !!act.isForced
       };
 
       const timelineArea = this.container.querySelector('#timeline-area');
@@ -1696,6 +1717,9 @@ export class MainView {
 
       if (block._element) {
         block._element.classList.add('activity-virtual-block');
+        if (act.isForced) {
+          block._element.classList.add('forced-activity-block');
+        }
       }
 
       this.reservationBlocks.push(block);

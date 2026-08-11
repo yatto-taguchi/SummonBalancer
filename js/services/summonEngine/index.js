@@ -79,6 +79,7 @@ export class SummonEngine {
     // overrides（昼食・休憩の手動上書き）を初期状態にセット
     state.lunchOverrides = lunchOverrides || {};
     state.restOverrides = restOverrides || {};
+    state.forcedFreeTimes = options.forcedFreeTimes || {};
 
     // 2. パイプライン（Chain of Responsibility）の実行
     //    各Phaseは内部で state.freezeBoundary を参照し、フリーズ対象のTickをスキップする

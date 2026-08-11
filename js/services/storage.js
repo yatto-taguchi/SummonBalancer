@@ -790,6 +790,51 @@ export function clearRestOverrides(dateStr) {
 }
 
 // ──────────────────────────────────────────────
+// 強制フリータイム（お昼・休憩）管理
+// ──────────────────────────────────────────────
+
+/**
+ * 日付別の強制フリータイムを読み込む
+ * @param {string} dateStr - 日付文字列 (YYYY-MM-DD)
+ * @returns {Object.<string, {lunch?: number, break?: number}>} staffId → 強制発動した時間(分)
+ */
+export function loadForcedFreeTimes(dateStr) {
+  const data = localStorage.getItem(`forced_free_time_${dateStr}`);
+  if (!data) return {};
+  try {
+    return JSON.parse(data);
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * 日付別の強制フリータイムを保存する
+ * @param {string} dateStr - 日付文字列 (YYYY-MM-DD)
+ * @param {string} staffId - スタッフID
+ * @param {string} type - 'lunch' または 'break'
+ * @param {number} startTimeOffset - 開始時刻（分）
+ */
+export function saveForcedFreeTime(dateStr, staffId, type, startTimeOffset) {
+  const overrides = loadForcedFreeTimes(dateStr);
+  if (!overrides[staffId]) {
+    overrides[staffId] = {};
+  }
+  overrides[staffId][type] = startTimeOffset;
+  localStorage.setItem(`forced_free_time_${dateStr}`, JSON.stringify(overrides));
+  // _syncToServer は _migreateLocalStorageToServer で同期されるキーパターンのため即時保存用に追加
+  // TODO: 必要に応じて _syncToServer を呼ぶ
+}
+
+/**
+ * 日付別の強制フリータイムをクリアする
+ * @param {string} dateStr - 日付文字列 (YYYY-MM-DD)
+ */
+export function clearForcedFreeTimes(dateStr) {
+  localStorage.removeItem(`forced_free_time_${dateStr}`);
+}
+
+// ──────────────────────────────────────────────
 // サーバー同期機能（ローカルネット共有用）
 // ──────────────────────────────────────────────
 

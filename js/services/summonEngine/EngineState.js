@@ -29,6 +29,7 @@ export class EngineState {
       this.lockedUnassignedTasks = initialState.lockedUnassignedTasks ? JSON.parse(JSON.stringify(initialState.lockedUnassignedTasks)) : {};
       this.lunchOverrides = JSON.parse(JSON.stringify(initialState.lunchOverrides || {}));
       this.restOverrides = JSON.parse(JSON.stringify(initialState.restOverrides || {}));
+      this.forcedFreeTimes = JSON.parse(JSON.stringify(initialState.forcedFreeTimes || {}));
       this.utilizationRates = JSON.parse(JSON.stringify(initialState.utilizationRates || {}));
       this.master = { 
         reservations: this.reservations,
@@ -68,6 +69,7 @@ export class EngineState {
       this.lockedUnassignedTasks = {};
       this.lunchOverrides = {};
       this.restOverrides = {};
+      this.forcedFreeTimes = {};
       this.utilizationRates = {};
       
       this.master = { 

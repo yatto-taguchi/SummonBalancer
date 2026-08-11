@@ -267,6 +267,40 @@ export function executeFreeTimeAllocation(state) {
     });
   }
 
+  // ─── 1.8. 強制お昼・休憩（forcedFreeTimes）の反映 ───
+  // UIから手動で「今からおにぎり食べます」等の宣言をした時間帯。
+  // アサインには干渉しないが、ここで取得済みとみなし増殖を防ぐ。
+  allStaff.forEach(staff => {
+    const forced = (nextState.forcedFreeTimes || {})[staff.id];
+    if (!forced) return;
+
+    if (forced.lunch != null && !allocatedLunch[staff.id]) {
+      const startTick = Math.floor(forced.lunch / 5);
+      allocatedLunch[staff.id] = { startTick, endTick: startTick + BLOCK_TICKS };
+      markOccupied(staffOccupancies[staff.id], startTick);
+      activities.push({
+        staffId: staff.id,
+        startTime: startTick * 5,
+        endTime: (startTick + BLOCK_TICKS) * 5,
+        activity: 'lunch',
+        isForced: true // UI側での被せ表示等に利用
+      });
+    }
+
+    if (forced.break != null && !allocatedRest[staff.id]) {
+      const startTick = Math.floor(forced.break / 5);
+      allocatedRest[staff.id] = { startTick, endTick: startTick + BLOCK_TICKS };
+      markOccupied(staffOccupancies[staff.id], startTick);
+      activities.push({
+        staffId: staff.id,
+        startTime: startTick * 5,
+        endTime: (startTick + BLOCK_TICKS) * 5,
+        activity: 'rest',
+        isForced: true // UI側での被せ表示等に利用
+      });
+    }
+  });
+
   // ─── 2. お昼ご飯アサイン ───
   // 2a. 手動オーバーライド
   allStaff.forEach(staff => {

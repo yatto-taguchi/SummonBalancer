@@ -216,6 +216,47 @@ function renderStaffInfoContent(staffInfoEl, staff, rate, stats, type, index, to
     bottomRow.appendChild(gapSpan);
 
     staffInfoEl.appendChild(bottomRow);
+
+    // 4行目: 強制お昼・休憩ボタン
+    const actionRow = document.createElement('div');
+    actionRow.style.cssText = 'display: flex; gap: 4px; margin-top: 4px; width: 100%;';
+
+    const createActionButton = (label, type, color) => {
+      const btn = document.createElement('button');
+      btn.textContent = label;
+      btn.style.cssText = `
+        flex: 1;
+        padding: 2px 0;
+        font-size: 9px;
+        font-weight: 600;
+        color: #fff;
+        background-color: ${color};
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+        outline: none;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        opacity: 0.85;
+        transition: opacity 0.2s;
+      `;
+      btn.addEventListener('mouseenter', () => btn.style.opacity = '1');
+      btn.addEventListener('mouseleave', () => btn.style.opacity = '0.85');
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (window.eventBus) {
+          window.eventBus.emit('forceFreeTime', { staffId: staff.id, type: type });
+        }
+      });
+      return btn;
+    };
+
+    const lunchBtn = createActionButton('🍙 お昼', 'lunch', '#f59e0b');
+    const breakBtn = createActionButton('☕ 休憩', 'break', '#3b82f6');
+
+    actionRow.appendChild(lunchBtn);
+    actionRow.appendChild(breakBtn);
+    
+    staffInfoEl.appendChild(actionRow);
   }
 }
 
