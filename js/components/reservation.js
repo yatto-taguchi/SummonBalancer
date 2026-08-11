@@ -230,6 +230,7 @@ export class ReservationBlock {
     let borderStyle = '';
     let boxShadowStyle = ''; // 追加: box-shadow用
     let textColorCode = null; // 追加: 文字色用
+    let backdropFilterStyle = ''; // 追加: グラスモーフィズム用
 
     const isCombined = !isVirtual && Array.isArray(res.items) && res.items.length >= 2;
 
@@ -296,10 +297,23 @@ export class ReservationBlock {
           const skillColor = getSkillBgColor(res.summonSkill);
           backgroundStyle = `linear-gradient(135deg, ${skillColor}99, ${skillColor}66)`;
           textColorCode = '#ffffff'; // 濃い背景なので白文字
+          borderStyle = `1px solid ${colorCode}CC`; // 枠線はよりくっきりと
+        } else if (res.activityType === 'free_time') {
+          // 空き時間はダーク・グラスモーフィズム
+          backgroundStyle = 'rgba(15, 23, 42, 0.4)';
+          borderStyle = '1px solid rgba(255, 255, 255, 0.1)';
+          backdropFilterStyle = 'blur(4px)';
+          textColorCode = '#f1f5f9';
+        } else if (res.activityType === 'lunch' || res.activityType === 'rest') {
+          // お昼・休憩はクリアな鮮やかグリーン
+          backgroundStyle = 'rgba(34, 197, 94, 0.3)';
+          borderStyle = '1px solid rgba(34, 197, 94, 0.5)';
+          backdropFilterStyle = 'blur(4px)';
+          textColorCode = '#ffffff';
         } else {
           backgroundStyle = `linear-gradient(135deg, ${colorCode}99, ${colorCode}66)`;
+          borderStyle = `1px solid ${colorCode}CC`; // 枠線はよりくっきりと
         }
-        borderStyle = `1px solid ${colorCode}CC`; // 枠線はよりくっきりと
         
         // 隙間ヘルプ（gap_help）の場合は黄色点線枠を維持＆強調
         if (res.isGapHelp || (res.badges && res.badges.includes('gap_help'))) {
@@ -361,6 +375,10 @@ export class ReservationBlock {
     // minHeightによる自動伸張はレイアウト崩れの原因になるため廃止
     block.style.background = backgroundStyle;
     block.style.border = borderStyle;
+    if (backdropFilterStyle) {
+      block.style.backdropFilter = backdropFilterStyle;
+      block.style.webkitBackdropFilter = backdropFilterStyle; // Safari対応
+    }
     if (boxShadowStyle) {
       block.style.boxShadow = boxShadowStyle;
     }
@@ -550,11 +568,13 @@ export class ReservationBlock {
         const selectedLabel = getFreeTimeLabel(selection.type, selection.detail);
         menuNameEl.innerHTML = `<span style="font-size: 10px;">${selectedLabel}</span>`;
       } else {
-        menuNameEl.innerHTML = `空き時間<br><span style="font-size: 8px; font-weight: normal; opacity: 0.7;">クリックして選択</span>`;
+        menuNameEl.innerHTML = `空き時間<br><span style="font-size: 8px; display: inline-block; transform: scale(0.75); transform-origin: top center; font-weight: normal; opacity: 0.7; letter-spacing: -0.5px;">クリックして選択</span>`;
       }
-      menuNameEl.style.whiteSpace = 'normal';
+      menuNameEl.style.whiteSpace = 'nowrap';
       menuNameEl.style.lineHeight = '1.2';
       menuNameEl.style.textAlign = 'center';
+      menuNameEl.style.display = 'block';
+      menuNameEl.style.width = '100%';
     } else if (res.isLunchConvertible) {
       menuNameEl.innerHTML = `${blockLabel}<br><span style="font-size: 8px; font-weight: normal; opacity: 0.85;">（お昼可）</span>`;
       menuNameEl.style.whiteSpace = 'normal';
