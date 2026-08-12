@@ -1784,6 +1784,25 @@ export class MainView {
         const helperStaff = staffMap.get(hb.staffId);
         const isStylist = helperStaff && helperStaff.type === 'stylist';
 
+        // マンセル（チーム対応）時間帯に含まれるか判定
+        // 注意: hb.startMin は 9:00基準の分数, m.startMin は 0:00基準の絶対分数
+        const isManncell = result.manncells && result.manncells.some(m => {
+          const mRelativeStart = m.startMin - (9 * 60);
+          const mRelativeEnd = m.endMin - (9 * 60);
+          return m.reservationIds.includes(hb.resId) && 
+                 hb.startMin < mRelativeEnd && hb.endMin > mRelativeStart &&
+                 m.team.includes(hb.staffId);
+        });
+
+        let activityLabel = stylistName;
+        if (hb.isGapHelp) {
+          activityLabel = `⭐${stylistName}`;
+        } else if (isStylist) {
+          activityLabel = `特殊召喚 (${stylistName}へ)`;
+        } else if (isManncell) {
+          activityLabel = `🤝${stylistName}`;
+        }
+
         // startMin/endMin は9:00基準の分数なので、そのまま使える
         const virtualRes = {
           id: `helper-virtual-${hb.staffId}-${hb.resId}-${hb.slotIndex}-${hb.startMin}`,
@@ -1795,8 +1814,8 @@ export class MainView {
           fixedAssistants: {},
           isVirtualActivity: true,
           activityType: 'helper',
-          colorCode: isStylist ? '#f59e0b' : colorCode,
-          activityLabel: hb.isGapHelp ? `⭐${stylistName}` : (isStylist ? `特殊召喚 (${stylistName}へ)` : stylistName),
+          colorCode: isStylist ? '#f59e0b' : (isManncell ? '#eab308' : colorCode),
+          activityLabel: activityLabel,
           summonSkill: requiredSkill // 追加: 要求スキル
         };
 
@@ -1846,6 +1865,24 @@ export class MainView {
               pointer-events: none;
             `;
             block._element.appendChild(gapBadge);
+          } else if (isManncell) {
+            // === マンセル（チーム対応）: 実線黄色枠 + 🤝バッジ + 名前 ===
+            block._element.classList.add('manncell-help-block');
+            block._element.style.setProperty('border', '2px solid #eab308', 'important');
+            block._element.style.setProperty('background-color', 'rgba(234, 179, 8, 0.15)', 'important');
+            block._element.style.setProperty('box-shadow', 'none', 'important');
+            
+            // 「チーム」バッジを追加
+            const teamBadge = document.createElement('div');
+            teamBadge.textContent = 'チーム';
+            teamBadge.style.cssText = `
+              position: absolute; top: 1px; right: 2px;
+              font-size: 8px; color: #fff;
+              background: #eab308; padding: 1px 3px;
+              border-radius: 2px; z-index: 20;
+              pointer-events: none;
+            `;
+            block._element.appendChild(teamBadge);
           } else {
             // === 通常ヘルプ（Phase 2/3 正規アサイン）: 実線オレンジ枠 + 名前のみ ===
             block._element.classList.add('normal-help-block');

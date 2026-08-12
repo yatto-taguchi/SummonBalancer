@@ -4969,7 +4969,7 @@
       "startTime": 360,
       "endTime": 480,
       "assignedAssistants": {},
-      "menuVariant": null,
+      "menuVariant": "",
       "fixedAssistants": {},
       "ganbare": {},
       "slotTimeOverrides": {},
@@ -5142,12 +5142,12 @@
     },
     {
       "id": "res_1786489446383_jnepmj",
-      "menuItemId": "cut_color_cut_first",
+      "menuItemId": "cut_color_color_first",
       "stylistId": "stylist_1784677588932_mw5vv7",
       "startTime": 0,
-      "endTime": 150,
+      "endTime": 120,
       "assignedAssistants": {},
-      "menuVariant": "",
+      "menuVariant": null,
       "fixedAssistants": {},
       "ganbare": {},
       "slotTimeOverrides": {},
@@ -5161,7 +5161,7 @@
           "duration": 30
         }
       ],
-      "manualVariantSelection": false,
+      "manualVariantSelection": true,
       "autoSwitchedVariant": true,
       "memo": ""
     },
