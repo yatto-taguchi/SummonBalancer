@@ -710,12 +710,30 @@ export class MainView {
     // 既存の内容をクリア
     toolbar.innerHTML = '';
 
-    // アラートエリア
-    const alertsArea = document.createElement('div');
-    alertsArea.id = 'alerts-area';
-    alertsArea.className = 'slim-scrollbar';
-    alertsArea.style.cssText = 'display: flex; gap: 6px; flex-wrap: nowrap; align-items: center; overflow-x: auto; max-width: 50vw; flex-shrink: 1;';
-    toolbar.appendChild(alertsArea);
+    // アラート＆履歴ボタンエリア
+    const alertsWrapper = document.createElement('div');
+    alertsWrapper.id = 'alerts-button-wrapper';
+    alertsWrapper.style.cssText = 'display: flex; flex-direction: column; gap: 2px; justify-content: center;';
+    
+    // 不足アラートボタン
+    const shortageAlertBtn = document.createElement('button');
+    shortageAlertBtn.id = 'btn-shortage-alert';
+    shortageAlertBtn.className = 'menu-bar-toolbar-btn alert-pulse';
+    shortageAlertBtn.style.cssText = 'display: none; background: rgba(239, 68, 68, 0.15); color: #ef4444; font-weight: 700; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 4px; padding: 2px 6px; font-size: 10px; cursor: pointer; line-height: 1.2;';
+    shortageAlertBtn.innerHTML = '🚨 不足 (0)';
+    shortageAlertBtn.addEventListener('click', () => this._showShortageModal());
+    alertsWrapper.appendChild(shortageAlertBtn);
+
+    // 特殊召喚履歴ボタン
+    const specialSummonBtn = document.createElement('button');
+    specialSummonBtn.id = 'btn-special-summon';
+    specialSummonBtn.className = 'menu-bar-toolbar-btn special-pulse';
+    specialSummonBtn.style.cssText = 'display: none; background: rgba(245, 158, 11, 0.15); color: #f59e0b; font-weight: 700; border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 4px; padding: 2px 6px; font-size: 10px; cursor: pointer; line-height: 1.2;';
+    specialSummonBtn.innerHTML = '✨ 特殊 (0)';
+    specialSummonBtn.addEventListener('click', () => this._showSpecialSummonModal());
+    alertsWrapper.appendChild(specialSummonBtn);
+
+    toolbar.appendChild(alertsWrapper);
 
     // 区切り線
     const separator = document.createElement('div');
@@ -2005,40 +2023,22 @@ export class MainView {
    * @private
    */
   _renderSummonBadges(summons, stylists) {
-    const alertsArea = document.getElementById('alerts-area');
-    if (!alertsArea) return;
+    const specialSummonBtn = document.getElementById('btn-special-summon');
+    if (!specialSummonBtn) return;
 
-    // 既存の召喚バッジを削除
-    alertsArea.querySelectorAll('.summon-badge').forEach(el => el.remove());
-    // 特殊召喚履歴もクリア
-    alertsArea.querySelectorAll('.special-summon-history').forEach(el => el.remove());
-
-    // 特殊召喚がある場合は履歴を表示
     const specialSummons = summons.filter(s => s.isSpecialSummon);
+    
     if (specialSummons.length > 0) {
-      const historySection = document.createElement('div');
-      historySection.className = 'special-summon-history slim-scrollbar';
-      historySection.style.cssText = [
-        'margin-top: 8px',
-        'padding: 8px 12px',
-        'background: rgba(245,158,11,0.08)',
-        'border: 1px solid rgba(245,158,11,0.3)',
-        'border-radius: 8px',
-        'font-size: 11px',
-        'max-height: 50px',
-        'overflow-y: auto'
-      ].join(';');
-
-      const title = document.createElement('div');
-      title.style.cssText = 'font-weight:700; color:#f59e0b; margin-bottom:6px;';
-      title.textContent = '✨ 特殊召喚履歴';
-      historySection.appendChild(title);
-
+      specialSummonBtn.style.display = 'block';
+      specialSummonBtn.innerHTML = `✨ 特殊 (${specialSummons.length})`;
+      
+      const contentWrapper = document.createElement('div');
+      contentWrapper.style.cssText = 'display: flex; flex-direction: column; gap: 8px;';
+      
       specialSummons.forEach(summon => {
         const stylist = stylists.find(s => s.id === summon.stylistId);
         const stylistName = stylist ? (stylist.nickname || stylist.name) : summon.stylistId;
 
-        // 開始時刻のHH:MM形式変換
         let timeStr = '';
         if (typeof summon.startTime === 'string' && summon.startTime.includes(':')) {
           timeStr = summon.startTime;
@@ -2051,7 +2051,7 @@ export class MainView {
           if (!isNaN(d)) {
             timeStr = `${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
           } else {
-            timeStr = String(summon.startTime); // 最後のフォールバック
+            timeStr = String(summon.startTime);
           }
         }
 
@@ -2062,19 +2062,20 @@ export class MainView {
             : '特殊';
 
         const row = document.createElement('div');
-        row.style.cssText = 'display:flex; gap:8px; align-items:center; padding:2px 0; color: var(--text-secondary);';
+        row.style.cssText = 'display:flex; gap:8px; align-items:center; padding:8px; background: rgba(245,158,11,0.05); border: 1px solid rgba(245,158,11,0.2); border-radius: 6px;';
         row.innerHTML = `
-          <span style="color:#f59e0b; font-size:10px;">[特殊召喚]</span>
-          <span>${stylistName}</span>
-          <span style="opacity:0.6;">@${timeStr}</span>
-          <span style="font-size:10px; background:rgba(245,158,11,0.2); padding:1px 6px; border-radius:4px;">${reasonLabel}</span>
+          <span style="color:#f59e0b; font-size:12px; font-weight:bold;">[特殊召喚]</span>
+          <span style="font-size:14px; font-weight:500;">${stylistName}</span>
+          <span style="opacity:0.8; font-size:12px;">@${timeStr}</span>
+          <span style="font-size:11px; background:rgba(245,158,11,0.2); color:#f59e0b; padding:2px 8px; border-radius:12px; margin-left:auto;">${reasonLabel}</span>
         `;
-        historySection.appendChild(row);
+        contentWrapper.appendChild(row);
       });
-
-      alertsArea.appendChild(historySection);
-      // 最新の履歴（一番下）に自動スクロール
-      historySection.scrollTop = historySection.scrollHeight;
+      
+      this._currentSpecialSummonsHTML = contentWrapper.innerHTML;
+    } else {
+      specialSummonBtn.style.display = 'none';
+      this._currentSpecialSummonsHTML = '';
     }
   }
 
@@ -2086,26 +2087,25 @@ export class MainView {
    * @private
    */
   _renderAlerts(alerts, reservations = [], staffMap = new Map()) {
-    const alertsArea = document.getElementById('alerts-area');
-    if (!alertsArea) return;
-
-    // 既存のアラートアイテムを削除
-    alertsArea.querySelectorAll('.alert-item').forEach(el => el.remove());
+    const shortageAlertBtn = document.getElementById('btn-shortage-alert');
+    if (!shortageAlertBtn) return;
 
     if (alerts.length === 0) {
-      // 全配置完了 — 非表示化（復活する場合は以下のコメントアウトを解除）
-      // const item = document.createElement('div');
-      // item.className = 'alert-item success';
-      // item.innerHTML = '✅ 全スロット配置完了';
-      // alertsArea.appendChild(item);
+      shortageAlertBtn.style.display = 'none';
+      this._currentAlertsHTML = '';
     } else {
+      shortageAlertBtn.style.display = 'block';
+      shortageAlertBtn.innerHTML = `🚨 不足 (${alerts.length})`;
+
+      const contentWrapper = document.createElement('div');
+      contentWrapper.style.cssText = 'display: flex; flex-direction: column; gap: 8px;';
+      
       alerts.forEach(alert => {
         const res = reservations.find(r => r.id === alert.reservationId);
         let label = alert.reservationId;
         if (res) {
           const stylist = staffMap.get(res.stylistId);
           const stylistName = stylist ? (stylist.nickname || stylist.name) : '';
-          // 時刻をHH:MM形式に変換
           let timeStr = '';
           if (typeof res.startTime === 'number') {
             const h = 9 + Math.floor(res.startTime / 60);
@@ -2117,12 +2117,89 @@ export class MainView {
           }
           label = `${stylistName} ${timeStr}`;
         }
-        const item = document.createElement('div');
-        item.className = 'alert-item danger';
-        item.innerHTML = `⚠️ 不足${alert.message.match(/(\d+)分/)?.[0] || '?分'}（${label}）`;
-        alertsArea.appendChild(item);
+        
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex; gap:12px; align-items:center; padding:12px; background: rgba(239,68,68,0.05); border: 1px solid rgba(239,68,68,0.3); border-radius: 6px;';
+        row.innerHTML = `
+          <span style="font-size:18px;">⚠️</span>
+          <div style="display:flex; flex-direction:column; gap:2px;">
+            <span style="color:#ef4444; font-weight:bold; font-size:13px;">不足${alert.message.match(/(\d+)分/)?.[0] || '?分'}</span>
+            <span style="font-size:12px; opacity:0.8;">対象: ${label}</span>
+          </div>
+        `;
+        contentWrapper.appendChild(row);
       });
+      
+      this._currentAlertsHTML = contentWrapper.innerHTML;
     }
+  }
+
+  _showShortageModal() {
+    this._showModal('🚨 不足アラート一覧', this._currentAlertsHTML || '<div style="padding:16px;">現在、不足アラートはありません</div>');
+  }
+
+  _showSpecialSummonModal() {
+    this._showModal('✨ 特殊召喚履歴', this._currentSpecialSummonsHTML || '<div style="padding:16px;">特殊召喚履歴はありません</div>');
+  }
+
+  _showModal(title, contentHTML) {
+    let modalOverlay = document.getElementById('notification-modal-overlay');
+    if (!modalOverlay) {
+      modalOverlay = document.createElement('div');
+      modalOverlay.id = 'notification-modal-overlay';
+      modalOverlay.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.6); z-index:9999; display:flex; align-items:center; justify-content:center; opacity:0; transition: opacity 0.2s ease-in-out; backdrop-filter: blur(4px);';
+      
+      const modalContent = document.createElement('div');
+      modalContent.id = 'notification-modal-content';
+      modalContent.style.cssText = 'background:var(--bg-glass, #1e1e1e); border:1px solid var(--border-glass, #333); border-radius:12px; min-width:350px; max-width:90vw; max-height:85vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 40px rgba(0,0,0,0.6); transform: translateY(20px); transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);';
+
+      const header = document.createElement('div');
+      header.style.cssText = 'padding:16px; border-bottom:1px solid var(--border-glass, #333); display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03);';
+      
+      const titleEl = document.createElement('div');
+      titleEl.id = 'notification-modal-title';
+      titleEl.style.cssText = 'font-weight:bold; font-size:16px; letter-spacing:0.5px; color: var(--text-primary, #fff);';
+      header.appendChild(titleEl);
+
+      const closeBtn = document.createElement('button');
+      closeBtn.innerHTML = '✕';
+      closeBtn.style.cssText = 'background:rgba(255,255,255,0.1); border:none; color:var(--text-primary, #fff); width:28px; height:28px; border-radius:50%; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; transition: background 0.2s;';
+      closeBtn.onmouseover = () => closeBtn.style.background = 'rgba(255,255,255,0.2)';
+      closeBtn.onmouseout = () => closeBtn.style.background = 'rgba(255,255,255,0.1)';
+      closeBtn.onclick = () => {
+        modalOverlay.style.opacity = '0';
+        modalContent.style.transform = 'translateY(20px)';
+        setTimeout(() => modalOverlay.remove(), 200);
+      };
+      header.appendChild(closeBtn);
+
+      const bodyEl = document.createElement('div');
+      bodyEl.id = 'notification-modal-body';
+      bodyEl.className = 'slim-scrollbar';
+      bodyEl.style.cssText = 'padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; color: var(--text-primary, #fff);';
+
+      modalContent.appendChild(header);
+      modalContent.appendChild(bodyEl);
+      modalOverlay.appendChild(modalContent);
+      
+      // 背景クリックで閉じる
+      modalOverlay.onclick = (e) => {
+        if (e.target === modalOverlay) closeBtn.onclick();
+      };
+    } else {
+      // 既存モーダルをリセットして再利用
+      document.getElementById('notification-modal-overlay').style.opacity = '0';
+    }
+
+    document.body.appendChild(modalOverlay);
+    document.getElementById('notification-modal-title').innerHTML = title;
+    document.getElementById('notification-modal-body').innerHTML = contentHTML;
+
+    // アニメーション表示
+    requestAnimationFrame(() => {
+      modalOverlay.style.opacity = '1';
+      document.getElementById('notification-modal-content').style.transform = 'translateY(0)';
+    });
   }
 
   /**

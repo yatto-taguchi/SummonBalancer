@@ -4964,17 +4964,17 @@
     },
     {
       "id": "res_1786489209672_tcydg0",
-      "menuItemId": "cut_color_cut_first",
+      "menuItemId": "cut_color_color_first",
       "stylistId": "stylist_1784677557052_zojf98",
       "startTime": 360,
       "endTime": 480,
       "assignedAssistants": {},
-      "menuVariant": "",
+      "menuVariant": null,
       "fixedAssistants": {},
       "ganbare": {},
       "slotTimeOverrides": {},
       "items": null,
-      "manualVariantSelection": false,
+      "manualVariantSelection": true,
       "autoSwitchedVariant": true,
       "memo": ""
     },
@@ -5122,22 +5122,6 @@
       ],
       "manualVariantSelection": false,
       "autoSwitchedVariant": true,
-      "memo": ""
-    },
-    {
-      "id": "res_1786489319552_152cpd",
-      "menuItemId": "perm_cut",
-      "stylistId": "stylist_1784677557052_zojf98",
-      "startTime": 390,
-      "endTime": 510,
-      "assignedAssistants": {},
-      "menuVariant": "",
-      "fixedAssistants": {},
-      "ganbare": {},
-      "slotTimeOverrides": {},
-      "items": null,
-      "manualVariantSelection": false,
-      "autoSwitchedVariant": false,
       "memo": ""
     },
     {

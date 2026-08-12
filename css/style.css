@@ -2171,3 +2171,22 @@ body.is-resizing .reservation-resize-handle {
     filter: drop-shadow(0 2px 10px rgba(251, 191, 36, 1)) drop-shadow(0 0 4px rgba(255, 255, 255, 0.6));
   }
 }
+
+
+/* 通知ボタンパルスアニメーション */
+@keyframes pulse-danger {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+@keyframes pulse-warning {
+  0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+  70% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+.alert-pulse {
+  animation: pulse-danger 2s infinite;
+}
+.special-pulse {
+  animation: pulse-warning 2s infinite;
+}
