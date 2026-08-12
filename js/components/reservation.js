@@ -294,10 +294,16 @@ export class ReservationBlock {
         
         // ヘルプアクティビティの場合は要求スキルベースの色を使用
         if (res.activityType === 'helper' && res.summonSkill) {
-          const skillColor = getSkillBgColor(res.summonSkill);
-          backgroundStyle = `linear-gradient(135deg, ${skillColor}99, ${skillColor}66)`;
-          textColorCode = '#ffffff'; // 濃い背景なので白文字
-          borderStyle = `1px solid ${colorCode}CC`; // 枠線はよりくっきりと
+          if (res.isManncell) {
+            backgroundStyle = 'rgba(234, 179, 8, 0.15)'; // マンセルのくすみ黄色
+            borderStyle = '1px solid #eab308'; // 悪目立ちしない実線枠
+            textColorCode = '#eab308'; // チームバッジに合わせた文字色
+          } else {
+            const skillColor = getSkillBgColor(res.summonSkill);
+            backgroundStyle = `linear-gradient(135deg, ${skillColor}99, ${skillColor}66)`;
+            textColorCode = '#ffffff'; // 濃い背景なので白文字
+            borderStyle = `1px solid ${colorCode}CC`; // 枠線はよりくっきりと
+          }
         } else if (res.activityType === 'free_time') {
           // 空き時間はダーク・グラスモーフィズム
           backgroundStyle = 'rgba(15, 23, 42, 0.4)';

@@ -6,6 +6,7 @@ import { executeHelpAndSpecialSummon } from './pipeline/03_helpAndSpecialSummon.
 import { executeManncellCompression } from './pipeline/04_manncellCompression.js?v=3';
 import { executeFallbackReassign } from './pipeline/05_fallbackReassign.js?v=3';
 import { executeGapAssignment } from './pipeline/05_5_gapAssignment.js?v=1';
+import { executeBonusAssignment } from './pipeline/05_7_bonusAssignment.js?v=1';
 import { executeFreeTimeAllocation } from './pipeline/06_freeTimeAllocation.js?v=4';
 
 export class SummonEngine {
@@ -106,6 +107,7 @@ export class SummonEngine {
     state = executeFallbackReassign(state);       // Phase 5:   フォールバック再配置
     state = executeGapAssignment(state);          // Phase 5.5: 隙間配置
     state = executeBackwardSweep(state);          // Phase 5.6: 最終最適化（ハンドオフ解消 + 不足解消）
+    state = executeBonusAssignment(state);        // Phase 5.7: お手伝いサポート
     state = executeFreeTimeAllocation(state);     // Phase 6:   空き時間配置
 
     console.log('[SummonEngine Pipeline] Calculation finished.');
@@ -332,6 +334,7 @@ export class SummonEngine {
             // ※「スタイリストであっても、特殊なバッジがなければ通常のアシスタント稼働とみなす」ため、
             // 召喚バッジがなければ一律で gap_help 扱いとする。
             const isGapHelp = badges.includes('gap_help');
+            const isBonusHelp = badges.includes('bonus_help');
 
             // 【厳守事項2】隙間ヘルプであっても、元のタスクは本来「不足」であるため、
             // カウントを加算し、アラート生成の条件を満たすようにする。
@@ -351,6 +354,8 @@ export class SummonEngine {
                 // 仕様書: 「赤枠（不足エラー）を共存させて表示する」
                 displayParts.push(`<span style="color: var(--accent-danger)">⚠不足(${minutes}分)</span>`);
                 gapHelpParts.push(`☆${staffName}(${minutes}分)`);
+              } else if (isBonusHelp) {
+                displayParts.push(`✋${staffName}(${minutes}分)`);
               } else {
                 // 通常アサイン → displayParts に追加
                 displayParts.push(`${staffName}(${minutes}分)`);
@@ -516,6 +521,7 @@ export class SummonEngine {
               startMin: tickStartMin,
               endMin: tickEndMin,
               isGapHelp: (tick.badges || []).includes('gap_help'),
+              isBonusHelp: (tick.badges || []).includes('bonus_help'),
               badges: tick.badges || []
             };
           }

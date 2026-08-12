@@ -1797,6 +1797,8 @@ export class MainView {
         let activityLabel = stylistName;
         if (hb.isGapHelp) {
           activityLabel = `⭐${stylistName}`;
+        } else if (hb.isBonusHelp) {
+          activityLabel = `✋${stylistName}`;
         } else if (isStylist) {
           activityLabel = `特殊召喚 (${stylistName}へ)`;
         } else if (isManncell) {
@@ -1816,7 +1818,8 @@ export class MainView {
           activityType: 'helper',
           colorCode: isStylist ? '#f59e0b' : (isManncell ? '#eab308' : colorCode),
           activityLabel: activityLabel,
-          summonSkill: requiredSkill // 追加: 要求スキル
+          summonSkill: requiredSkill, // 追加: 要求スキル
+          isManncell: isManncell
         };
 
         const timelineArea = this.container.querySelector('#timeline-area');
