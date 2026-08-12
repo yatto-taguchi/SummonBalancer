@@ -1,5 +1,5 @@
 import { hasSkill } from '../utils/skillUtils.js?v=3';
-import { isStaffFree, toTimestamp, formatTime } from '../utils/timeUtils.js?v=3';
+import { isStaffFree, toTimestamp, formatTime, isStaffBlocked } from '../utils/timeUtils.js?v=3';
 import { compareAssistants } from '../utils/scoringUtils.js?v=3';
 
 export function executeFallbackReassign(state) {
@@ -64,25 +64,18 @@ export function executeFallbackReassign(state) {
       if (isHandoffProhibited && lockedStaffId && a.id !== lockedStaffId) return false;
       // スキルチェック
       if (!hasSkill(a, slot.requiredSkill, slot.requiredProficiency)) return false;
+      // 不在（ブロック）チェック
+      // slot.startTime はミリ秒(例: 30600000) なので、60000で割って9時基準の分数(例: 510)に変換する
+      const relativeMinutes = Math.floor(slot.startTime / 60000);
+      if (isStaffBlocked(a.id, relativeMinutes, nextState.tracker)) return false;
       // 空き時間チェック
       if (!isStaffFree(a.id, slot.startTime, slot.endTime, nextState.slots, nextState.assignments, nextState.reservations)) return false;
       return true;
     });
-
     if (candidates.length === 0) {
       // フォールバックでもアサインできなかった場合
       // ※アラートはUIアダプター層（index.js）で一括生成するため、ここでは追加しない
-      
-      // UIで赤枠を描画させるため、stylistSummons にバッジなしで追加
-      nextState.stylistSummons.push({
-        stylistId: slot.stylistId,
-        reservationId: slot.reservationId,
-        slotIndex: slot.slotIndex,
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        badge: false,
-        isSpecialSummon: false
-      });
+      // ※ダミーの特殊召喚ブロックは生成せず、単にスキップする（未アサインとして残す）
       continue;
     }
 

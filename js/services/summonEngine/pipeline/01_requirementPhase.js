@@ -69,8 +69,27 @@ function defineRequirements(state, timeStr, timeMs) {
           isStrictlyRequired = true;
         }
 
-        // __none__ 固定（召喚不要）の場合: 要件は生成するが skipAssignment フラグを付与
-        if (fixedId === '__none__') {
+        // === 不在ブロック判定 ===
+        // ルールブック「6. ブロック（一時不在）の絶対優先原則」
+        // スタイリスト自身の予約が、そのスタイリストの不在ブロック時間と少しでも被っている場合、
+        // 予約全体を通してアシスタントやヘルプのアサインを行わず、赤枠エラー（未アサイン）とする
+        let isStylistBlocked = false;
+        const resStartMs = toTimestamp(res.startTime);
+        const trackerObj = state.tracker ? state.tracker[res.stylistId] : null;
+        if (trackerObj && trackerObj.blockedTimes) {
+          for (const block of trackerObj.blockedTimes) {
+            const bStart = toTimestamp(block.startTime);
+            const bEnd = toTimestamp(block.endTime);
+            // 予約の時間帯とブロック時間帯が重なっているか
+            if (resStartMs < bEnd && resEndMs > bStart) {
+              isStylistBlocked = true;
+              break;
+            }
+          }
+        }
+
+        // 不在ブロック中、または __none__ 固定（召喚不要）の場合: 要件は生成するが skipAssignment フラグを付与
+        if (isStylistBlocked || fixedId === '__none__') {
           requirements.push({
             id: `req_${timeStr}_${res.id}_slot${index}`,
             reservationId: res.id,
@@ -79,9 +98,9 @@ function defineRequirements(state, timeStr, timeMs) {
             minSkillLevel: 1,
             tier: tier,
             slotIndex: index,
-            fixedAssistantId: '__none__',
-            skipAssignment: true,  // アサイン不要マーカー
-            isStrictlyRequired: false  // 不要固定は必須扱いにしない
+            fixedAssistantId: isStylistBlocked ? null : '__none__', // 不在の場合は手動OFFではない
+            skipAssignment: true,  // アサイン不要（アサイン禁止）マーカー
+            isStrictlyRequired: false  // 不要固定やブロック中は必須扱いにしない
           });
           return; // このスロットの処理はここで完了（forEachのreturn）
         }
@@ -139,6 +158,7 @@ function defineRequirements(state, timeStr, timeMs) {
       ...state.timeSlots,
       [timeStr]: {
         ...currentTimeSlot,
+        time: timeStr, // ← 確実に time を持たせる
         stylistOverlapCounts: overlapCounts,
         requirements: requirements
       }

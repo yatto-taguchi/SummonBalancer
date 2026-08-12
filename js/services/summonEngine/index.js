@@ -52,6 +52,22 @@ export class SummonEngine {
       // フリーズ境界時刻におけるスタッフの稼働状態を previousState の tracker から引き継ぐ
       if (this.previousState.tracker) {
         state.tracker = JSON.parse(JSON.stringify(this.previousState.tracker));
+        
+        // 【修正】blockedTimes は動的な状態ではなく静的な設定値のため、
+        // 過去のキャッシュで上書きせず、最新の options.blockedTimes を常に適用する。
+        if (options.blockedTimes && Array.isArray(options.blockedTimes)) {
+          Object.keys(state.tracker).forEach(staffId => {
+            state.tracker[staffId].blockedTimes = [];
+          });
+          options.blockedTimes.forEach(block => {
+            if (state.tracker[block.staffId]) {
+              state.tracker[block.staffId].blockedTimes.push({
+                startTime: block.startTime,
+                endTime: block.endTime
+              });
+            }
+          });
+        }
       }
       // フリーズ済みアラート・スタイリスト召喚・マンセル記録も引き継ぐ
       if (this.previousState.alerts) {
