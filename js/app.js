@@ -12,6 +12,7 @@ import { initializeDefaults, importMenusFromDefaults, initFromServer, startPolli
 import { MainView } from './views/mainView.js?v=104';
 import { StaffSettingsView } from './views/staffSettings.js?v=3';
 import { MenuSettingsView } from './views/menuSettings.js';
+import { HelpModal } from './components/helpModal.js';
 
 // ──────────────────────────────────────────────
 // ユーティリティ: UUID生成
@@ -435,6 +436,20 @@ function setupDateNavigation() {
   });
 }
 
+/**
+ * グローバルヘルプモーダルをセットアップする
+ */
+function setupHelpModal() {
+  const helpModal = new HelpModal();
+  const helpBtn = document.getElementById('btn-global-help');
+  if (helpBtn) {
+    helpBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      helpModal.open();
+    });
+  }
+}
+
 // ──────────────────────────────────────────────
 // アプリケーション初期化
 // ──────────────────────────────────────────────
@@ -465,6 +480,7 @@ async function initApp() {
     // 2. ナビゲーション設定と日付の監視を先に開始
     setupNavigation();
     setupDateNavigation();
+    setupHelpModal();
 
     // 3. 保存された日付があれば復元、なければ今日の日付で初期化
     const savedDate = sessionStorage.getItem('selected_date');
