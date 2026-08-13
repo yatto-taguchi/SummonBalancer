@@ -829,8 +829,25 @@ export class Timeline {
       dividerHeader.textContent = 'アシスタント';
       
       const dividerCells = document.createElement('div');
-      dividerCells.style.flex = '1';
+      dividerCells.className = 'timeline-cells';
+      dividerCells.style.position = 'relative';
       dividerCells.style.background = 'rgba(24, 28, 41, 0.8)';
+      
+      for (let i = 0; i < TOTAL_SLOTS; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'timeline-divider-cell';
+        cell.dataset.slotIndex = String(i);
+        cell.style.height = '100%';
+
+        if (accordionManager.isExpanded(i)) {
+          cell.classList.add('expanded');
+          cell.style.flex = '6';
+        } else {
+          cell.style.flex = '1';
+        }
+        
+        dividerCells.appendChild(cell);
+      }
       
       dividerRow.appendChild(dividerHeader);
       dividerRow.appendChild(dividerCells);
@@ -862,7 +879,16 @@ export class Timeline {
           cell.className = 'timeline-cell';
           cell.dataset.time = String(minutes);
           cell.dataset.stylistId = assistant.id;
+          cell.dataset.slotIndex = String(i);
           cell.style.height = `${CELL_HEIGHT}px`;
+
+          if (accordionManager.isExpanded(i)) {
+            cell.classList.add('expanded');
+            cell.style.flex = '6';
+            this._createGridlines(cell);
+          } else {
+            cell.style.flex = '1';
+          }
 
           const slotTimeMinute = (START_HOUR * 60) + minutes;
           const isOffDuty = typeof assistant.isWorkingAtTime === 'function'
@@ -946,9 +972,19 @@ export class Timeline {
         for (let i = 0; i < TOTAL_SLOTS; i++) {
           const cell = document.createElement('div');
           cell.className = 'timeline-cell off-duty-cell';
+          cell.dataset.slotIndex = String(i);
           cell.style.height = `${CELL_HEIGHT}px`;
           cell.style.background = 'rgba(0, 0, 0, 0.1)';
           cell.style.cursor = 'default';
+
+          if (accordionManager.isExpanded(i)) {
+            cell.classList.add('expanded');
+            cell.style.flex = '6';
+            this._createGridlines(cell);
+          } else {
+            cell.style.flex = '1';
+          }
+
           cellsContainer.appendChild(cell);
         }
 
@@ -1311,6 +1347,19 @@ export class Timeline {
       }
     });
 
+    // --- 区切りセルの更新 ---
+    const dividerCellsList = grid.querySelectorAll('.timeline-divider-cell');
+    dividerCellsList.forEach(cell => {
+      const idx = parseInt(cell.dataset.slotIndex, 10);
+      if (accordionManager.isExpanded(idx)) {
+        cell.classList.add('expanded');
+        cell.style.flex = '6';
+      } else {
+        cell.classList.remove('expanded');
+        cell.style.flex = '1';
+      }
+    });
+
     // --- ボディセルの更新 ---
     const bodyCells = grid.querySelectorAll('.timeline-cell');
     bodyCells.forEach(cell => {
@@ -1360,6 +1409,35 @@ export class Timeline {
         const posPct = accordionManager.getWeightedPosition(currentMinutes);
         this._currentTimeLine.style.left = `calc(${STAFF_COL_WIDTH}px + ${posPct} * (100% - ${STAFF_COL_WIDTH}px) / 100)`;
       }
+    }
+
+    // --- アコーディオン展開境界線の更新 ---
+    let leftBoundary = grid.querySelector('.accordion-boundary-line.left-bound');
+    let rightBoundary = grid.querySelector('.accordion-boundary-line.right-bound');
+
+    if (expandedSlot !== null) {
+      if (!leftBoundary) {
+        leftBoundary = document.createElement('div');
+        leftBoundary.className = 'accordion-boundary-line left-bound';
+        grid.appendChild(leftBoundary);
+      }
+      if (!rightBoundary) {
+        rightBoundary = document.createElement('div');
+        rightBoundary.className = 'accordion-boundary-line right-bound';
+        rightBoundary.style.marginLeft = '-2px'; // 太さ2px分を左に寄せる
+        grid.appendChild(rightBoundary);
+      }
+
+      const startMin = expandedSlot * SLOT_MINUTES;
+      const endMin = (expandedSlot + 1) * SLOT_MINUTES;
+      const leftPct = accordionManager.getWeightedPosition(startMin);
+      const rightPct = accordionManager.getWeightedPosition(endMin);
+
+      leftBoundary.style.left = `calc(${STAFF_COL_WIDTH}px + ${leftPct} * (100% - ${STAFF_COL_WIDTH}px) / 100)`;
+      rightBoundary.style.left = `calc(${STAFF_COL_WIDTH}px + ${rightPct} * (100% - ${STAFF_COL_WIDTH}px) / 100)`;
+    } else {
+      if (leftBoundary) leftBoundary.remove();
+      if (rightBoundary) rightBoundary.remove();
     }
 
     // --- グリッド幅の動的拡張 + 展開セルへのオートスクロール ---

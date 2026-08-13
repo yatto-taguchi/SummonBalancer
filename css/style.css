@@ -1,31 +1,31 @@
 /**
- * @fileoverview サモンバランサー - プレミアムダークモードデザインシステム
+ * @fileoverview 繧ｵ繝｢繝ｳ繝舌Λ繝ｳ繧ｵ繝ｼ - 繝励Ξ繝溘い繝�繝繝ｼ繧ｯ繝｢繝ｼ繝峨ョ繧ｶ繧､繝ｳ繧ｷ繧ｹ繝�Β
  *
- * グラスモーフィズム、グラデーション、微妙なアニメーションを活用した
- * ダークモードベースの美容室向けUI。Google Font「Inter」を使用。
+ * 繧ｰ繝ｩ繧ｹ繝｢繝ｼ繝輔ぅ繧ｺ繝�縲√げ繝ｩ繝��繧ｷ繝ｧ繝ｳ縲∝ｾｮ螯吶↑繧｢繝九Γ繝ｼ繧ｷ繝ｧ繝ｳ繧呈ｴｻ逕ｨ縺励◆
+ * 繝繝ｼ繧ｯ繝｢繝ｼ繝峨�繝ｼ繧ｹ縺ｮ鄒主ｮｹ螳､蜷代￠UI縲�oogle Font縲栗nter縲阪ｒ菴ｿ逕ｨ縲�
  *
- * カラーシステム:
- *   - メニュー別: カット(インディゴ), カラー(ピンク), トリートメント(エメラルド), カットカラー(アンバー), その他(パープル)
- *   - ランク別: オーナー(ゴールド), トップスタイリスト(ラベンダー), スタイリスト(ブルー), ジュニア(グリーン), アシスタント(グレー)
+ * 繧ｫ繝ｩ繝ｼ繧ｷ繧ｹ繝�Β:
+ *   - 繝｡繝九Η繝ｼ蛻･: 繧ｫ繝�ヨ(繧､繝ｳ繝�ぅ繧ｴ), 繧ｫ繝ｩ繝ｼ(繝斐Φ繧ｯ), 繝医Μ繝ｼ繝医Γ繝ｳ繝�(繧ｨ繝｡繝ｩ繝ｫ繝�), 繧ｫ繝�ヨ繧ｫ繝ｩ繝ｼ(繧｢繝ｳ繝舌�), 縺昴�莉�(繝代�繝励Ν)
+ *   - 繝ｩ繝ｳ繧ｯ蛻･: 繧ｪ繝ｼ繝翫�(繧ｴ繝ｼ繝ｫ繝�), 繝医ャ繝励せ繧ｿ繧､繝ｪ繧ｹ繝�(繝ｩ繝吶Φ繝繝ｼ), 繧ｹ繧ｿ繧､繝ｪ繧ｹ繝�(繝悶Ν繝ｼ), 繧ｸ繝･繝九い(繧ｰ繝ｪ繝ｼ繝ｳ), 繧｢繧ｷ繧ｹ繧ｿ繝ｳ繝�(繧ｰ繝ｬ繝ｼ)
  */
 
-/* ──────────────────────────────────────────────
-   CSS変数（デザイントークン）
-   ────────────────────────────────────────────── */
+/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+   CSS螟画焚�医ョ繧ｶ繧､繝ｳ繝医�繧ｯ繝ｳ��
+   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
 :root {
-  /* 背景色 */
+  /* 閭梧勹濶ｲ */
   --bg-primary: #0a0e17;
   --bg-secondary: #111827;
   --bg-tertiary: #1f2937;
   --bg-glass: rgba(255, 255, 255, 0.05);
   --border-glass: rgba(255, 255, 255, 0.1);
 
-  /* テキスト色 */
+  /* 繝�く繧ｹ繝郁牡 */
   --text-primary: #f9fafb;
   --text-secondary: #9ca3af;
   --text-muted: #6b7280;
 
-  /* アクセントカラー */
+  /* 繧｢繧ｯ繧ｻ繝ｳ繝医き繝ｩ繝ｼ */
   --accent-primary: #6366f1;
   --accent-secondary: #8b5cf6;
   --accent-success: #10b981;
@@ -33,46 +33,46 @@
   --accent-danger: #ef4444;
   --accent-info: #3b82f6;
 
-  /* シャドウ＆グロー */
+  /* 繧ｷ繝｣繝峨え��げ繝ｭ繝ｼ */
   --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.5);
 
-  /* 角丸 */
+  /* 隗剃ｸｸ */
   --radius-sm: 6px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 24px;
 
-  /* トランジション */
+  /* 繝医Λ繝ｳ繧ｸ繧ｷ繝ｧ繝ｳ */
   --transition-fast: 150ms ease;
   --transition-normal: 300ms ease;
   --transition-slow: 500ms ease;
 
-  /* メニュー別カラー */
+  /* 繝｡繝九Η繝ｼ蛻･繧ｫ繝ｩ繝ｼ */
   --color-cut: #6366f1;
   --color-color: #ec4899;
   --color-treatment: #10b981;
   --color-cut-color: #f59e0b;
   --color-other: #8b5cf6;
 
-  /* ランク別カラー */
+  /* 繝ｩ繝ｳ繧ｯ蛻･繧ｫ繝ｩ繝ｼ */
   --rank-owner: #fbbf24;
   --rank-top-stylist: #a78bfa;
   --rank-stylist: #60a5fa;
   --rank-junior: #34d399;
   --rank-assistant: #9ca3af;
 
-  /* タイムラインサイズ */
+  /* 繧ｿ繧､繝�繝ｩ繧､繝ｳ繧ｵ繧､繧ｺ */
   --cell-width: 80px;
   --staff-col-width: 135px;
   --row-height: 72px;
 }
 
-/* ──────────────────────────────────────────────
-   リセット＆ベース
-   ────────────────────────────────────────────── */
+/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+   繝ｪ繧ｻ繝�ヨ���繝ｼ繧ｹ
+   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
 *,
 *::before,
 *::after {
@@ -96,7 +96,7 @@ body {
   line-height: 1.6;
 }
 
-/* 微妙な背景グラデーション */
+/* 蠕ｮ螯吶↑閭梧勹繧ｰ繝ｩ繝��繧ｷ繝ｧ繝ｳ */
 body::before {
   content: '';
   position: fixed;
@@ -139,7 +139,7 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 }
 
-/* スクロールバーのカスタマイズ */
+/* 繧ｹ繧ｯ繝ｭ繝ｼ繝ｫ繝舌�縺ｮ繧ｫ繧ｹ繧ｿ繝槭う繧ｺ */
 ::-webkit-scrollbar {
   width: 12px;
   height: 12px;
@@ -160,7 +160,7 @@ input:focus, select:focus, textarea:focus {
   background: rgba(255, 255, 255, 0.5);
 }
 
-/* スリムなスクロールバー（小さなコンテナ用） */
+/* 繧ｹ繝ｪ繝�縺ｪ繧ｹ繧ｯ繝ｭ繝ｼ繝ｫ繝舌��亥ｰ上＆縺ｪ繧ｳ繝ｳ繝�リ逕ｨ�� */
 .slim-scrollbar::-webkit-scrollbar {
   width: 4px;
   height: 4px;
@@ -177,9 +177,9 @@ input:focus, select:focus, textarea:focus {
   background: rgba(255, 255, 255, 0.4);
 }
 
-/* ──────────────────────────────────────────────
-   アプリレイアウト
-   ────────────────────────────────────────────── */
+/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+   繧｢繝励Μ繝ｬ繧､繧｢繧ｦ繝�
+   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
 .app-container {
   display: flex;
   flex-direction: column;
@@ -189,9 +189,9 @@ input:focus, select:focus, textarea:focus {
   z-index: 1;
 }
 
-/* ──────────────────────────────────────────────
-   ヘッダー
-   ────────────────────────────────────────────── */
+/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+   繝倥ャ繝繝ｼ
+   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
 .app-header {
   position: sticky;
   top: 0;
@@ -240,7 +240,7 @@ input:focus, select:focus, textarea:focus {
   letter-spacing: -0.025em;
 }
 
-/* ナビゲーションタブ */
+/* 繝翫ン繧ｲ繝ｼ繧ｷ繝ｧ繝ｳ繧ｿ繝� */
 .nav-tabs {
   display: flex;
   gap: 4px;
@@ -280,7 +280,7 @@ input:focus, select:focus, textarea:focus {
   border-radius: 1px;
 }
 
-/* 日付ナビゲーション */
+/* 譌･莉倥リ繝薙ご繝ｼ繧ｷ繝ｧ繝ｳ */
 .date-nav {
   display: flex;
   align-items: center;
@@ -331,9 +331,9 @@ input:focus, select:focus, textarea:focus {
   cursor: pointer;
 }
 
-/* ──────────────────────────────────────────────
-   メインコンテンツエリア
-   ────────────────────────────────────────────── */
+/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+   繝｡繧､繝ｳ繧ｳ繝ｳ繝�Φ繝�お繝ｪ繧｢
+   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
 .main-layout {
   display: flex;
   flex: 1;
@@ -347,7 +347,7 @@ input:focus, select:focus, textarea:focus {
   position: relative;
 }
 
-/* ビューセクション */
+/* 繝薙Η繝ｼ繧ｻ繧ｯ繧ｷ繝ｧ繝ｳ */
 .view-section {
   display: none;
   animation: fadeIn var(--transition-normal);
@@ -357,7 +357,7 @@ input:focus, select:focus, textarea:focus {
   display: block;
 }
 
-/* 予約表ビューはフル高さで内部スクロールのみ */
+/* 莠育ｴ�｡ｨ繝薙Η繝ｼ縺ｯ繝輔Ν鬮倥＆縺ｧ蜀�Κ繧ｹ繧ｯ繝ｭ繝ｼ繝ｫ縺ｮ縺ｿ */
 #view-reservation.active {
   display: flex;
   flex-direction: column;
@@ -366,9 +366,9 @@ input:focus, select:focus, textarea:focus {
 }
 
 
-/* ──────────────────────────────────────────────
-   グラスモーフィズムパネル
-   ────────────────────────────────────────────── */
+/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+   繧ｰ繝ｩ繧ｹ繝｢繝ｼ繝輔ぅ繧ｺ繝�繝代ロ繝ｫ
+   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
 .glass-panel {
   background: var(--bg-glass);
   backdrop-filter: blur(12px);
@@ -394,10 +394,10 @@ input:focus, select:focus, textarea:focus {
   box-shadow: var(--shadow-md);
 }
 
-/* ──────────────────────────────────────────────
-   タイムライン（予約表） — divベースグリッド
-   横軸: 時間（9:00〜19:00）、縦軸: スタイリスト
-   ────────────────────────────────────────────── */
+/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+   繧ｿ繧､繝�繝ｩ繧､繝ｳ�井ｺ育ｴ�｡ｨ�� 窶� div繝吶�繧ｹ繧ｰ繝ｪ繝�ラ
+   讓ｪ霆ｸ: 譎る俣��9:00縲�19:00�峨∫ｸｦ霆ｸ: 繧ｹ繧ｿ繧､繝ｪ繧ｹ繝�
+   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
 .timeline-grid {
   position: relative;
   width: max-content;
@@ -525,13 +525,13 @@ input:focus, select:focus, textarea:focus {
   border-left: 2px solid rgba(99, 102, 241, 0.4);
 }
 
-/* 掛け持ち時の黄色背景ハイライトは非表示にする */
+/* 謗帙￠謖√■譎ゅ�鮟�牡閭梧勹繝上う繝ｩ繧､繝医�髱櫁｡ｨ遉ｺ縺ｫ縺吶ｋ */
 .timeline-cell.overlap-highlight {
   background: transparent;
   box-shadow: none;
 }
 
-/* 現在時刻線（赤い縦線） */
+/* 迴ｾ蝨ｨ譎ょ綾邱夲ｼ郁ｵ､縺�ｸｦ邱夲ｼ� */
 .current-time-line {
   position: absolute;
   top: 0;
@@ -543,7 +543,7 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
 }
 
-/* 予約ブロック — タイムラインセル上に絶対配置 */
+/* 莠育ｴ�ヶ繝ｭ繝�け 窶� 繧ｿ繧､繝�繝ｩ繧､繝ｳ繧ｻ繝ｫ荳翫↓邨ｶ蟇ｾ驟咲ｽｮ */
 .reservation-block {
   position: absolute;
   top: 2px;
@@ -565,8 +565,8 @@ input:focus, select:focus, textarea:focus {
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
   overflow: visible;
   z-index: 3;
-  user-select: none; /* テキスト選択によるドラッグ干渉を防ぐ */
-  -webkit-user-drag: element; /* Safari対応 */
+  user-select: none; /* 繝�く繧ｹ繝磯∈謚槭↓繧医ｋ繝峨Λ繝�げ蟷ｲ貂峨ｒ髦ｲ縺� */
+  -webkit-user-drag: element; /* Safari蟇ｾ蠢� */
 }
 
 .reservation-block:hover {
@@ -578,7 +578,7 @@ input:focus, select:focus, textarea:focus {
   z-index: 6;
 }
 
-/* 召喚・特殊召喚ブロックは通常の予約ブロックや空き時間ブロックより手前に表示する */
+/* 蜿ｬ蝟壹�迚ｹ谿雁小蝟壹ヶ繝ｭ繝�け縺ｯ騾壼ｸｸ縺ｮ莠育ｴ�ヶ繝ｭ繝�け繧�ｩｺ縺肴凾髢薙ヶ繝ｭ繝�け繧医ｊ謇句燕縺ｫ陦ｨ遉ｺ縺吶ｋ */
 .reservation-block.summon-virtual-block {
   z-index: 4;
   border: 1px dashed rgba(255, 255, 255, 0.5);
@@ -586,11 +586,11 @@ input:focus, select:focus, textarea:focus {
 
 .reservation-block.forced-activity-block {
   z-index: 5;
-  background: rgba(245, 158, 11, 0.6) !important; /* 半透明のオレンジベース */
-  backdrop-filter: blur(2px); /* 下のアサインが見えるように軽いぼかし */
+  background: rgba(245, 158, 11, 0.6) !important; /* 蜊企乗�縺ｮ繧ｪ繝ｬ繝ｳ繧ｸ繝吶�繧ｹ */
+  backdrop-filter: blur(2px); /* 荳九�繧｢繧ｵ繧､繝ｳ縺瑚ｦ九∴繧九ｈ縺�↓霆ｽ縺�⊂縺九＠ */
   border: 1px solid rgba(255, 255, 255, 0.8);
   box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
-  pointer-events: none; /* 下の予約ブロック等をクリック可能にする */
+  pointer-events: none; /* 荳九�莠育ｴ�ヶ繝ｭ繝�け遲峨ｒ繧ｯ繝ｪ繝�け蜿ｯ閭ｽ縺ｫ縺吶ｋ */
 }
 
 .reservation-block.special-summon-block {
@@ -616,7 +616,7 @@ input:focus, select:focus, textarea:focus {
   white-space: nowrap;
 }
 
-/* マンセルブロック (チーム制発動) */
+/* 繝槭Φ繧ｻ繝ｫ繝悶Ο繝�け (繝√�繝�蛻ｶ逋ｺ蜍�) */
 .manncell-block {
   border: 2px solid rgba(255, 215, 0, 0.8);
   border-radius: var(--radius-sm);
@@ -667,7 +667,7 @@ input:focus, select:focus, textarea:focus {
   color: #000;
 }
 
-/* マンセル対象スロット内の2段表示テキスト */
+/* 繝槭Φ繧ｻ繝ｫ蟇ｾ雎｡繧ｹ繝ｭ繝�ヨ蜀��2谿ｵ陦ｨ遉ｺ繝�く繧ｹ繝� */
 .manncell-assigned-text {
   display: flex !important;
   flex-direction: column !important;
@@ -693,7 +693,7 @@ input:focus, select:focus, textarea:focus {
   text-shadow: 0 0 4px rgba(0, 255, 128, 0.4);
 }
 
-/* タイムライン空メッセージ */
+/* 繧ｿ繧､繝�繝ｩ繧､繝ｳ遨ｺ繝｡繝�そ繝ｼ繧ｸ */
 .timeline-empty-message {
   display: flex;
   flex-direction: column;
@@ -715,7 +715,7 @@ input:focus, select:focus, textarea:focus {
   font-size: 0.85rem;
 }
 
-/* メニューバーのボタンラッパー — 横並び */
+/* 繝｡繝九Η繝ｼ繝舌�縺ｮ繝懊ち繝ｳ繝ｩ繝�ヱ繝ｼ 窶� 讓ｪ荳ｦ縺ｳ */
 .menu-bar-wrapper {
   display: flex;
   flex-direction: row;
@@ -724,9 +724,9 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
 }
 
-/* ──────────────────────────────────────────────
-   メニューバー（ヘッダー直下・上部配置）
-   ────────────────────────────────────────────── */
+/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+   繝｡繝九Η繝ｼ繝舌��医�繝�ム繝ｼ逶ｴ荳九�荳企Κ驟咲ｽｮ��
+   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
 #menu-bar {
   position: sticky;
   top: 64px;
@@ -783,7 +783,7 @@ input:focus, select:focus, textarea:focus {
   flex: 1;
 }
 
-/* メニューバー内ツールバーボタン */
+/* 繝｡繝九Η繝ｼ繝舌�蜀�ヤ繝ｼ繝ｫ繝舌�繝懊ち繝ｳ */
 .menu-bar-toolbar-btn {
   background: var(--bg-tertiary);
   border: 1px solid var(--border-glass);
@@ -803,21 +803,21 @@ input:focus, select:focus, textarea:focus {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.2);
 }
-/* 固定モード active: シアン（ピン留め・ロックのイメージ） */
+/* 蝗ｺ螳壹Δ繝ｼ繝� active: 繧ｷ繧｢繝ｳ�医ヴ繝ｳ逡吶ａ繝ｻ繝ｭ繝�け縺ｮ繧､繝｡繝ｼ繧ｸ�� */
 .menu-bar-toolbar-btn[data-action="manual-mode"].active {
   background: rgba(6, 182, 212, 0.2);
   color: #06b6d4;
   border-color: #06b6d4;
   box-shadow: 0 0 8px rgba(6, 182, 212, 0.3);
 }
-/* SOS active: 赤（緊急事態。SOS帯の赤色と統一） */
+/* SOS active: 襍､�育ｷ頑･莠区�縲４OS蟶ｯ縺ｮ襍､濶ｲ縺ｨ邨ｱ荳�� */
 .menu-bar-toolbar-btn[data-action="sos-mode"].active {
   background: rgba(239, 68, 68, 0.2);
   color: #ef4444;
   border-color: #ef4444;
   box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
 }
-/* 更新ボタン: クリック時の即時フィードバック（押した実感） */
+/* 譖ｴ譁ｰ繝懊ち繝ｳ: 繧ｯ繝ｪ繝�け譎ゅ�蜊ｳ譎ゅヵ繧｣繝ｼ繝峨ヰ繝�け�域款縺励◆螳滓─�� */
 .menu-bar-toolbar-btn[data-action="refresh"]:active {
   transform: scale(0.95);
   background: rgba(255, 255, 255, 0.12);
@@ -832,7 +832,7 @@ input:focus, select:focus, textarea:focus {
   background: rgba(239, 68, 68, 0.25);
 }
 
-/* メニューバー内アラートバッジ */
+/* 繝｡繝九Η繝ｼ繝舌�蜀�い繝ｩ繝ｼ繝医ヰ繝�ず */
 .menu-bar-alert {
   padding: 4px 10px;
   border-radius: var(--radius-sm);
@@ -895,7 +895,7 @@ input:focus, select:focus, textarea:focus {
   max-width: 80px;
 }
 
-/* ドラッグ中のスタイル */
+/* 繝峨Λ繝�げ荳ｭ縺ｮ繧ｹ繧ｿ繧､繝ｫ */
 .menu-btn.dragging {
   opacity: 0.5;
   transform: scale(0.9);
@@ -907,9 +907,9 @@ input:focus, select:focus, textarea:focus {
   border-radius: var(--radius-sm);
 }
 
-/* ──────────────────────────────────────────────
-   アシスタントサイドバー
-   ────────────────────────────────────────────── */
+/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+   繧｢繧ｷ繧ｹ繧ｿ繝ｳ繝医し繧､繝峨ヰ繝ｼ
+   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
 #assistant-sidebar {
   width: 220px;
   min-width: 220px;
@@ -987,7 +987,7 @@ input:focus, select:focus, textarea:focus {
 .skill-dot[data-level="4"] { background: var(--accent-success); }
 .skill-dot[data-level="5"] { background: var(--rank-owner); }
 
-/* 疲労度バー */
+/* 逍ｲ蜉ｴ蠎ｦ繝舌� */
 .fatigue-bar {
   height: 4px;
   background: var(--bg-tertiary);
@@ -1002,9 +1002,9 @@ input:focus, select:focus, textarea:focus {
   transition: width var(--transition-normal);
 }
 
-/* ──────────────────────────────────────────────
-   設定画面共通
-   ────────────────────────────────────────────── */
+/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+   險ｭ螳夂判髱｢蜈ｱ騾�
+   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
 .settings-panel {
   max-width: 900px;
   margin: 0 auto;
@@ -1032,7 +1032,7 @@ input:focus, select:focus, textarea:focus {
   font-size: 0.9rem;
 }
 
-/* スタッフセクション */
+/* 繧ｹ繧ｿ繝�ヵ繧ｻ繧ｯ繧ｷ繝ｧ繝ｳ */
 .staff-sections {
   display: flex;
   flex-direction: column;
@@ -1040,7 +1040,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .staff-section {
-  /* セクション区切り */
+  /* 繧ｻ繧ｯ繧ｷ繝ｧ繝ｳ蛹ｺ蛻�ｊ */
 }
 
 .section-header {
@@ -1070,7 +1070,7 @@ input:focus, select:focus, textarea:focus {
   font-size: 0.9rem;
 }
 
-/* スタッフカード */
+/* 繧ｹ繧ｿ繝�ヵ繧ｫ繝ｼ繝� */
 .staff-card {
   display: flex;
   align-items: center;
@@ -1100,7 +1100,7 @@ input:focus, select:focus, textarea:focus {
   font-weight: 500;
 }
 
-/* ランク別バッジカラー */
+/* 繝ｩ繝ｳ繧ｯ蛻･繝舌ャ繧ｸ繧ｫ繝ｩ繝ｼ */
 .rank-owner {
   background: rgba(251, 191, 36, 0.15);
   color: var(--rank-owner);
@@ -1158,7 +1158,7 @@ input:focus, select:focus, textarea:focus {
   min-width: 32px;
 }
 
-/* トグルスイッチ */
+/* 繝医げ繝ｫ繧ｹ繧､繝�メ */
 .toggle-switch {
   position: relative;
   display: inline-block;
@@ -1205,9 +1205,9 @@ input:focus, select:focus, textarea:focus {
   background: var(--accent-success);
 }
 
-/* ──────────────────────────────────────────────
-   メニュー設定カード
-   ────────────────────────────────────────────── */
+/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+   繝｡繝九Η繝ｼ險ｭ螳壹き繝ｼ繝�
+   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
 .menu-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -1292,9 +1292,9 @@ input:focus, select:focus, textarea:focus {
   margin-left: auto;
 }
 
-/* ──────────────────────────────────────────────
-   ボタン
-   ────────────────────────────────────────────── */
+/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+   繝懊ち繝ｳ
+   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -1334,9 +1334,9 @@ input:focus, select:focus, textarea:focus {
   font-size: 1em;
 }
 
-/* ──────────────────────────────────────────────
-   エラー画面
-   ────────────────────────────────────────────── */
+/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+   繧ｨ繝ｩ繝ｼ逕ｻ髱｢
+   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
 .error-screen {
   display: flex;
   flex-direction: column;
@@ -1369,11 +1369,11 @@ input:focus, select:focus, textarea:focus {
   word-break: break-all;
 }
 
-/* ──────────────────────────────────────────────
-   アニメーション
-   ────────────────────────────────────────────── */
+/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+   繧｢繝九Γ繝ｼ繧ｷ繝ｧ繝ｳ
+   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
 
-/* 召喚時のパルスアニメーション */
+/* 蜿ｬ蝟壽凾縺ｮ繝代Ν繧ｹ繧｢繝九Γ繝ｼ繧ｷ繝ｧ繝ｳ */
 @keyframes summonPulse {
   0% {
     box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.6);
@@ -1393,7 +1393,7 @@ input:focus, select:focus, textarea:focus {
   animation: summonPulse 0.6s ease-out;
 }
 
-/* アラート点滅 */
+/* 繧｢繝ｩ繝ｼ繝育せ貊� */
 @keyframes alertBlink {
   0%, 100% {
     opacity: 1;
@@ -1410,7 +1410,7 @@ input:focus, select:focus, textarea:focus {
   border-color: var(--accent-danger) !important;
 }
 
-/* フェードイン */
+/* 繝輔ぉ繝ｼ繝峨う繝ｳ */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -1426,7 +1426,7 @@ input:focus, select:focus, textarea:focus {
   animation: fadeIn var(--transition-normal);
 }
 
-/* スライドイン */
+/* 繧ｹ繝ｩ繧､繝峨う繝ｳ */
 @keyframes slideIn {
   from {
     opacity: 0;
@@ -1442,7 +1442,7 @@ input:focus, select:focus, textarea:focus {
   animation: slideIn var(--transition-normal);
 }
 
-/* スライドアップ（メニューバー用） */
+/* 繧ｹ繝ｩ繧､繝峨い繝���医Γ繝九Η繝ｼ繝舌�逕ｨ�� */
 @keyframes slideUp {
   from {
     opacity: 0;
@@ -1454,7 +1454,7 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
-/* 兼任バッジ ポップアニメーション */
+/* 蜈ｼ莉ｻ繝舌ャ繧ｸ 繝昴ャ繝励い繝九Γ繝ｼ繧ｷ繝ｧ繝ｳ */
 @keyframes concurrentBadgePop {
   0% {
     opacity: 0;
@@ -1470,9 +1470,9 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
-/* ──────────────────────────────────────────────
-   ユーティリティクラス
-   ────────────────────────────────────────────── */
+/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+   繝ｦ繝ｼ繝�ぅ繝ｪ繝�ぅ繧ｯ繝ｩ繧ｹ
+   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
 
 #assistant-sidebar.hidden {
   display: block !important;
@@ -1499,9 +1499,9 @@ input:focus, select:focus, textarea:focus {
   border: 0;
 }
 
-/* ──────────────────────────────────────────────
-   レスポンシブ対応（最低1024px）
-   ────────────────────────────────────────────── */
+/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+   繝ｬ繧ｹ繝昴Φ繧ｷ繝門ｯｾ蠢懶ｼ域怙菴�1024px��
+   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
 @media (max-width: 1200px) {
   #assistant-sidebar {
     width: 180px;
@@ -1548,15 +1548,15 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
-/* ドラッグ中のブロック透過処理（重ねてドロップできるようにするため） */
-/* ドラッグされていないブロックのみ pointer-events: none にする */
+/* 繝峨Λ繝�げ荳ｭ縺ｮ繝悶Ο繝�け騾城℃蜃ｦ逅�ｼ磯㍾縺ｭ縺ｦ繝峨Ο繝��縺ｧ縺阪ｋ繧医≧縺ｫ縺吶ｋ縺溘ａ�� */
+/* 繝峨Λ繝�げ縺輔ｌ縺ｦ縺�↑縺�ヶ繝ｭ繝�け縺ｮ縺ｿ pointer-events: none 縺ｫ縺吶ｋ */
 body.is-dragging-item .reservation-block:not(.is-being-dragged) {
   pointer-events: none !important;
 }
 
-/* ──────────────────────────────────────────────
-   リサイズハンドル
-   ────────────────────────────────────────────── */
+/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+   繝ｪ繧ｵ繧､繧ｺ繝上Φ繝峨Ν
+   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
 
 .reservation-resize-handle {
   position: absolute;
@@ -1571,7 +1571,7 @@ body.is-dragging-item .reservation-block:not(.is-being-dragged) {
   transition: background 0.15s ease;
 }
 
-/* ハンドルのインジケーター線（縦2本） */
+/* 繝上Φ繝峨Ν縺ｮ繧､繝ｳ繧ｸ繧ｱ繝ｼ繧ｿ繝ｼ邱夲ｼ育ｸｦ2譛ｬ�� */
 .reservation-resize-handle::after {
   content: '';
   position: absolute;
@@ -1594,14 +1594,14 @@ body.is-dragging-item .reservation-block:not(.is-being-dragged) {
   box-shadow: -3px 0 0 rgba(255, 255, 255, 0.7);
 }
 
-/* リサイズ中: ページ全体のカーソルとテキスト選択を制御 */
+/* 繝ｪ繧ｵ繧､繧ｺ荳ｭ: 繝壹�繧ｸ蜈ｨ菴薙�繧ｫ繝ｼ繧ｽ繝ｫ縺ｨ繝�く繧ｹ繝磯∈謚槭ｒ蛻ｶ蠕｡ */
 body.is-resizing,
 body.is-resizing * {
   cursor: ew-resize !important;
   user-select: none !important;
 }
 
-/* リサイズ中のブロックをハイライト */
+/* 繝ｪ繧ｵ繧､繧ｺ荳ｭ縺ｮ繝悶Ο繝�け繧偵ワ繧､繝ｩ繧､繝� */
 body.is-resizing .reservation-block {
   pointer-events: none;
 }
@@ -1609,9 +1609,9 @@ body.is-resizing .reservation-resize-handle {
   pointer-events: auto;
 }
 
-/* ──────────────────────────────────────────────
-   空き時間選択モーダル
-   ────────────────────────────────────────────── */
+/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+   遨ｺ縺肴凾髢馴∈謚槭Δ繝ｼ繝繝ｫ
+   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
 
 .free-time-modal-overlay {
   position: fixed;
@@ -1793,7 +1793,7 @@ body.is-resizing .reservation-resize-handle {
   transform: translateY(-1px);
 }
 
-/* タイムライン時間外（不在）セル */
+/* 繧ｿ繧､繝�繝ｩ繧､繝ｳ譎る俣螟厄ｼ井ｸ榊惠�峨そ繝ｫ */
 .timeline-cell.off-duty {
   background: repeating-linear-gradient(
     135deg,
@@ -1809,7 +1809,7 @@ body.is-resizing .reservation-resize-handle {
 }
 
 .timeline-cell.off-duty::after {
-  content: '不在';
+  content: '荳榊惠';
   position: absolute;
   inset: 0;
   display: flex;
@@ -1832,7 +1832,7 @@ body.is-resizing .reservation-resize-handle {
   ) !important;
 }
 
-/* ═══ アコーディオン展開 ═══ */
+/* 笊絶武笊� 繧｢繧ｳ繝ｼ繝�ぅ繧ｪ繝ｳ螻暮幕 笊絶武笊� */
 .timeline-header-cell {
   cursor: pointer;
   transition: flex-grow 0.35s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease;
@@ -1851,7 +1851,7 @@ body.is-resizing .reservation-resize-handle {
   align-items: stretch;
 }
 
-/* 展開時のメインラベル */
+/* 螻暮幕譎ゅ�繝｡繧､繝ｳ繝ｩ繝吶Ν */
 .accordion-main-label {
   display: flex;
   align-items: center;
@@ -1860,9 +1860,9 @@ body.is-resizing .reservation-resize-handle {
   white-space: nowrap;
 }
 
-/* 展開インジケータ（▾） */
+/* 螻暮幕繧､繝ｳ繧ｸ繧ｱ繝ｼ繧ｿ�遺明�� */
 .accordion-main-label::after {
-  content: '▾';
+  content: '笆ｾ';
   color: var(--text-muted);
   font-size: 0.55rem;
   display: inline-block;
@@ -1874,7 +1874,7 @@ body.is-resizing .reservation-resize-handle {
   transform: rotate(180deg);
 }
 
-/* サブラベル（5分刻み） */
+/* 繧ｵ繝悶Λ繝吶Ν��5蛻�綾縺ｿ�� */
 .accordion-sub-labels {
   display: flex;
   flex-direction: row;
@@ -1895,7 +1895,7 @@ body.is-resizing .reservation-resize-handle {
   border-left: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* ボディセルの展開 */
+/* 繝懊ョ繧｣繧ｻ繝ｫ縺ｮ螻暮幕 */
 .timeline-cell {
   transition: flex-grow 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   min-width: 0;
@@ -1905,7 +1905,7 @@ body.is-resizing .reservation-resize-handle {
   flex: 6;
 }
 
-/* ガイドライン（5分刻みの点線） */
+/* 繧ｬ繧､繝峨Λ繧､繝ｳ��5蛻�綾縺ｿ縺ｮ轤ｹ邱夲ｼ� */
 .accordion-gridlines {
   position: absolute;
   inset: 0;
@@ -1924,7 +1924,7 @@ body.is-resizing .reservation-resize-handle {
   border-left: none;
 }
 
-/* サブヘッダーの展開 */
+/* 繧ｵ繝悶�繝�ム繝ｼ縺ｮ螻暮幕 */
 .timeline-header-sub-cell {
   transition: flex-grow 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -1933,7 +1933,28 @@ body.is-resizing .reservation-resize-handle {
   flex: 6;
 }
 
-/* 予約ブロック・マンセル枠のスムーズなアニメーション */
+.timeline-divider-cell {
+  transition: flex-grow 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 0;
+}
+
+.timeline-divider-cell.expanded {
+  flex: 6;
+}
+
+/* アコーディオン絶対配置境界線 */
+.accordion-boundary-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 2px dashed rgba(251, 191, 36, 0.8);
+  z-index: 10;
+  pointer-events: none;
+  transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 莠育ｴ�ヶ繝ｭ繝�け繝ｻ繝槭Φ繧ｻ繝ｫ譫�縺ｮ繧ｹ繝�繝ｼ繧ｺ縺ｪ繧｢繝九Γ繝ｼ繧ｷ繝ｧ繝ｳ */
 .timeline-cells .reservation-block {
   transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1),
               width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
@@ -1946,9 +1967,9 @@ body.is-resizing .reservation-resize-handle {
               width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ═══ アコーディオン展開時：スロット実時刻ラベル ═══ */
+/* 笊絶武笊� 繧｢繧ｳ繝ｼ繝�ぅ繧ｪ繝ｳ螻暮幕譎ゑｼ壹せ繝ｭ繝�ヨ螳滓凾蛻ｻ繝ｩ繝吶Ν 笊絶武笊� */
 
-/* スロット時間ラベル（デフォルト非表示、アコーディオン展開時のみJSで表示） */
+/* 繧ｹ繝ｭ繝�ヨ譎る俣繝ｩ繝吶Ν�医ョ繝輔か繝ｫ繝磯撼陦ｨ遉ｺ縲√い繧ｳ繝ｼ繝�ぅ繧ｪ繝ｳ螻暮幕譎ゅ�縺ｿJS縺ｧ陦ｨ遉ｺ�� */
 .slot-time-label {
   display: none;
   font-size: 7.5px;
@@ -1958,19 +1979,19 @@ body.is-resizing .reservation-resize-handle {
   line-height: 1;
   letter-spacing: 0.02em;
   opacity: 0.85;
-  order: -1; /* flexbox内で最上部に配置 */
+  order: -1; /* flexbox蜀�〒譛荳企Κ縺ｫ驟咲ｽｮ */
   flex-shrink: 0;
   padding: 1px 0 0 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* 表示状態（JSで .slot-time-visible クラスをトグル） */
+/* 陦ｨ遉ｺ迥ｶ諷具ｼ�S縺ｧ .slot-time-visible 繧ｯ繝ｩ繧ｹ繧偵ヨ繧ｰ繝ｫ�� */
 .slot-time-label.slot-time-visible {
   display: block;
 }
 
-/* マンセル枠の時間ヘッダー（デフォルト非表示） */
+/* 繝槭Φ繧ｻ繝ｫ譫�縺ｮ譎る俣繝倥ャ繝繝ｼ�医ョ繝輔か繝ｫ繝磯撼陦ｨ遉ｺ�� */
 .manncell-time-header {
   display: none;
   position: absolute;
@@ -1992,16 +2013,16 @@ body.is-resizing .reservation-resize-handle {
   transform: translateY(-100%);
 }
 
-/* 表示状態（JSで .manncell-time-visible クラスをトグル） */
+/* 陦ｨ遉ｺ迥ｶ諷具ｼ�S縺ｧ .manncell-time-visible 繧ｯ繝ｩ繧ｹ繧偵ヨ繧ｰ繝ｫ�� */
 .manncell-time-header.manncell-time-visible {
   display: block;
 }
 
-/* ══════════════════════════════════════════════════
-   頑張れ配置 (🔥 Ganbare Assignment)
-   ══════════════════════════════════════════════════ */
+/* 笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武
+   鬆大ｼｵ繧碁�鄂ｮ (�櫨 Ganbare Assignment)
+   笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武 */
 
-/* --- ヘッダーバッジ（縮小時用）--- */
+/* --- 繝倥ャ繝繝ｼ繝舌ャ繧ｸ�育ｸｮ蟆乗凾逕ｨ��--- */
 .ganbare-header-badge {
   flex-shrink: 0;
   font-size: 8px;
@@ -2019,7 +2040,7 @@ body.is-resizing .reservation-resize-handle {
   50% { opacity: 0.6; }
 }
 
-/* --- 下段表示行（展開時用）--- */
+/* --- 荳区ｮｵ陦ｨ遉ｺ陦鯉ｼ亥ｱ暮幕譎ら畑��--- */
 .reservation-ganbare {
   display: flex;
   gap: 2px;
@@ -2041,7 +2062,7 @@ body.is-resizing .reservation-resize-handle {
   transform-origin: center;
 }
 
-/* --- 頑張れモードボタンのactive状態 --- */
+/* --- 鬆大ｼｵ繧後Δ繝ｼ繝峨�繧ｿ繝ｳ縺ｮactive迥ｶ諷� --- */
 .ganbare-mode-btn.active {
   background: rgba(249, 115, 22, 0.2) !important;
   color: #f97316 !important;
@@ -2049,7 +2070,7 @@ body.is-resizing .reservation-resize-handle {
   box-shadow: 0 0 8px rgba(249, 115, 22, 0.3);
 }
 
-/* --- 頑張れモードオーバーレイ --- */
+/* --- 鬆大ｼｵ繧後Δ繝ｼ繝峨が繝ｼ繝舌�繝ｬ繧､ --- */
 .ganbare-mode-overlay {
   position: sticky;
   top: 0;
@@ -2064,7 +2085,7 @@ body.is-resizing .reservation-resize-handle {
   pointer-events: none;
 }
 
-/* --- 頑張れバーチャルブロック（スタッフタイムライン）--- */
+/* --- 鬆大ｼｵ繧後ヰ繝ｼ繝√Ε繝ｫ繝悶Ο繝�け�医せ繧ｿ繝�ヵ繧ｿ繧､繝�繝ｩ繧､繝ｳ��--- */
 .ganbare-virtual-block {
   background: rgba(249, 115, 22, 0.15) !important;
   border: 1.5px dashed #f97316 !important;
@@ -2081,12 +2102,12 @@ body.is-resizing .reservation-resize-handle {
   font-size: 8px !important;
 }
 
-/* --- 頑張れセレクターポップアップ --- */
+/* --- 鬆大ｼｵ繧後そ繝ｬ繧ｯ繧ｿ繝ｼ繝昴ャ繝励い繝�� --- */
 .ganbare-selector-popup label:hover {
   background: var(--bg-hover);
 }
 
-/* Gap Help - 隙間配置ブロック（黄色の点線枠 + グロー） */
+/* Gap Help - 髫咎俣驟咲ｽｮ繝悶Ο繝�け�磯ｻ�牡縺ｮ轤ｹ邱壽棧 + 繧ｰ繝ｭ繝ｼ�� */
 .gap-help-block {
   border: 2px dashed #FFD700 !important;
   background-color: rgba(255, 215, 0, 0.15) !important;
@@ -2098,7 +2119,7 @@ body.is-resizing .reservation-resize-handle {
   background: rgba(255, 215, 0, 0.1) !important;
 }
 
-/* スキマヘルプ名の段（スロット内、通常アサイン名の下に表示） */
+/* 繧ｹ繧ｭ繝槭�繝ｫ繝怜錐縺ｮ谿ｵ�医せ繝ｭ繝�ヨ蜀��壼ｸｸ繧｢繧ｵ繧､繝ｳ蜷阪�荳九↓陦ｨ遉ｺ�� */
 .slot-gap-help-text {
   font-size: 8px;
   display: block;
@@ -2111,7 +2132,7 @@ body.is-resizing .reservation-resize-handle {
   line-height: 1.2;
 }
 
-/* ── アシスタント配置OFF「えらい！」バッジ ── */
+/* 笏笏 繧｢繧ｷ繧ｹ繧ｿ繝ｳ繝磯�鄂ｮOFF縲後∴繧峨＞�√阪ヰ繝�ず 笏笏 */
 @keyframes eraiBounce {
   0% {
     opacity: 0;
@@ -2130,11 +2151,11 @@ body.is-resizing .reservation-resize-handle {
   }
 }
 
-/* 📝 メモアイコンのベーススタイル */
+/* �統 繝｡繝｢繧｢繧､繧ｳ繝ｳ縺ｮ繝吶�繧ｹ繧ｹ繧ｿ繧､繝ｫ */
 .memo-icon {
   display: inline-block;
   cursor: pointer;
-  font-size: 13px; /* 少し大きめに */
+  font-size: 13px; /* 蟆代＠螟ｧ縺阪ａ縺ｫ */
   margin-right: 4px;
   padding: 2px 4px;
   margin-left: -4px;
@@ -2149,18 +2170,18 @@ body.is-resizing .reservation-resize-handle {
   opacity: 0.8;
 }
 
-/* メモが入っている時のスタイル */
+/* 繝｡繝｢縺悟�縺｣縺ｦ縺�ｋ譎ゅ�繧ｹ繧ｿ繧､繝ｫ */
 .memo-icon.has-memo {
   opacity: 1 !important;
-  font-size: 14px; /* さらに少し大きく */
+  font-size: 14px; /* 縺輔ｉ縺ｫ蟆代＠螟ｧ縺阪￥ */
   animation: memoPulse 1.8s infinite alternate cubic-bezier(0.45, 0.05, 0.55, 0.95);
 }
 
 .memo-icon.has-memo:hover {
-  transform: scale(1.35) rotate(-5deg); /* ホバー時により飛び出る感じに */
+  transform: scale(1.35) rotate(-5deg); /* 繝帙ヰ繝ｼ譎ゅ↓繧医ｊ鬟帙�蜃ｺ繧区─縺倥↓ */
 }
 
-/* メモアイコンのアニメーション (飛び出て光る) */
+/* 繝｡繝｢繧｢繧､繧ｳ繝ｳ縺ｮ繧｢繝九Γ繝ｼ繧ｷ繝ｧ繝ｳ (鬟帙�蜃ｺ縺ｦ蜈峨ｋ) */
 @keyframes memoPulse {
   0% {
     transform: scale(1);
@@ -2173,7 +2194,7 @@ body.is-resizing .reservation-resize-handle {
 }
 
 
-/* �ʒm�{�^���p���X�A�j���[�V���� */
+/* 通知ボタンパルスアニメーション */
 @keyframes pulse-danger {
   0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
   70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
