@@ -78,8 +78,10 @@ function defineRequirements(state, timeStr, timeMs) {
         const trackerObj = state.tracker ? state.tracker[res.stylistId] : null;
         if (trackerObj && trackerObj.blockedTimes) {
           for (const block of trackerObj.blockedTimes) {
-            const bStart = toTimestamp(block.startTime);
-            const bEnd = toTimestamp(block.endTime);
+            // block.startTime と endTime は 9:00基準の相対分数。
+            // 比較基準を揃えるため、60000を掛けてミリ秒化する
+            const bStart = block.startTime * 60000;
+            const bEnd = block.endTime * 60000;
             // 予約の時間帯とブロック時間帯が重なっているか
             if (resStartMs < bEnd && resEndMs > bStart) {
               isStylistBlocked = true;

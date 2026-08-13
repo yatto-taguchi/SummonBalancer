@@ -85,8 +85,8 @@ export function executeGapAssignment(state) {
       const ongoingId = currentOngoingTasks[taskKey];
       if (ongoingId && freeAssistantIds.has(ongoingId)) {
         const staffObj = assistants.find(a => a.id === ongoingId);
-        // 【厳守事項3】最低スキルチェック
-        if (staffObj && hasSkill(staffObj, req.requiredSkill, 1)) {
+        // 【厳守事項3】最低スキルチェック ＋ 【追加修正】ブロック中ではないか確認
+        if (staffObj && hasSkill(staffObj, req.requiredSkill, 1) && !isStaffBlocked(ongoingId, timeStr, currentTracker)) {
           assignedAssistantId = ongoingId;
         }
       }

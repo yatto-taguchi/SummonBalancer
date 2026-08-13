@@ -94,10 +94,11 @@ export function isStaffBlocked(staffId, timeVal, tracker) {
   }
   const tickMs = toTimestamp(timeVal);
   for (const block of tracker[staffId].blockedTimes) {
-    // block.startTime と endTime は 0:00基準の絶対分数（例: 1020 = 17:00）
-    // tickMs は 9:00基準の相対ミリ秒。比較基準を揃えるため、絶対分数から540分を引いて相対ミリ秒化する
-    const s = (block.startTime - 540) * 60000;
-    const e = (block.endTime - 540) * 60000;
+    // block.startTime と endTime は 9:00基準の相対分数。
+    // tickMs は 9:00基準の相対ミリ秒。
+    // 比較基準を揃えるため、60000を掛けてミリ秒化する
+    const s = block.startTime * 60000;
+    const e = block.endTime * 60000;
     // 時間帯が重なっているか (timeValは特定のTickを表すため、そのTickが含まれるか判定)
     if (tickMs >= s && tickMs < e) {
       return true;
