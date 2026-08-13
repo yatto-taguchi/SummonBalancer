@@ -250,8 +250,8 @@ function renderStaffInfoContent(staffInfoEl, staff, rate, stats, type, index, to
       return btn;
     };
 
-    const lunchBtn = createActionButton('🍙 お昼', 'lunch', '#f59e0b');
-    const breakBtn = createActionButton('☕ 休憩', 'break', '#3b82f6');
+    const lunchBtn = createActionButton('🍙 お昼', 'lunch', 'rgba(16, 185, 129, 0.55)');
+    const breakBtn = createActionButton('☕ 休憩', 'break', 'rgba(16, 185, 129, 0.45)');
 
     actionRow.appendChild(lunchBtn);
     actionRow.appendChild(breakBtn);

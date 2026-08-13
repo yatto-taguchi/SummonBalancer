@@ -586,17 +586,12 @@ input:focus, select:focus, textarea:focus {
 
 .reservation-block.forced-activity-block {
   z-index: 5;
-  background: rgba(245, 158, 11, 0.6) !important; /* 蜊企乗�縺ｮ繧ｪ繝ｬ繝ｳ繧ｸ繝吶�繧ｹ */
-  backdrop-filter: blur(2px); /* 荳九�繧｢繧ｵ繧､繝ｳ縺瑚ｦ九∴繧九ｈ縺�↓霆ｽ縺�⊂縺九＠ */
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
-  pointer-events: none; /* 荳九�莠育ｴ�ヶ繝ｭ繝�け遲峨ｒ繧ｯ繝ｪ繝�け蜿ｯ閭ｽ縺ｫ縺吶ｋ */
+  backdrop-filter: blur(2px); /* 荳九繧｢繧ｵ繧､繝ｳ縺瑚ｦ九∴繧九ｈ縺↓霆ｽ縺⊂縺九＠ */
+  pointer-events: none; /* 荳九莠育ｴヶ繝ｭ繝け遲峨ｒ繧ｯ繝ｪ繝け蜿ｯ閭ｽ縺ｫ縺吶ｋ */
 }
 
 .reservation-block.special-summon-block {
   z-index: 5;
-  border: 2px solid rgba(245, 158, 11, 0.8);
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
 }
 
 .reservation-label {

@@ -311,9 +311,9 @@ export class ReservationBlock {
           backdropFilterStyle = 'blur(4px)';
           textColorCode = '#f1f5f9';
         } else if (res.activityType === 'lunch' || res.activityType === 'rest') {
-          // お昼・休憩はクリアな鮮やかグリーン
-          backgroundStyle = 'rgba(34, 197, 94, 0.3)';
-          borderStyle = '1px solid rgba(34, 197, 94, 0.5)';
+          // お昼・休憩は透明感のあるエメラルドグリーン（お昼ご飯と同系統で透明度高め）
+          backgroundStyle = 'rgba(16, 185, 129, 0.2)';
+          borderStyle = '1px solid rgba(16, 185, 129, 0.5)';
           backdropFilterStyle = 'blur(4px)';
           textColorCode = '#ffffff';
         } else {
@@ -332,19 +332,33 @@ export class ReservationBlock {
       } else if (isSummon) {
         // 召喚ブロック: 指定された色と名称（特殊召喚/召喚）を尊重する (枠線色用)
         colorCode = menu ? (menu.colorCode || '#ef4444') : '#ef4444';
-        if (res.isSpecialSummon) colorCode = '#f59e0b'; // 金色
+        if (res.isSpecialSummon) {
+          if (res.specialSummonReason === 'lunch' || res.specialSummonReason === 'rest') {
+            colorCode = '#10b981'; // お昼・休憩交代は緑
+          } else {
+            colorCode = '#f59e0b'; // その他の特殊召喚は金色
+          }
+        }
         blockLabel = menu ? menu.name : '召喚';
         
-        // 召喚の背景色は要求スキルベース
-        let skillBgColor = colorCode;
-        if (res.summonSkill) {
-          skillBgColor = getSkillBgColor(res.summonSkill);
+        if (res.isSpecialSummon && (res.specialSummonReason === 'lunch' || res.specialSummonReason === 'rest')) {
+          // お昼・休憩の特殊召喚は透明感のある緑に
+          backgroundStyle = 'rgba(16, 185, 129, 0.2)';
+          borderStyle = `2px solid rgba(16, 185, 129, 0.5)`;
+          boxShadowStyle = `0 0 10px rgba(16, 185, 129, 0.3)`;
+          textColorCode = '#ffffff';
+        } else {
+          // 召喚の背景色は要求スキルベース
+          let skillBgColor = colorCode;
+          if (res.summonSkill) {
+            skillBgColor = getSkillBgColor(res.summonSkill);
+          }
+          backgroundStyle = `linear-gradient(135deg, ${skillBgColor}99, ${skillBgColor}66)`;
+          // 緊急度を示す色（赤や金）の枠線は最前面で強固に描画（レイヤー分離）
+          borderStyle = `2px solid ${colorCode}EE`; // 緊急召喚なので少し太め＆明るめに
+          boxShadowStyle = `0 0 10px ${colorCode}66`; // 枠線を強調する立体的なシャドウ
+          textColorCode = '#ffffff'; // 文字を白にして視認性確保
         }
-        backgroundStyle = `linear-gradient(135deg, ${skillBgColor}99, ${skillBgColor}66)`;
-        // 緊急度を示す色（赤や金）の枠線は最前面で強固に描画（レイヤー分離）
-        borderStyle = `2px solid ${colorCode}EE`; // 緊急召喚なので少し太め＆明るめに
-        boxShadowStyle = `0 0 10px ${colorCode}66`; // 枠線を強調する立体的なシャドウ
-        textColorCode = '#ffffff'; // 文字を白にして視認性確保
       } else {
         colorCode = menu ? (menu.colorCode || '#6366f1') : '#6366f1';
         blockLabel = menu ? menu.name : '';
