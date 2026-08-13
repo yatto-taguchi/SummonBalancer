@@ -719,7 +719,11 @@ export class MainView {
     const shortageAlertBtn = document.createElement('button');
     shortageAlertBtn.id = 'btn-shortage-alert';
     shortageAlertBtn.className = 'menu-bar-toolbar-btn alert-pulse';
-    shortageAlertBtn.style.cssText = 'display: none; background: rgba(239, 68, 68, 0.15); color: #ef4444; font-weight: 700; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 4px; padding: 2px 6px; font-size: 10px; cursor: pointer; line-height: 1.2;';
+    shortageAlertBtn.style.display = 'none';
+    shortageAlertBtn.style.background = 'rgba(239, 68, 68, 0.15)';
+    shortageAlertBtn.style.color = '#ef4444';
+    shortageAlertBtn.style.fontWeight = '700';
+    shortageAlertBtn.style.borderColor = 'rgba(239, 68, 68, 0.4)';
     shortageAlertBtn.innerHTML = '🚨 不足 (0)';
     shortageAlertBtn.addEventListener('click', () => this._showShortageModal());
     alertsWrapper.appendChild(shortageAlertBtn);
@@ -728,7 +732,11 @@ export class MainView {
     const specialSummonBtn = document.createElement('button');
     specialSummonBtn.id = 'btn-special-summon';
     specialSummonBtn.className = 'menu-bar-toolbar-btn special-pulse';
-    specialSummonBtn.style.cssText = 'display: none; background: rgba(245, 158, 11, 0.15); color: #f59e0b; font-weight: 700; border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 4px; padding: 2px 6px; font-size: 10px; cursor: pointer; line-height: 1.2;';
+    specialSummonBtn.style.display = 'none';
+    specialSummonBtn.style.background = 'rgba(245, 158, 11, 0.15)';
+    specialSummonBtn.style.color = '#f59e0b';
+    specialSummonBtn.style.fontWeight = '700';
+    specialSummonBtn.style.borderColor = 'rgba(245, 158, 11, 0.4)';
     specialSummonBtn.innerHTML = '✨ 特殊 (0)';
     specialSummonBtn.addEventListener('click', () => this._showSpecialSummonModal());
     alertsWrapper.appendChild(specialSummonBtn);
