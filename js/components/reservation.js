@@ -605,13 +605,13 @@ export class ReservationBlock {
       menuNameEl.style.display = 'block';
       menuNameEl.style.width = '100%';
     } else if (res.isLunchConvertible) {
-      menuNameEl.innerHTML = `${blockLabel}<br><span style="font-size: 8px; font-weight: normal; opacity: 0.85;">（お昼可）</span>`;
-      menuNameEl.style.whiteSpace = 'normal';
-      menuNameEl.style.lineHeight = '1.1';
+      menuNameEl.innerHTML = `${blockLabel} <span style="font-size: 8px; font-weight: normal; opacity: 0.85;">（お昼可）</span>`;
+      menuNameEl.style.whiteSpace = 'nowrap';
+      menuNameEl.style.lineHeight = '1.2';
     } else if (res.isConvertibleToRest) {
-      menuNameEl.innerHTML = `${blockLabel}<br><span style="font-size: 8px; font-weight: normal; opacity: 0.85;">（休憩可）</span>`;
-      menuNameEl.style.whiteSpace = 'normal';
-      menuNameEl.style.lineHeight = '1.1';
+      menuNameEl.innerHTML = `${blockLabel} <span style="font-size: 8px; font-weight: normal; opacity: 0.85;">（休憩可）</span>`;
+      menuNameEl.style.whiteSpace = 'nowrap';
+      menuNameEl.style.lineHeight = '1.2';
     } else {
       menuNameEl.textContent = blockLabel;
       menuNameEl.style.whiteSpace = 'nowrap';
