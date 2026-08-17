@@ -1723,13 +1723,27 @@ export class MainView {
       });
     }
 
+    // フリーズ境界（当日の過去活動は重複チェックをスキップして必ず描画する）
+    const nowForFreeze = new Date();
+    const todayStrForFreeze = this._formatDate(new Date());
+    const isTodayForFreeze = (dateStr === todayStrForFreeze);
+    const freezeBoundaryMin = isTodayForFreeze
+      ? Math.floor(((nowForFreeze.getHours() - 9) * 60 + nowForFreeze.getMinutes()) / 5) * 5
+      : null;
+
     result.freeTimeActivities.forEach((act, idx) => {
       // 召喚・ヘルプブロックとの重複チェック: 重なっていたらスキップ
       const actStart = typeof act.startTime === 'number' ? act.startTime : new Date(act.startTime).getTime();
       const actEnd = typeof act.endTime === 'number' ? act.endTime : new Date(act.endTime).getTime();
-      const staffBusy = busyTimeRanges[act.staffId] || [];
-      const overlapsWithBusy = staffBusy.some(s => s.start < actEnd && s.end > actStart);
-      if (overlapsWithBusy && !act.isForced) return; // 召喚・ヘルプと重複する空き時間・活動はスキップ（強制の場合はスキップせず被せ表示）
+      
+      // フリーズ境界以前（過去）の活動は重複チェックをバイパスして必ず描画する
+      const isPastActivity = (freezeBoundaryMin !== null && actStart < freezeBoundaryMin);
+      
+      if (!isPastActivity) {
+        const staffBusy = busyTimeRanges[act.staffId] || [];
+        const overlapsWithBusy = staffBusy.some(s => s.start < actEnd && s.end > actStart);
+        if (overlapsWithBusy && !act.isForced) return; // 未来の活動のみ: 召喚・ヘルプと重複する空き時間・活動はスキップ（強制の場合はスキップせず被せ表示）
+      }
 
       // free_timeブロックの場合、保存済みの選択をマージ
       const startMinutes = typeof act.startTime === 'number' ? act.startTime : null;

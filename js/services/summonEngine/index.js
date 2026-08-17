@@ -9,10 +9,74 @@ import { executeGapAssignment } from './pipeline/05_5_gapAssignment.js?v=1';
 import { executeBonusAssignment } from './pipeline/05_7_bonusAssignment.js?v=1';
 import { executeFreeTimeAllocation } from './pipeline/06_freeTimeAllocation.js?v=4';
 
+/** localStorage永続化キーのプレフィックス */
+const PREV_STATE_KEY_PREFIX = 'summonEngine_prevState_';
+
 export class SummonEngine {
   constructor() {
     // UIには触れさせず、エンジン内部で前回の計算結果（状態）を保持する
+    // ページリロード後もフリーズ機構を維持するため、localStorageから復元を試みる
     this.previousState = null;
+    this._cachedDateStr = null; // キャッシュ対象の日付
+    this._restorePreviousState();
+  }
+
+  /**
+   * localStorageからpreviousStateを復元する（起動時に1回だけ呼ばれる）
+   * @private
+   */
+  _restorePreviousState() {
+    try {
+      // 今日の日付キーでキャッシュを検索
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      const key = PREV_STATE_KEY_PREFIX + todayStr;
+      const cached = localStorage.getItem(key);
+      if (cached) {
+        this.previousState = JSON.parse(cached);
+        this._cachedDateStr = todayStr;
+        console.info('[SummonEngine] previousState を localStorage から復元しました');
+      }
+      // 古い日付のキャッシュを削除（今日以外）
+      this._cleanupOldCache(todayStr);
+    } catch (e) {
+      console.warn('[SummonEngine] previousState の復元に失敗:', e);
+      this.previousState = null;
+    }
+  }
+
+  /**
+   * 古い日付のキャッシュを削除する
+   * @param {string} keepDateStr - 残す日付文字列
+   * @private
+   */
+  _cleanupOldCache(keepDateStr) {
+    try {
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(PREV_STATE_KEY_PREFIX) && k !== PREV_STATE_KEY_PREFIX + keepDateStr) {
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+    } catch { /* 無視 */ }
+  }
+
+  /**
+   * previousStateをlocalStorageに保存する
+   * @param {string} dateStr - 日付文字列（YYYY-MM-DD）
+   * @private
+   */
+  _persistPreviousState(dateStr) {
+    try {
+      const key = PREV_STATE_KEY_PREFIX + dateStr;
+      localStorage.setItem(key, JSON.stringify(this.previousState));
+      this._cachedDateStr = dateStr;
+    } catch (e) {
+      // localStorage容量超過時はログのみ
+      console.warn('[SummonEngine] previousState の永続化に失敗（容量超過の可能性）:', e);
+    }
   }
 
   /**
@@ -128,6 +192,13 @@ export class SummonEngine {
     } catch (e) {
       console.warn('[SummonEngine] Failed to cache previousState:', e);
       this.previousState = null;
+    }
+
+    // === localStorageにも永続化（ページリロード後もフリーズを維持するため） ===
+    if (options.isToday) {
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      this._persistPreviousState(todayStr);
     }
 
     // === UI互換のための変換処理 (アダプター) ===
