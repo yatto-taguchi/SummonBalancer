@@ -1,17 +1,17 @@
 @charset "UTF-8";
 /* *
- * @fileoverview サモンバランサー - プレミア��ークモードデザインシス���
+ * @fileoverview サモンバランサー - プレミアムダークモードデザインシステム
  *
- * グラスモーフィズ�、グラ�ション、微妙なアニメーションを活用した
- * �ークモード�ースの美容室向�UI�oogle Font「Inter」を使用�
+ * グラスモーフィズム、グラデーション、微妙なアニメーションを活用した
+ * ダークモードベースの美容室向けUI。Google Font「Inter」を使用。
  *
- * カラーシス���:
- *   - メニュー別: カ���(イン���ゴ), カラー(ピンク), トリートメン�(エメラル�), カ���カラー(アンバ�), そ��(パ�プル)
- *   - ランク別: オーナ�(ゴール�), トップスタイリス�(ラベン�ー), スタイリス�(ブルー), ジュニア(グリーン), アシスタン�(グレー) */
+ * カラーシステム:
+ *   - メニュー別: カット(インディゴ), カラー(ピンク), トリートメント(エメラルド), カットカラー(アンバー), その他(パープル)
+ *   - ランク別: オーナー(ゴールド), トップスタイリスト(ラベンダー), スタイリスト(ブルー), ジュニア(グリーン), アシスタント(グレー) */
 
-/* ����������������������������������������������
-   CSS変数�デザイント�クン
-   ���������������������������������������������� */
+/* ──────────────────────────────────────────────
+   CSS変数・デザイントークン
+   ────────────────────────────────────────────── */
 :root {
   /* 背景色 */
   --bg-primary: #0a0e17;
@@ -20,7 +20,7 @@
   --bg-glass: rgba(255, 255, 255, 0.05);
   --border-glass: rgba(255, 255, 255, 0.1);
 
-  /* ���スト色 */
+  /* スト色 */
   --text-primary: #f9fafb;
   --text-secondary: #9ca3af;
   --text-muted: #6b7280;
@@ -33,7 +33,7 @@
   --accent-danger: #ef4444;
   --accent-info: #3b82f6;
 
-  /* シャドウ��ロー */
+  /* シャドウロー */
   --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
@@ -64,15 +64,15 @@
   --rank-junior: #34d399;
   --rank-assistant: #9ca3af;
 
-  /* タイ�ラインサイズ */
+  /* タイムラインサイズ */
   --cell-width: 80px;
   --staff-col-width: 135px;
   --row-height: 72px;
 }
 
-/* ����������������������������������������������
-   リセ���ース
-   ���������������������������������������������� */
+/* ──────────────────────────────────────────────
+   リセット・ベース
+   ────────────────────────────────────────────── */
 *,
 *::before,
 *::after {
@@ -96,7 +96,7 @@ body {
   line-height: 1.6;
 }
 
-/* 微妙な背景グラ�ション */
+/* 微妙な背景グラション */
 body::before {
   content: '';
   position: fixed;
@@ -139,7 +139,7 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 }
 
-/* スクロールバ�のカスタマイズ */
+/* スクロールバーのカスタマイズ */
 ::-webkit-scrollbar {
   width: 12px;
   height: 12px;
@@ -160,7 +160,7 @@ input:focus, select:focus, textarea:focus {
   background: rgba(255, 255, 255, 0.5);
 }
 
-/* スリ�なスクロールバ��小さなコン���用 */
+/* スリなスクロールバ小さなコン用 */
 .slim-scrollbar::-webkit-scrollbar {
   width: 4px;
   height: 4px;
@@ -177,9 +177,9 @@ input:focus, select:focus, textarea:focus {
   background: rgba(255, 255, 255, 0.4);
 }
 
-/* ����������������������������������������������
-   アプリレイアウ�
-   ���������������������������������������������� */
+/* ──────────────────────────────────────────────
+   アプリレイアウ
+   ────────────────────────────────────────────── */
 .app-container {
   display: flex;
   flex-direction: column;
@@ -189,9 +189,9 @@ input:focus, select:focus, textarea:focus {
   z-index: 1;
 }
 
-/* ����������������������������������������������
-   ヘッ�ー
-   ���������������������������������������������� */
+/* ──────────────────────────────────────────────
+   ヘッー
+   ────────────────────────────────────────────── */
 .app-header {
   position: sticky;
   top: 0;
@@ -240,7 +240,7 @@ input:focus, select:focus, textarea:focus {
   letter-spacing: -0.025em;
 }
 
-/* ナビゲーションタ� */
+/* ナビゲーションタ */
 .nav-tabs {
   display: flex;
   gap: 4px;
@@ -331,9 +331,9 @@ input:focus, select:focus, textarea:focus {
   cursor: pointer;
 }
 
-/* ����������������������������������������������
-   メインコン������リア
-   ���������������������������������������������� */
+/* ──────────────────────────────────────────────
+   メインコンテンツエリア
+   ────────────────────────────────────────────── */
 .main-layout {
   display: flex;
   flex: 1;
@@ -357,7 +357,7 @@ input:focus, select:focus, textarea:focus {
   display: block;
 }
 
-/* 予���ビューはフル高さで���スクロールのみ */
+/* 予約表ビューはフル高さで横スクロールのみ */
 #view-reservation.active {
   display: flex;
   flex-direction: column;
@@ -366,9 +366,9 @@ input:focus, select:focus, textarea:focus {
 }
 
 
-/* ����������������������������������������������
-   グラスモーフィズ�パネル
-   ���������������������������������������������� */
+/* ──────────────────────────────────────────────
+   グラスモーフィズパネル
+   ────────────────────────────────────────────── */
 .glass-panel {
   background: var(--bg-glass);
   backdrop-filter: blur(12px);
@@ -394,10 +394,10 @@ input:focus, select:focus, textarea:focus {
   box-shadow: var(--shadow-md);
 }
 
-/* ����������������������������������������������
-   タイ�ライン�予��� � divベ�スグリ���
-   横軸: 時間9:00�19:00���縦軸: スタイリス�
-   ���������������������������������������������� */
+/* ──────────────────────────────────────────────
+   タイライン予  divベスグリ
+   横軸: 時間9:0019:00縦軸: スタイリス
+   ────────────────────────────────────────────── */
 .timeline-grid {
   position: relative;
   width: max-content;
@@ -525,13 +525,13 @@ input:focus, select:focus, textarea:focus {
   border-left: 2px solid rgba(99, 102, 241, 0.4);
 }
 
-/* 掛�持ち時����背景ハイライト�非表示にする */
+/* 掛け持ち時間帯の背景ハイライト・非表示にする */
 .timeline-cell.overlap-highlight {
   background: transparent;
   box-shadow: none;
 }
 
-/* 迴ｾ蝨ｨ譎ょ綾邱夲ｼ郁ｵ､縺�ｸｦ邱夲ｼ� */
+/*  */
 .current-time-line {
   position: absolute;
   top: 0;
@@ -543,7 +543,7 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
 }
 
-/* 予���ロ��� � タイ�ラインセル上に絶対配置 */
+/* 予ロ  タイラインセル上に絶対配置 */
 .reservation-block {
   position: absolute;
   top: 2px;
@@ -565,8 +565,8 @@ input:focus, select:focus, textarea:focus {
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
   overflow: visible;
   z-index: 3;
-  user-select: none; /* ���スト選択によるドラ���干渉を防� */
-  -webkit-user-drag: element; /* Safari蟇ｾ蠢� */
+  user-select: none; /* スト選択によるドラ干渉を防 */
+  -webkit-user-drag: element; /* Safari対応 */
 }
 
 .reservation-block:hover {
@@ -578,7 +578,7 @@ input:focus, select:focus, textarea:focus {
   z-index: 6;
 }
 
-/* 召喚�特殊召喚ブロ���は通常の予���ロ������き時間ブロ���より手前に表示する */
+/* 召喚特殊召喚ブロは通常の予約ブロックき時間ブロより手前に表示する */
 .reservation-block.summon-virtual-block {
   z-index: 4;
   border: 1px dashed rgba(255, 255, 255, 0.5);
@@ -586,8 +586,8 @@ input:focus, select:focus, textarea:focus {
 
 .reservation-block.forced-activity-block {
   z-index: 5;
-  backdrop-filter: blur(2px); /* 下�アサインが見えるよぁ�軽ぁ�かし */
-  pointer-events: none; /* 下�予紃�ロヂ�等をクリヂ�可能にする */
+  backdrop-filter: blur(2px); /* 下のアサインが見えるように軽いぼかし */
+  pointer-events: none; /* 下の予約ブロック等をクリック可能にする */
 }
 
 .reservation-block.special-summon-block {
@@ -611,7 +611,7 @@ input:focus, select:focus, textarea:focus {
   white-space: nowrap;
 }
 
-/* マンセルブロ��� (チ��制発�) */
+/* マンセルブロ (チ制発) */
 .manncell-block {
   border: 2px solid rgba(255, 215, 0, 0.8);
   border-radius: var(--radius-sm);
@@ -662,7 +662,7 @@ input:focus, select:focus, textarea:focus {
   color: #000;
 }
 
-/* マンセル対象スロ����2段表示���ス� */
+/* マンセル対象スロ2段表示ス */
 .manncell-assigned-text {
   display: flex !important;
   flex-direction: column !important;
@@ -688,7 +688,7 @@ input:focus, select:focus, textarea:focus {
   text-shadow: 0 0 4px rgba(0, 255, 128, 0.4);
 }
 
-/* タイ�ライン空メ���ージ */
+/* タイライン空メージ */
 .timeline-empty-message {
   display: flex;
   flex-direction: column;
@@ -710,7 +710,7 @@ input:focus, select:focus, textarea:focus {
   font-size: 0.85rem;
 }
 
-/* 繝｡繝九Η繝ｼ繝舌�縺ｮ繝懊ち繝ｳ繝ｩ繝�ヱ繝ｼ 窶� 讓ｪ荳ｦ縺ｳ */
+/*    */
 .menu-bar-wrapper {
   display: flex;
   flex-direction: row;
@@ -719,9 +719,9 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
 }
 
-/* ����������������������������������������������
-   メニューバ������ー直下�上部配置
-   ���������������������������������������������� */
+/* ──────────────────────────────────────────────
+   メニューバー ─ ヘッダー直下・上部配置
+   ────────────────────────────────────────────── */
 #menu-bar {
   position: sticky;
   top: 64px;
@@ -778,7 +778,7 @@ input:focus, select:focus, textarea:focus {
   flex: 1;
 }
 
-/* メニューバ����ールバ�ボタン */
+/* メニューバールバボタン */
 .menu-bar-toolbar-btn {
   background: var(--bg-tertiary);
   border: 1px solid var(--border-glass);
@@ -798,21 +798,21 @@ input:focus, select:focus, textarea:focus {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.2);
 }
-/* 固定モー� active: シアン�ピン留め・ロ���のイメージ */
+/* 固定モー active: シアンピン留め・ロのイメージ */
 .menu-bar-toolbar-btn[data-action="manual-mode"].active {
   background: rgba(6, 182, 212, 0.2);
   color: #06b6d4;
   border-color: #06b6d4;
   box-shadow: 0 0 8px rgba(6, 182, 212, 0.3);
 }
-/* SOS active: 襍､�育ｷ頑･莠区�縲４OS蟶ｯ縺ｮ襍､濶ｲ縺ｨ邨ｱ荳�� */
+/* SOS active: 襍､育ｷ頑･莠区縲４OS蟶ｯ */
 .menu-bar-toolbar-btn[data-action="sos-mode"].active {
   background: rgba(239, 68, 68, 0.2);
   color: #ef4444;
   border-color: #ef4444;
   box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
 }
-/* 更新ボタン: クリ���時�即時フィードバ����押した実感 */
+/* 更新ボタン: クリ時即時フィードバ押した実感 */
 .menu-bar-toolbar-btn[data-action="refresh"]:active {
   transform: scale(0.95);
   background: rgba(255, 255, 255, 0.12);
@@ -827,7 +827,7 @@ input:focus, select:focus, textarea:focus {
   background: rgba(239, 68, 68, 0.25);
 }
 
-/* メニューバ����ラートバ��� */
+/* メニューバラートバ */
 .menu-bar-alert {
   padding: 4px 10px;
   border-radius: var(--radius-sm);
@@ -890,7 +890,7 @@ input:focus, select:focus, textarea:focus {
   max-width: 80px;
 }
 
-/* ドラ���中のスタイル */
+/* ドラ中のスタイル */
 .menu-btn.dragging {
   opacity: 0.5;
   transform: scale(0.9);
@@ -902,9 +902,9 @@ input:focus, select:focus, textarea:focus {
   border-radius: var(--radius-sm);
 }
 
-/* ����������������������������������������������
+/* ──────────────────────────────────────────────
    アシスタントサイドバー
-   ���������������������������������������������� */
+   ────────────────────────────────────────────── */
 #assistant-sidebar {
   width: 220px;
   min-width: 220px;
@@ -982,7 +982,7 @@ input:focus, select:focus, textarea:focus {
 .skill-dot[data-level="4"] { background: var(--accent-success); }
 .skill-dot[data-level="5"] { background: var(--rank-owner); }
 
-/* 疲労度バ� */
+/* 疲労度バ */
 .fatigue-bar {
   height: 4px;
   background: var(--bg-tertiary);
@@ -997,9 +997,9 @@ input:focus, select:focus, textarea:focus {
   transition: width var(--transition-normal);
 }
 
-/* ����������������������������������������������
-   設定画面共�
-   ���������������������������������������������� */
+/* ──────────────────────────────────────────────
+   設定画面共通
+   ────────────────────────────────────────────── */
 .settings-panel {
   max-width: 900px;
   margin: 0 auto;
@@ -1027,7 +1027,7 @@ input:focus, select:focus, textarea:focus {
   font-size: 0.9rem;
 }
 
-/* スタ���セクション */
+/* スタセクション */
 .staff-sections {
   display: flex;
   flex-direction: column;
@@ -1035,7 +1035,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .staff-section {
-  /* セクション区��� */
+  /* セクション区 */
 }
 
 .section-header {
@@ -1065,7 +1065,7 @@ input:focus, select:focus, textarea:focus {
   font-size: 0.9rem;
 }
 
-/* スタ���カー� */
+/* スタカー */
 .staff-card {
   display: flex;
   align-items: center;
@@ -1153,7 +1153,7 @@ input:focus, select:focus, textarea:focus {
   min-width: 32px;
 }
 
-/* トグルスイ��� */
+/* トグルスイ */
 .toggle-switch {
   position: relative;
   display: inline-block;
@@ -1200,9 +1200,9 @@ input:focus, select:focus, textarea:focus {
   background: var(--accent-success);
 }
 
-/* ����������������������������������������������
-   メニュー設定カー�
-   ���������������������������������������������� */
+/* ──────────────────────────────────────────────
+   メニュー設定カード
+   ────────────────────────────────────────────── */
 .menu-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -1287,9 +1287,9 @@ input:focus, select:focus, textarea:focus {
   margin-left: auto;
 }
 
-/* ����������������������������������������������
+/* ──────────────────────────────────────────────
    ボタン
-   ���������������������������������������������� */
+   ────────────────────────────────────────────── */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -1329,9 +1329,9 @@ input:focus, select:focus, textarea:focus {
   font-size: 1em;
 }
 
-/* ����������������������������������������������
+/* ──────────────────────────────────────────────
    エラー画面
-   ���������������������������������������������� */
+   ────────────────────────────────────────────── */
 .error-screen {
   display: flex;
   flex-direction: column;
@@ -1364,9 +1364,9 @@ input:focus, select:focus, textarea:focus {
   word-break: break-all;
 }
 
-/* ����������������������������������������������
+/* ──────────────────────────────────────────────
    アニメーション
-   ���������������������������������������������� */
+   ────────────────────────────────────────────── */
 
 /* 召喚時のパルスアニメーション */
 @keyframes summonPulse {
@@ -1388,7 +1388,7 @@ input:focus, select:focus, textarea:focus {
   animation: summonPulse 0.6s ease-out;
 }
 
-/* アラート点� */
+/* アラート点 */
 @keyframes alertBlink {
   0%, 100% {
     opacity: 1;
@@ -1437,7 +1437,7 @@ input:focus, select:focus, textarea:focus {
   animation: slideIn var(--transition-normal);
 }
 
-/* スライドア��メニューバ�用 */
+/* スライドアメニューバ用 */
 @keyframes slideUp {
   from {
     opacity: 0;
@@ -1465,9 +1465,9 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
-/* ����������������������������������������������
-   ユー���リ���クラス
-   ���������������������������������������������� */
+/* ──────────────────────────────────────────────
+   ユーリクラス
+   ────────────────────────────────────────────── */
 
 #assistant-sidebar.hidden {
   display: block !important;
@@ -1494,9 +1494,9 @@ input:focus, select:focus, textarea:focus {
   border: 0;
 }
 
-/* ����������������������������������������������
-   レスポンシブ対応（最�1024px
-   ���������������������������������������������� */
+/* ──────────────────────────────────────────────
+   レスポンシブ対応（最小1024px）
+   ────────────────────────────────────────────── */
 @media (max-width: 1200px) {
   #assistant-sidebar {
     width: 180px;
@@ -1543,15 +1543,15 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
-/* ドラ���中のブロ���透過処����ねてドロ�できるようにするため */
-/* 繝峨Λ繝�げ縺輔ｌ縺ｦ縺�↑縺�ヶ繝ｭ繝�け縺ｮ縺ｿ pointer-events: none 縺ｫ縺吶ｋ */
+/* ドラ中のブロ透過処ねてドロできるようにするため */
+/*  pointer-events: none  */
 body.is-dragging-item .reservation-block:not(.is-being-dragged) {
   pointer-events: none !important;
 }
 
-/* ����������������������������������������������
+/* ──────────────────────────────────────────────
    リサイズハンドル
-   ���������������������������������������������� */
+   ────────────────────────────────────────────── */
 
 .reservation-resize-handle {
   position: absolute;
@@ -1589,14 +1589,14 @@ body.is-dragging-item .reservation-block:not(.is-being-dragged) {
   box-shadow: -3px 0 0 rgba(255, 255, 255, 0.7);
 }
 
-/* リサイズ中: ペ�ジ全体�カーソルと���スト選択を制御 */
+/* リサイズ中: ペジ全体カーソルとスト選択を制御 */
 body.is-resizing,
 body.is-resizing * {
   cursor: ew-resize !important;
   user-select: none !important;
 }
 
-/* リサイズ中のブロ���をハイライ� */
+/* リサイズ中のブロをハイライ */
 body.is-resizing .reservation-block {
   pointer-events: none;
 }
@@ -1604,9 +1604,9 @@ body.is-resizing .reservation-resize-handle {
   pointer-events: auto;
 }
 
-/* ����������������������������������������������
-   空き時間選択モー�ル
-   ���������������������������������������������� */
+/* ──────────────────────────────────────────────
+   空き時間選択モール
+   ────────────────────────────────────────────── */
 
 .free-time-modal-overlay {
   position: fixed;
@@ -1788,7 +1788,7 @@ body.is-resizing .reservation-resize-handle {
   transform: translateY(-1px);
 }
 
-/* タイ�ライン時間外（不在�セル */
+/* タイライン時間外（不在セル */
 .timeline-cell.off-duty {
   background: repeating-linear-gradient(
     135deg,
@@ -1827,7 +1827,7 @@ body.is-resizing .reservation-resize-handle {
   ) !important;
 }
 
-/* ══� アコー���オン展開 ══� */
+/* ══ アコーオン展開 ══ */
 .timeline-header-cell {
   cursor: pointer;
   transition: flex-grow 0.35s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease;
@@ -1846,7 +1846,7 @@ body.is-resizing .reservation-resize-handle {
   align-items: stretch;
 }
 
-/* 展開時�メインラベル */
+/* 展開時メインラベル */
 .accordion-main-label {
   display: flex;
   align-items: center;
@@ -1855,7 +1855,7 @@ body.is-resizing .reservation-resize-handle {
   white-space: nowrap;
 }
 
-/* 展開インジケータ�▾ */
+/* 展開インジケータ▾ */
 .accordion-main-label::after {
   content: '\25BE'; /* ▾ */
   color: var(--text-muted);
@@ -1869,7 +1869,7 @@ body.is-resizing .reservation-resize-handle {
   transform: rotate(180deg);
 }
 
-/* サブラベル5���み */
+/* サブラベル5み */
 .accordion-sub-labels {
   display: flex;
   flex-direction: row;
@@ -1900,7 +1900,7 @@ body.is-resizing .reservation-resize-handle {
   flex: 6;
 }
 
-/* ガイドライン5���みの点線� */
+/* ガイドライン5みの点線 */
 .accordion-gridlines {
   position: absolute;
   inset: 0;
@@ -1919,7 +1919,7 @@ body.is-resizing .reservation-resize-handle {
   border-left: none;
 }
 
-/* サブ����ーの展開 */
+/* サブーの展開 */
 .timeline-header-sub-cell {
   transition: flex-grow 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -1949,7 +1949,7 @@ body.is-resizing .reservation-resize-handle {
   transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 予���ロ���・マンセル�のス�ーズなアニメーション */
+/* 予ロ・マンセルのスーズなアニメーション */
 .timeline-cells .reservation-block {
   transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1),
               width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
@@ -1962,9 +1962,9 @@ body.is-resizing .reservation-resize-handle {
               width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ══� アコー���オン展開時：スロ���実時刻ラベル ══� */
+/* ══ アコーオン展開時：スロ実時刻ラベル ══ */
 
-/* スロ���時間ラベル�デフォルト非表示、アコー���オン展開時�みJSで表示 */
+/* スロ時間ラベルデフォルト非表示、アコーオン展開時みJSで表示 */
 .slot-time-label {
   display: none;
   font-size: 7.5px;
@@ -1974,19 +1974,19 @@ body.is-resizing .reservation-resize-handle {
   line-height: 1;
   letter-spacing: 0.02em;
   opacity: 0.85;
-  order: -1; /* flexbox蜀�〒譛荳企Κ縺ｫ驟咲ｽｮ */
+  order: -1; /* flexbox蜀〒譛荳企Κ */
   flex-shrink: 0;
   padding: 1px 0 0 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* 表示状態�Sで .slot-time-visible クラスをトグル */
+/* 表示状態Sで .slot-time-visible クラスをトグル */
 .slot-time-label.slot-time-visible {
   display: block;
 }
 
-/* マンセル�の時間ヘッ�ー�デフォルト非表示 */
+/* マンセルの時間ヘッーデフォルト非表示 */
 .manncell-time-header {
   display: none;
   position: absolute;
@@ -2008,16 +2008,16 @@ body.is-resizing .reservation-resize-handle {
   transform: translateY(-100%);
 }
 
-/* 表示状態�Sで .manncell-time-visible クラスをトグル */
+/* 表示状態Sで .manncell-time-visible クラスをトグル */
 .manncell-time-header.manncell-time-visible {
   display: block;
 }
 
 /* ══════════════════════════════════════════════════
-   頑張れ�置 (�� Ganbare Assignment)
+   頑張れ置 ( Ganbare Assignment)
    ══════════════════════════════════════════════════ */
 
-/* --- ヘッ�ーバッジ�縮小時用--- */
+/* --- ヘッーバッジ縮小時用--- */
 .ganbare-header-badge {
   flex-shrink: 0;
   font-size: 8px;
@@ -2035,7 +2035,7 @@ body.is-resizing .reservation-resize-handle {
   50% { opacity: 0.6; }
 }
 
-/* --- 荳区ｮｵ陦ｨ遉ｺ陦鯉ｼ亥ｱ暮幕譎ら畑��--- */
+/* --- 荳区ｮｵ陦ｨ遉ｺ陦鯉ｼ亥ｱ暮幕 */
 .reservation-ganbare {
   display: flex;
   gap: 2px;
@@ -2057,7 +2057,7 @@ body.is-resizing .reservation-resize-handle {
   transform-origin: center;
 }
 
-/* --- 頑張れモード�タンのactive状� --- */
+/* --- 頑張れモードタンのactive状 --- */
 .ganbare-mode-btn.active {
   background: rgba(249, 115, 22, 0.2) !important;
   color: #f97316 !important;
@@ -2065,7 +2065,7 @@ body.is-resizing .reservation-resize-handle {
   box-shadow: 0 0 8px rgba(249, 115, 22, 0.3);
 }
 
-/* --- 頑張れモードオーバ�レイ --- */
+/* --- 頑張れモードオーバレイ --- */
 .ganbare-mode-overlay {
   position: sticky;
   top: 0;
@@ -2080,7 +2080,7 @@ body.is-resizing .reservation-resize-handle {
   pointer-events: none;
 }
 
-/* --- 頑張れバーチャルブロ����スタ���タイ�ライン--- */
+/* --- 頑張れバーチャルブロスタタイライン--- */
 .ganbare-virtual-block {
   background: rgba(249, 115, 22, 0.15) !important;
   border: 1.5px dashed #f97316 !important;
@@ -2097,12 +2097,12 @@ body.is-resizing .reservation-resize-handle {
   font-size: 8px !important;
 }
 
-/* --- 頑張れセレクターポップア� --- */
+/* --- 頑張れセレクターポップア --- */
 .ganbare-selector-popup label:hover {
   background: var(--bg-hover);
 }
 
-/* Gap Help - 隙間配置ブロ�������の点線枠 + グロー */
+/* Gap Help - 隙間配置ブロの点線枠 + グロー */
 .gap-help-block {
   border: 2px dashed #FFD700 !important;
   background-color: rgba(255, 215, 0, 0.15) !important;
@@ -2114,7 +2114,7 @@ body.is-resizing .reservation-resize-handle {
   background: rgba(255, 215, 0, 0.1) !important;
 }
 
-/* スキマ�ルプ名の段�スロ�����常アサイン名�下に表示 */
+/* スキマルプ名の段スロ常アサイン名下に表示 */
 .slot-gap-help-text {
   font-size: 8px;
   display: block;
@@ -2127,7 +2127,7 @@ body.is-resizing .reservation-resize-handle {
   line-height: 1.2;
 }
 
-/* �� アシスタント�置OFF「えらい���バ��� �� */
+/*  アシスタント置OFF「えらいバ  */
 @keyframes eraiBounce {
   0% {
     opacity: 0;
@@ -2146,7 +2146,7 @@ body.is-resizing .reservation-resize-handle {
   }
 }
 
-/* �� メモアイコンのベ�ススタイル */
+/*  メモアイコンのベススタイル */
 .memo-icon {
   display: inline-block;
   cursor: pointer;
@@ -2165,7 +2165,7 @@ body.is-resizing .reservation-resize-handle {
   opacity: 0.8;
 }
 
-/* メモが�って���時�スタイル */
+/* メモがって時スタイル */
 .memo-icon.has-memo {
   opacity: 1 !important;
   font-size: 14px; /* さらに少し大きく */
@@ -2173,10 +2173,10 @@ body.is-resizing .reservation-resize-handle {
 }
 
 .memo-icon.has-memo:hover {
-  transform: scale(1.35) rotate(-5deg); /* ホバー時により飛�出る感じに */
+  transform: scale(1.35) rotate(-5deg); /* ホバー時により飛出る感じに */
 }
 
-/* メモアイコンのアニメーション (飛�出て光る) */
+/* メモアイコンのアニメーション (飛出て光る) */
 @keyframes memoPulse {
   0% {
     transform: scale(1);

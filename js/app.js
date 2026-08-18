@@ -462,10 +462,17 @@ async function initApp() {
   try {
     console.info('サモンバランサーを初期化しています...');
 
-    // 1. ストレージの初期化（デフォルトデータ投入）
+    // 1. 【最優先】サーバーからデータを読み込み（ローカルネット共有）
+    //    子機PCの空LocalStorageで親機のstore.jsonを上書きしないよう、
+    //    サーバーデータの展開をinitializeDefaultsより先に行う。
+    await initFromServer();
+
+    // 2. ストレージの初期化（デフォルトデータ投入）
+    //    サーバーからデータが展開済みであれば sb_initialized フラグが
+    //    LocalStorageに存在するため、空データの投入はスキップされる。
     await initializeDefaults();
 
-    // 1b. defaults.jsonに新しく追加されたスキル・メニューを自動マージ
+    // 2b. defaults.jsonに新しく追加されたスキル・メニューを自動マージ
     //     （既存データは上書きしない。新規IDのみ追加）
     try {
       await importMenusFromDefaults();
@@ -473,28 +480,31 @@ async function initApp() {
       console.warn('デフォルトデータのマージをスキップ:', e.message);
     }
 
-    // 1c. サーバーからデータを読み込み（ローカルネット共有）
-    await initFromServer();
+    // 3. サーバーポーリング開始（5秒ごとの変更検知）
     startPolling();
 
-    // 2. ナビゲーション設定と日付の監視を先に開始
+    // 4. ナビゲーション設定と日付の監視を先に開始
     setupNavigation();
     setupDateNavigation();
     setupHelpModal();
 
-    // 3. 保存された日付があれば復元、なければ今日の日付で初期化
+    // 5. 保存された日付があれば復元、なければ今日の日付で初期化
     const savedDate = sessionStorage.getItem('selected_date');
     const today = savedDate || dateManager.getToday();
     dateManager.setCurrentDate(today);
 
-    // 4. デフォルトビューを表示
+    // 6. デフォルトビューを表示
     switchView('reservation');
 
-    // 5. 他のPCの変更を受信したときに現在のビューを更新
+    // 7. 他のPCの変更を受信したときに現在のビューを再描画する
+    //    予約表だけでなくスタッフ設定・メニュー設定画面も対象にする。
     window.addEventListener('serverDataUpdated', () => {
-      if (currentView === 'reservation' && currentViewInstance) {
-        if (typeof currentViewInstance.refresh === 'function') {
-          currentViewInstance.refresh();
+      if (currentViewInstance && typeof currentViewInstance.render === 'function') {
+        if (currentView === 'reservation') {
+          const dateStr = dateManager.getCurrentDate();
+          currentViewInstance.render(dateStr ? new Date(dateStr + 'T00:00:00') : new Date());
+        } else {
+          currentViewInstance.render();
         }
       }
     });

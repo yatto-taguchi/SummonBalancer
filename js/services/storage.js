@@ -733,8 +733,7 @@ export async function importMenusFromDefaults() {
  * @returns {Object} staffId -> startTimeOffset のマップ
  */
 export function loadLunchOverrides(dateStr) {
-  const data = localStorage.getItem(`lunch_overrides_${dateStr}`);
-  return data ? JSON.parse(data) : {};
+  return loadData(`lunch_overrides_${dateStr}`) || {};
 }
 
 /**
@@ -746,7 +745,7 @@ export function loadLunchOverrides(dateStr) {
 export function saveLunchOverride(dateStr, staffId, startTimeOffset) {
   const overrides = loadLunchOverrides(dateStr);
   overrides[staffId] = startTimeOffset;
-  localStorage.setItem(`lunch_overrides_${dateStr}`, JSON.stringify(overrides));
+  saveData(`lunch_overrides_${dateStr}`, overrides);
 }
 
 /**
@@ -754,7 +753,7 @@ export function saveLunchOverride(dateStr, staffId, startTimeOffset) {
  * @param {string} dateStr - 日付文字列
  */
 export function clearLunchOverrides(dateStr) {
-  localStorage.removeItem(`lunch_overrides_${dateStr}`);
+  removeData(`lunch_overrides_${dateStr}`);
 }
 
 // ──────────────────────────────────────────────
@@ -770,13 +769,7 @@ const KEY_FREE_TIME_SELECTIONS_PREFIX = 'sb_free_time_selections_';
  * @returns {Object.<string, {type: string, detail?: string}>} staffId-startMinutes → 選択内容
  */
 export function loadFreeTimeSelections(dateStr) {
-  const raw = localStorage.getItem(`${KEY_FREE_TIME_SELECTIONS_PREFIX}${dateStr}`);
-  if (!raw) return {};
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return {};
-  }
+  return loadData(`${KEY_FREE_TIME_SELECTIONS_PREFIX}${dateStr}`) || {};
 }
 
 /**
@@ -785,7 +778,7 @@ export function loadFreeTimeSelections(dateStr) {
  * @param {Object.<string, {type: string, detail?: string}>} selections - 選択データ
  */
 export function saveFreeTimeSelections(dateStr, selections) {
-  localStorage.setItem(`${KEY_FREE_TIME_SELECTIONS_PREFIX}${dateStr}`, JSON.stringify(selections));
+  saveData(`${KEY_FREE_TIME_SELECTIONS_PREFIX}${dateStr}`, selections);
 }
 
 // ──────────────────────────────────────────────
@@ -798,13 +791,7 @@ export function saveFreeTimeSelections(dateStr, selections) {
  * @returns {Object.<string, number>} staffId → 休憩開始分オフセット
  */
 export function loadRestOverrides(dateStr) {
-  const data = localStorage.getItem(`rest_overrides_${dateStr}`);
-  if (!data) return {};
-  try {
-    return JSON.parse(data);
-  } catch {
-    return {};
-  }
+  return loadData(`rest_overrides_${dateStr}`) || {};
 }
 
 /**
@@ -816,7 +803,7 @@ export function loadRestOverrides(dateStr) {
 export function saveRestOverride(dateStr, staffId, startTimeOffset) {
   const overrides = loadRestOverrides(dateStr);
   overrides[staffId] = startTimeOffset;
-  localStorage.setItem(`rest_overrides_${dateStr}`, JSON.stringify(overrides));
+  saveData(`rest_overrides_${dateStr}`, overrides);
 }
 
 /**
@@ -824,7 +811,7 @@ export function saveRestOverride(dateStr, staffId, startTimeOffset) {
  * @param {string} dateStr - 日付文字列 (YYYY-MM-DD)
  */
 export function clearRestOverrides(dateStr) {
-  localStorage.removeItem(`rest_overrides_${dateStr}`);
+  removeData(`rest_overrides_${dateStr}`);
 }
 
 // ──────────────────────────────────────────────
@@ -837,13 +824,7 @@ export function clearRestOverrides(dateStr) {
  * @returns {Object.<string, {lunch?: number, break?: number}>} staffId → 強制発動した時間(分)
  */
 export function loadForcedFreeTimes(dateStr) {
-  const data = localStorage.getItem(`forced_free_time_${dateStr}`);
-  if (!data) return {};
-  try {
-    return JSON.parse(data);
-  } catch {
-    return {};
-  }
+  return loadData(`forced_free_time_${dateStr}`) || {};
 }
 
 /**
@@ -859,9 +840,7 @@ export function saveForcedFreeTime(dateStr, staffId, type, startTimeOffset) {
     overrides[staffId] = {};
   }
   overrides[staffId][type] = startTimeOffset;
-  localStorage.setItem(`forced_free_time_${dateStr}`, JSON.stringify(overrides));
-  // _syncToServer は _migreateLocalStorageToServer で同期されるキーパターンのため即時保存用に追加
-  // TODO: 必要に応じて _syncToServer を呼ぶ
+  saveData(`forced_free_time_${dateStr}`, overrides);
 }
 
 /**
@@ -869,7 +848,7 @@ export function saveForcedFreeTime(dateStr, staffId, type, startTimeOffset) {
  * @param {string} dateStr - 日付文字列 (YYYY-MM-DD)
  */
 export function clearForcedFreeTimes(dateStr) {
-  localStorage.removeItem(`forced_free_time_${dateStr}`);
+  removeData(`forced_free_time_${dateStr}`);
 }
 
 // ──────────────────────────────────────────────
@@ -905,9 +884,9 @@ async function _migrateLocalStorageToServer() {
     if (!key) continue;
     if (
       key.startsWith('sb_') ||
-      key.startsWith('reservation') ||
-      key.startsWith('lunch') ||
-      key.startsWith('rest')
+      key.startsWith('lunch_overrides_') ||
+      key.startsWith('rest_overrides_') ||
+      key.startsWith('forced_free_time_')
     ) {
       try {
         entries.push({ key, value: JSON.parse(localStorage.getItem(key)) });
