@@ -741,8 +741,45 @@ export class SummonEngine {
       return true;
     });
 
+    // === 勤務時間外フィルタリング（blockedTimesフィルタと併用する第二段防御） ===
+    // 仕様書セクション2「勤務時間外の絶対排除」: 勤務時間外のスタッフへの召喚を完全消去
+    const staffMap = state.master?.staffMap || {};
+    const finalStylistSummons = filteredStylistSummons.filter(summon => {
+      const staffObj = staffMap[summon.stylistId];
+      if (!staffObj) return true; // スタッフ情報なしの場合は安全側で通過
+      if (typeof staffObj.isWorkingAtTime !== 'function') return true; // メソッド未定義は通過
+
+      // 召喚の開始時間が勤務時間内かチェック（0:00基準の通算分数で判定）
+      let startAbsMinute;
+      if (typeof summon.startTime === 'string' && summon.startTime.includes(':')) {
+        const [h, m] = summon.startTime.split(':').map(Number);
+        startAbsMinute = h * 60 + m;
+      } else if (typeof summon.startTime === 'number') {
+        startAbsMinute = summon.startTime + 9 * 60;
+      } else {
+        return true;
+      }
+      if (!staffObj.isWorkingAtTime(startAbsMinute)) {
+        console.warn(`[UIAdapter] 勤務時間外防御: スタッフ ${summon.stylistId} の召喚(${summon.startTime})が勤務時間外のため除外`);
+        return false;
+      }
+      return true;
+    });
+
+    const finalHelperBlocks = filteredHelperBlocks.filter(hb => {
+      const staffObj = staffMap[hb.staffId];
+      if (!staffObj || typeof staffObj.isWorkingAtTime !== 'function') return true;
+      let absMinute;
+      if (typeof hb.startMin === 'number') {
+        absMinute = hb.startMin + 9 * 60;
+      } else {
+        return true;
+      }
+      return staffObj.isWorkingAtTime(absMinute);
+    });
+
     state.assignments = uiAssignments;
-    state.stylistSummons = filteredStylistSummons;
+    state.stylistSummons = finalStylistSummons;
     state.unassignedSlots = uiUnfilledSlots;
 
     // 3. UI（メインビュー等）が期待するフォーマットに結果を整形して返す
@@ -757,7 +794,7 @@ export class SummonEngine {
       freeTimeActivities: state.freeTimeActivities,
       utilizationRates: state.utilizationRates || {},
       alerts: state.alerts,
-      helperBlocks: filteredHelperBlocks // アシスタント行に描画するヘルプブロック（5分Tickマージ済み・不在フィルタ適用済み）
+      helperBlocks: finalHelperBlocks // アシスタント行に描画するヘルプブロック（5分Tickマージ済み・不在/勤務時間外フィルタ適用済み）
     };
   }
 }

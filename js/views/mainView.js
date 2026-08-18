@@ -1668,6 +1668,23 @@ export class MainView {
         }
       }
 
+      // === 勤務時間外チェック（最終防御） ===
+      // 仕様書セクション2「勤務時間外の絶対排除」: 勤務時間外のスタッフへの召喚を描画しない
+      const summonStaffObj = staffMap.get(summon.stylistId);
+      if (summonStaffObj && typeof summonStaffObj.isWorkingAtTime === 'function') {
+        let summonAbsMinute;
+        if (typeof summon.startTime === 'string' && summon.startTime.includes(':')) {
+          const [sh2, sm2] = summon.startTime.split(':').map(Number);
+          summonAbsMinute = sh2 * 60 + sm2;
+        } else if (typeof summon.startTime === 'number') {
+          summonAbsMinute = summon.startTime + 9 * 60;
+        }
+        if (summonAbsMinute !== undefined && !summonStaffObj.isWorkingAtTime(summonAbsMinute)) {
+          console.warn(`[MainView] 勤務時間外防御: スタッフ ${summon.stylistId} の召喚(${summon.startTime})が勤務時間外のため描画スキップ`);
+          return; // forEachの次のアイテムへ（描画をスキップ）
+        }
+      }
+
       // 召喚先の予約のスタイリスト名を取得
       const targetRes = reservations.find(r => r.id === summon.reservationId);
       const targetStylist = targetRes ? staffMap.get(targetRes.stylistId) : null;

@@ -1,5 +1,5 @@
 import { hasSkill } from '../utils/skillUtils.js?v=3';
-import { isStaffBlocked } from '../utils/timeUtils.js?v=3';
+import { isStaffBlocked, isStaffWorkingAtTime } from '../utils/timeUtils.js?v=3';
 
 /**
  * Phase 3: 空きスタイリスト召喚＆特殊召喚（お昼・休憩交代）
@@ -89,7 +89,11 @@ export const summonStylistAndSpecial = (timeSlotState, master, tracker, ongoingT
     let candidates = newState.freePoolStaffIds
       .map(id => master.staffMap[id])
       .filter(s => {
-        if (!s || s.type !== 'assistant' || !hasSkill(s, fullReq.requiredSkill, fullReq.minSkillLevel) || isStaffBlocked(s.id, newState.time, currentTracker)) {
+        if (!s || s.type !== 'assistant'
+          || !hasSkill(s, fullReq.requiredSkill, fullReq.minSkillLevel)
+          || isStaffBlocked(s.id, newState.time, currentTracker)
+          || !isStaffWorkingAtTime(s, newState.time)  // 勤務時間外の絶対排除
+        ) {
           return false;
         }
         // ロックされているタスクなら、ロックされた本人以外は絶対に入れない（除外）
@@ -201,7 +205,7 @@ export const summonStylistAndSpecial = (timeSlotState, master, tracker, ongoingT
     let lunchUpdateStaffId = null;
     let breakUpdateStaffId = null;
 
-    // 空きスタイリストのみを候補とする（重複防止・スキルチェック・自己召喚防止）
+    // 空きスタイリストのみを候補とする（重複防止・スキルチェック・自己召喚防止・勤務時間チェック）
     const allStylists = (master.staff || []).filter(s => s.type === 'stylist' && s.isWorking);
     const candidates = allStylists.filter(s => {
       // ロックされているタスクなら、ロックされた本人以外は絶対に入れない（除外）
@@ -214,7 +218,8 @@ export const summonStylistAndSpecial = (timeSlotState, master, tracker, ongoingT
         && s.id !== fullReq.stylistId         // 自己召喚防止
         && !summonedStylistIds.has(s.id)       // 同一Tick内の重複防止
         && hasSkill(s, fullReq.requiredSkill, fullReq.minSkillLevel) // スキルチェック
-        && !isStaffBlocked(s.id, newState.time, currentTracker); // ブロック除外
+        && !isStaffBlocked(s.id, newState.time, currentTracker) // ブロック除外
+        && isStaffWorkingAtTime(s, newState.time); // 勤務時間外の絶対排除
     });
 
     // ソフトロック（継続性）のための直前担当者を取得

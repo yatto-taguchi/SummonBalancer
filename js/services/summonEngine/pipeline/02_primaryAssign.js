@@ -1,5 +1,5 @@
 import { hasSkill } from '../utils/skillUtils.js?v=3';
-import { isStaffFree, toTimestamp, isStaffBlocked } from '../utils/timeUtils.js?v=3';
+import { isStaffFree, toTimestamp, isStaffBlocked, isStaffWorkingAtTime } from '../utils/timeUtils.js?v=3';
 
 /**
  * 対象スタッフの特定スキルのレベルを取得する
@@ -71,7 +71,10 @@ export function executePrimaryAssign(state) {
     strictReqs.sort((a, b) => a.id.localeCompare(b.id));
 
     // 2. その時間枠で稼働可能なアシスタントのプールを初期化
-    timeSlot.freePoolStaffIds = assistants.map(a => a.id);
+    // 仕様書セクション2「勤務時間外の絶対排除」: 勤務時間外のアシスタントはプールから除外
+    timeSlot.freePoolStaffIds = assistants
+      .filter(a => isStaffWorkingAtTime(a, time))
+      .map(a => a.id);
 
     // 共通のアサイン処理関数 (isStrict = true ならばエラー時は unassignedReqs へ)
     const tryAssign = (req, isStrict) => {
@@ -154,7 +157,10 @@ export function executePrimaryAssign(state) {
 
       let candidates = timeSlot.freePoolStaffIds
         .map(id => assistants.find(a => a.id === id))
-        .filter(a => a && hasSkill(a, req.requiredSkill, req.minSkillLevel) && !isStaffBlocked(a.id, time, nextState.tracker));
+        .filter(a => a && hasSkill(a, req.requiredSkill, req.minSkillLevel)
+          && !isStaffBlocked(a.id, time, nextState.tracker)
+          && isStaffWorkingAtTime(a, time)  // 勤務時間外の絶対排除（念押しチェック）
+        );
 
       const taskKey = `${req.reservationId}_${req.slotIndex}`;
       const ongoingAssistantId = nextState.ongoingTasks[taskKey] || null;

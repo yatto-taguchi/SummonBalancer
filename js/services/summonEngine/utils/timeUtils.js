@@ -119,3 +119,52 @@ export function isStaffBlocked(staffId, timeVal, tracker) {
   }
   return false;
 }
+
+/**
+ * 対象スタッフが指定された時間（Tick）に勤務時間内かどうかを判定する（純粋関数）。
+ * 仕様書セクション2「勤務時間外の絶対排除」に基づき、workStartTime〜workEndTime の
+ * 範囲外のスタッフはいかなるアサインからも除外する。
+ * 
+ * @param {Object} staff - スタッフオブジェクト（workStartTime, workEndTime, isWorking, isWorkingAtTime を持つ）
+ * @param {string|number} timeVal - 時刻（"HH:MM"文字列 or 9:00基準の相対分数）
+ * @returns {boolean} 勤務時間内であればtrue、時間外であればfalse
+ */
+export function isStaffWorkingAtTime(staff, timeVal) {
+  if (!staff) return false;
+  if (!staff.isWorking) return false;
+
+  // スタッフオブジェクトにメソッドがある場合はそれを優先利用
+  if (typeof staff.isWorkingAtTime === 'function') {
+    // isWorkingAtTime は 0:00基準の通算分数を受け取る
+    let absMinute;
+    if (typeof timeVal === 'number') {
+      // 9:00基準の相対分数 → 0:00基準の通算分数
+      absMinute = timeVal + 9 * 60;
+    } else if (typeof timeVal === 'string' && timeVal.match(/^\d{1,2}:\d{2}$/)) {
+      const [h, m] = timeVal.split(':').map(Number);
+      absMinute = h * 60 + m;
+    } else {
+      return true; // 変換不可の場合は安全側で通過
+    }
+    return staff.isWorkingAtTime(absMinute);
+  }
+
+  // メソッドが存在しない場合は workStartTime/workEndTime から直接判定
+  const startParts = (staff.workStartTime || '09:00').split(':');
+  const startMin = parseInt(startParts[0], 10) * 60 + parseInt(startParts[1], 10);
+  const endParts = (staff.workEndTime || '19:00').split(':');
+  const endMin = parseInt(endParts[0], 10) * 60 + parseInt(endParts[1], 10);
+
+  let absMinute;
+  if (typeof timeVal === 'number') {
+    absMinute = timeVal + 9 * 60; // 9:00基準 → 0:00基準
+  } else if (typeof timeVal === 'string' && timeVal.match(/^\d{1,2}:\d{2}$/)) {
+    const [h, m] = timeVal.split(':').map(Number);
+    absMinute = h * 60 + m;
+  } else {
+    return true; // 変換不可の場合は安全側で通過
+  }
+
+  return absMinute >= startMin && absMinute < endMin;
+}
+

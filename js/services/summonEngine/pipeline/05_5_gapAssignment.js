@@ -1,5 +1,5 @@
 import { hasSkill } from '../utils/skillUtils.js?v=3';
-import { toTimestamp, isStaffBlocked } from '../utils/timeUtils.js?v=3';
+import { toTimestamp, isStaffBlocked, isStaffWorkingAtTime } from '../utils/timeUtils.js?v=3';
 import { Reservation } from '../../../models/reservation.js?v=3';
 
 /**
@@ -38,7 +38,12 @@ export function executeGapAssignment(state) {
     if (!timeSlot) return;
 
     // このTickで現在空いているアシスタントのIDプール
-    let freeAssistantIds = new Set(assistants.map(a => a.id));
+    // 仕様書セクション2「勤務時間外の絶対排除」: 勤務時間外のアシスタントはプールから除外
+    let freeAssistantIds = new Set(
+      assistants
+        .filter(a => isStaffWorkingAtTime(a, timeStr))
+        .map(a => a.id)
+    );
     timeSlot.assignments.forEach(a => {
       if (a.assistantId !== 'MANNCELL_STANDBY' && a.assistantId !== '__none__') {
         freeAssistantIds.delete(a.assistantId);
@@ -96,7 +101,8 @@ export function executeGapAssignment(state) {
         const availableAssistants = Array.from(freeAssistantIds)
           .map(id => assistants.find(a => a.id === id))
           .filter(Boolean)
-          .filter(a => !isStaffBlocked(a.id, timeStr, currentTracker));
+          .filter(a => !isStaffBlocked(a.id, timeStr, currentTracker))
+          .filter(a => isStaffWorkingAtTime(a, timeStr));  // 勤務時間外の絶対排除（念押し）
         for (const a of availableAssistants) {
           // 【厳守事項3】レベル1で判定
           if (hasSkill(a, req.requiredSkill, 1)) {
@@ -114,6 +120,7 @@ export function executeGapAssignment(state) {
         if (s.id === req.stylistId) continue;
         if (busyGapStylists.has(s.id)) continue;
         if (isStaffBlocked(s.id, timeStr, currentTracker)) continue;
+        if (!isStaffWorkingAtTime(s, timeStr)) continue;  // 勤務時間外の絶対排除
 
         // 自分の今の時間帯のタスク
         const sReqs = timeSlot.requirements.filter(r => r.stylistId === s.id && !r.skipAssignment);
@@ -202,6 +209,7 @@ export function executeGapAssignment(state) {
         if (s.id === req.stylistId) continue;
         if (busyGapStylists.has(s.id)) continue;
         if (isStaffBlocked(s.id, timeStr, currentTracker)) continue;
+        if (!isStaffWorkingAtTime(s, timeStr)) continue;  // 勤務時間外の絶対排除
         
         // 【ルール】単独予約（Tier 2）のスタイリストは、自席を離れての直接救援（SP特殊召喚）を行わない
         const isSingleReservation = (timeSlot.stylistOverlapCounts[s.id] || 0) < 2;
