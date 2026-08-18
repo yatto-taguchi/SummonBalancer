@@ -86,21 +86,34 @@ export function formatTime(timeVal) {
 }
 
 /**
- * 対象スタッフが指定された時間（Tick）にブロック（不在）設定されているか判定する
+ * 対象スタッフが指定された時間（Tick）にブロック（不在）設定されているか判定する。
+ * すべての比較は「9:00基準の相対分数（整数）」で統一し、半開区間 [start, end) で判定する。
+ * @param {string} staffId - スタッフID
+ * @param {string|number} timeVal - 時刻（"HH:MM"文字列 or 9:00基準の相対分数）
+ * @param {Object} tracker - EngineState.tracker
+ * @returns {boolean} ブロック中であればtrue
  */
 export function isStaffBlocked(staffId, timeVal, tracker) {
   if (!tracker || !tracker[staffId] || !tracker[staffId].blockedTimes) {
     return false;
   }
-  const tickMs = toTimestamp(timeVal);
+  // timeVal を「9:00基準の相対分数」に正規化する（SSOT統一）
+  let tickMinuteFrom9;
+  if (typeof timeVal === 'number') {
+    // 既に9:00基準の分数として渡されている場合
+    tickMinuteFrom9 = timeVal;
+  } else if (typeof timeVal === 'string' && timeVal.match(/^\d{1,2}:\d{2}$/)) {
+    // "HH:MM" 文字列の場合
+    const [h, m] = timeVal.split(':').map(Number);
+    tickMinuteFrom9 = (h - 9) * 60 + m;
+  } else {
+    // その他の形式はtoTimestamp経由で変換（フォールバック）
+    tickMinuteFrom9 = Math.round(toTimestamp(timeVal) / 60000);
+  }
   for (const block of tracker[staffId].blockedTimes) {
-    // block.startTime と endTime は 9:00基準の相対分数。
-    // tickMs は 9:00基準の相対ミリ秒。
-    // 比較基準を揃えるため、60000を掛けてミリ秒化する
-    const s = block.startTime * 60000;
-    const e = block.endTime * 60000;
-    // 時間帯が重なっているか (timeValは特定のTickを表すため、そのTickが含まれるか判定)
-    if (tickMs >= s && tickMs < e) {
+    // block.startTime/endTime は 9:00基準の相対分数（整数）
+    // 半開区間 [startTime, endTime) でTick単位の判定を行う
+    if (tickMinuteFrom9 >= block.startTime && tickMinuteFrom9 < block.endTime) {
       return true;
     }
   }

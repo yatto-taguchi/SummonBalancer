@@ -690,8 +690,59 @@ export class SummonEngine {
     }
     state.manncells = manncells;
 
+    // === 【修正B】UIアダプター層：不在ブロックとの重複フィルタリング（最終防御壁） ===
+    // エンジン層で防御済みのはずだが、UIに渡す最終データとして不在ブロック時間と
+    // 重複する召喚・ヘルプブロックを除外する二重安全策。
+    // すべての比較は「9:00基準の分数」で統一する。
+    const filteredStylistSummons = uiStylistSummons.filter(summon => {
+      const staffTracker = state.tracker ? state.tracker[summon.stylistId] : null;
+      if (!staffTracker || !staffTracker.blockedTimes || staffTracker.blockedTimes.length === 0) {
+        return true; // ブロック設定なし → 通過
+      }
+      // 召喚の時間範囲を9:00基準の分数に変換
+      let summonStartMin, summonEndMin;
+      if (typeof summon.startTime === 'string' && summon.startTime.includes(':')) {
+        const [sh, sm] = summon.startTime.split(':').map(Number);
+        summonStartMin = (sh - 9) * 60 + sm;
+      } else if (typeof summon.startTime === 'number') {
+        summonStartMin = summon.startTime;
+      } else {
+        return true; // 変換できない場合は安全側で通過
+      }
+      if (typeof summon.endTime === 'string' && summon.endTime.includes(':')) {
+        const [eh, em] = summon.endTime.split(':').map(Number);
+        summonEndMin = (eh - 9) * 60 + em;
+      } else if (typeof summon.endTime === 'number') {
+        summonEndMin = summon.endTime;
+      } else {
+        return true;
+      }
+      // 不在ブロックとの重複チェック（半開区間で比較）
+      for (const block of staffTracker.blockedTimes) {
+        if (summonStartMin < block.endTime && summonEndMin > block.startTime) {
+          console.warn(`[UIAdapter] 不在ブロック防御: スタッフ ${summon.stylistId} の召喚(${summon.startTime}-${summon.endTime})がブロック時間(${block.startTime}-${block.endTime})と重複するため除外`);
+          return false; // ブロック時間と重複 → 除外
+        }
+      }
+      return true; // ブロックと重複なし → 通過
+    });
+
+    // helperBlocksも同様にフィルタリング
+    const filteredHelperBlocks = helperBlocks.filter(hb => {
+      const staffTracker = state.tracker ? state.tracker[hb.staffId] : null;
+      if (!staffTracker || !staffTracker.blockedTimes || staffTracker.blockedTimes.length === 0) {
+        return true;
+      }
+      for (const block of staffTracker.blockedTimes) {
+        if (hb.startMin < block.endTime && hb.endMin > block.startTime) {
+          return false;
+        }
+      }
+      return true;
+    });
+
     state.assignments = uiAssignments;
-    state.stylistSummons = uiStylistSummons;
+    state.stylistSummons = filteredStylistSummons;
     state.unassignedSlots = uiUnfilledSlots;
 
     // 3. UI（メインビュー等）が期待するフォーマットに結果を整形して返す
@@ -706,7 +757,7 @@ export class SummonEngine {
       freeTimeActivities: state.freeTimeActivities,
       utilizationRates: state.utilizationRates || {},
       alerts: state.alerts,
-      helperBlocks: helperBlocks // アシスタント行に描画するヘルプブロック（5分Tickマージ済み）
+      helperBlocks: filteredHelperBlocks // アシスタント行に描画するヘルプブロック（5分Tickマージ済み・不在フィルタ適用済み）
     };
   }
 }

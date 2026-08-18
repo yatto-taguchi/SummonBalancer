@@ -1640,6 +1640,34 @@ export class MainView {
     ];
 
     result.stylistSummons.forEach((summon, idx) => {
+      // === 【修正C】UI描画層の最終防御: 不在ブロック重複チェック ===
+      // エンジン・UIアダプター層で除外済みのはずだが、最終安全策として描画前にも不在チェックする
+      const drawBlockedTimes = Storage.loadBlockedTimes ? Storage.loadBlockedTimes(dateStr) : [];
+      const staffBlocks = drawBlockedTimes.filter(b => b.staffId === summon.stylistId);
+      if (staffBlocks.length > 0) {
+        // 召喚の開始/終了を9:00基準の分数に変換
+        let sStartMin, sEndMin;
+        if (typeof summon.startTime === 'string' && summon.startTime.includes(':')) {
+          const [sh, sm] = summon.startTime.split(':').map(Number);
+          sStartMin = (sh - 9) * 60 + sm;
+        } else if (typeof summon.startTime === 'number') {
+          sStartMin = summon.startTime;
+        }
+        if (typeof summon.endTime === 'string' && summon.endTime.includes(':')) {
+          const [eh, em] = summon.endTime.split(':').map(Number);
+          sEndMin = (eh - 9) * 60 + em;
+        } else if (typeof summon.endTime === 'number') {
+          sEndMin = summon.endTime;
+        }
+        if (sStartMin !== undefined && sEndMin !== undefined) {
+          const hasBlockConflict = staffBlocks.some(b => sStartMin < b.endTime && sEndMin > b.startTime);
+          if (hasBlockConflict) {
+            console.warn(`[MainView] 描画層防御: スタッフ ${summon.stylistId} の召喚(${summon.startTime}-${summon.endTime})が不在ブロックと重複するため描画スキップ`);
+            return; // forEachの次のアイテムへ（描画をスキップ）
+          }
+        }
+      }
+
       // 召喚先の予約のスタイリスト名を取得
       const targetRes = reservations.find(r => r.id === summon.reservationId);
       const targetStylist = targetRes ? staffMap.get(targetRes.stylistId) : null;

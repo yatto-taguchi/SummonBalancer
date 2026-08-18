@@ -69,21 +69,20 @@ function defineRequirements(state, timeStr, timeMs) {
           isStrictlyRequired = true;
         }
 
-        // === 不在ブロック判定 ===
+        // === 不在ブロック判定（Tick単位の精密判定） ===
         // ルールブック「6. ブロック（一時不在）の絶対優先原則」
-        // スタイリスト自身の予約が、そのスタイリストの不在ブロック時間と少しでも被っている場合、
-        // 予約全体を通してアシスタントやヘルプのアサインを行わず、赤枠エラー（未アサイン）とする
+        // 現在処理中のTick（5分枠）がスタイリストの不在ブロック時間内にあるかを判定する。
+        // 予約全体ではなくTick単位で評価することで、部分的な不在にも正確に対応する。
         let isStylistBlocked = false;
-        const resStartMs = toTimestamp(res.startTime);
         const trackerObj = state.tracker ? state.tracker[res.stylistId] : null;
         if (trackerObj && trackerObj.blockedTimes) {
+          // 現在のTickの9:00基準の分数を算出
+          const [tickH, tickM] = timeStr.split(':').map(Number);
+          const tickMinuteFrom9 = (tickH - 9) * 60 + tickM;
           for (const block of trackerObj.blockedTimes) {
-            // block.startTime と endTime は 9:00基準の相対分数。
-            // 比較基準を揃えるため、60000を掛けてミリ秒化する
-            const bStart = block.startTime * 60000;
-            const bEnd = block.endTime * 60000;
-            // 予約の時間帯とブロック時間帯が重なっているか
-            if (resStartMs < bEnd && resEndMs > bStart) {
+            // block.startTime/endTime は 9:00基準の相対分数（整数）
+            // 半開区間 [startTime, endTime) でTick単位の判定を行う
+            if (tickMinuteFrom9 >= block.startTime && tickMinuteFrom9 < block.endTime) {
               isStylistBlocked = true;
               break;
             }

@@ -40,6 +40,13 @@ export const summonStylistAndSpecial = (timeSlotState, master, tracker, ongoingT
     const fullReq = timeSlotState.requirements.find(r => r.id === unassigned.requirementId);
     if (!fullReq) continue;
 
+    // === 不在ブロック防御（二重安全策） ===
+    // ヘルプ先のスタイリスト（予約の持ち主）がこのTickで不在の場合、
+    // アシスタントもスタイリストも配置しない（Phase 1でskipAssignment済みのはずだが念押し）
+    if (fullReq.stylistId && isStaffBlocked(fullReq.stylistId, newState.time, currentTracker)) {
+      continue; // 不在スタイリストの予約へのアサインをスキップ
+    }
+
     // === 固定モード保護【フォールバック禁止】 ===
     // fixedAssistantId が設定されている要件は Phase 2 Step -1 で最優先処理済み。
     // ここに来ているということは固定スタッフが使用不可（重複固定等）のケース。
@@ -143,6 +150,13 @@ export const summonStylistAndSpecial = (timeSlotState, master, tracker, ongoingT
   for (const unassigned of afterStep1Reqs) {
     const fullReq = timeSlotState.requirements.find(r => r.id === unassigned.requirementId);
     if (!fullReq) continue;
+
+    // === 不在ブロック防御（二重安全策） ===
+    // ヘルプ先のスタイリスト（予約の持ち主）がこのTickで不在の場合、
+    // スタイリスト召喚も行わない（Phase 1でskipAssignment済みのはずだが念押し）
+    if (fullReq.stylistId && isStaffBlocked(fullReq.stylistId, newState.time, currentTracker)) {
+      continue; // 不在スタイリストの予約へのアサインをスキップ
+    }
 
     // === 固定モード保護【フォールバック禁止】（スタイリスト固定のリトライ） ===
     if (fullReq.fixedAssistantId) {
