@@ -1,31 +1,31 @@
-/**
- * @fileoverview 繧ｵ繝｢繝ｳ繝舌Λ繝ｳ繧ｵ繝ｼ - 繝励Ξ繝溘い繝�繝繝ｼ繧ｯ繝｢繝ｼ繝峨ョ繧ｶ繧､繝ｳ繧ｷ繧ｹ繝�Β
+@charset "UTF-8";
+/* *
+ * @fileoverview サモンバランサー - プレミア��ークモードデザインシス���
  *
- * 繧ｰ繝ｩ繧ｹ繝｢繝ｼ繝輔ぅ繧ｺ繝�縲√げ繝ｩ繝��繧ｷ繝ｧ繝ｳ縲∝ｾｮ螯吶↑繧｢繝九Γ繝ｼ繧ｷ繝ｧ繝ｳ繧呈ｴｻ逕ｨ縺励◆
- * 繝繝ｼ繧ｯ繝｢繝ｼ繝峨�繝ｼ繧ｹ縺ｮ鄒主ｮｹ螳､蜷代￠UI縲�oogle Font縲栗nter縲阪ｒ菴ｿ逕ｨ縲�
+ * グラスモーフィズ�、グラ�ション、微妙なアニメーションを活用した
+ * �ークモード�ースの美容室向�UI�oogle Font「Inter」を使用�
  *
- * 繧ｫ繝ｩ繝ｼ繧ｷ繧ｹ繝�Β:
- *   - 繝｡繝九Η繝ｼ蛻･: 繧ｫ繝�ヨ(繧､繝ｳ繝�ぅ繧ｴ), 繧ｫ繝ｩ繝ｼ(繝斐Φ繧ｯ), 繝医Μ繝ｼ繝医Γ繝ｳ繝�(繧ｨ繝｡繝ｩ繝ｫ繝�), 繧ｫ繝�ヨ繧ｫ繝ｩ繝ｼ(繧｢繝ｳ繝舌�), 縺昴�莉�(繝代�繝励Ν)
- *   - 繝ｩ繝ｳ繧ｯ蛻･: 繧ｪ繝ｼ繝翫�(繧ｴ繝ｼ繝ｫ繝�), 繝医ャ繝励せ繧ｿ繧､繝ｪ繧ｹ繝�(繝ｩ繝吶Φ繝繝ｼ), 繧ｹ繧ｿ繧､繝ｪ繧ｹ繝�(繝悶Ν繝ｼ), 繧ｸ繝･繝九い(繧ｰ繝ｪ繝ｼ繝ｳ), 繧｢繧ｷ繧ｹ繧ｿ繝ｳ繝�(繧ｰ繝ｬ繝ｼ)
- */
+ * カラーシス���:
+ *   - メニュー別: カ���(イン���ゴ), カラー(ピンク), トリートメン�(エメラル�), カ���カラー(アンバ�), そ��(パ�プル)
+ *   - ランク別: オーナ�(ゴール�), トップスタイリス�(ラベン�ー), スタイリス�(ブルー), ジュニア(グリーン), アシスタン�(グレー) */
 
-/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
-   CSS螟画焚�医ョ繧ｶ繧､繝ｳ繝医�繧ｯ繝ｳ��
-   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
+/* ����������������������������������������������
+   CSS変数�デザイント�クン
+   ���������������������������������������������� */
 :root {
-  /* 閭梧勹濶ｲ */
+  /* 背景色 */
   --bg-primary: #0a0e17;
   --bg-secondary: #111827;
   --bg-tertiary: #1f2937;
   --bg-glass: rgba(255, 255, 255, 0.05);
   --border-glass: rgba(255, 255, 255, 0.1);
 
-  /* 繝�く繧ｹ繝郁牡 */
+  /* ���スト色 */
   --text-primary: #f9fafb;
   --text-secondary: #9ca3af;
   --text-muted: #6b7280;
 
-  /* 繧｢繧ｯ繧ｻ繝ｳ繝医き繝ｩ繝ｼ */
+  /* アクセントカラー */
   --accent-primary: #6366f1;
   --accent-secondary: #8b5cf6;
   --accent-success: #10b981;
@@ -33,46 +33,46 @@
   --accent-danger: #ef4444;
   --accent-info: #3b82f6;
 
-  /* 繧ｷ繝｣繝峨え��げ繝ｭ繝ｼ */
+  /* シャドウ��ロー */
   --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.5);
 
-  /* 隗剃ｸｸ */
+  /* 角丸 */
   --radius-sm: 6px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 24px;
 
-  /* 繝医Λ繝ｳ繧ｸ繧ｷ繝ｧ繝ｳ */
+  /* トランジション */
   --transition-fast: 150ms ease;
   --transition-normal: 300ms ease;
   --transition-slow: 500ms ease;
 
-  /* 繝｡繝九Η繝ｼ蛻･繧ｫ繝ｩ繝ｼ */
+  /* メニュー別カラー */
   --color-cut: #6366f1;
   --color-color: #ec4899;
   --color-treatment: #10b981;
   --color-cut-color: #f59e0b;
   --color-other: #8b5cf6;
 
-  /* 繝ｩ繝ｳ繧ｯ蛻･繧ｫ繝ｩ繝ｼ */
+  /* ランク別カラー */
   --rank-owner: #fbbf24;
   --rank-top-stylist: #a78bfa;
   --rank-stylist: #60a5fa;
   --rank-junior: #34d399;
   --rank-assistant: #9ca3af;
 
-  /* 繧ｿ繧､繝�繝ｩ繧､繝ｳ繧ｵ繧､繧ｺ */
+  /* タイ�ラインサイズ */
   --cell-width: 80px;
   --staff-col-width: 135px;
   --row-height: 72px;
 }
 
-/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
-   繝ｪ繧ｻ繝�ヨ���繝ｼ繧ｹ
-   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
+/* ����������������������������������������������
+   リセ���ース
+   ���������������������������������������������� */
 *,
 *::before,
 *::after {
@@ -96,7 +96,7 @@ body {
   line-height: 1.6;
 }
 
-/* 蠕ｮ螯吶↑閭梧勹繧ｰ繝ｩ繝��繧ｷ繝ｧ繝ｳ */
+/* 微妙な背景グラ�ション */
 body::before {
   content: '';
   position: fixed;
@@ -139,7 +139,7 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 }
 
-/* 繧ｹ繧ｯ繝ｭ繝ｼ繝ｫ繝舌�縺ｮ繧ｫ繧ｹ繧ｿ繝槭う繧ｺ */
+/* スクロールバ�のカスタマイズ */
 ::-webkit-scrollbar {
   width: 12px;
   height: 12px;
@@ -160,7 +160,7 @@ input:focus, select:focus, textarea:focus {
   background: rgba(255, 255, 255, 0.5);
 }
 
-/* 繧ｹ繝ｪ繝�縺ｪ繧ｹ繧ｯ繝ｭ繝ｼ繝ｫ繝舌��亥ｰ上＆縺ｪ繧ｳ繝ｳ繝�リ逕ｨ�� */
+/* スリ�なスクロールバ��小さなコン���用 */
 .slim-scrollbar::-webkit-scrollbar {
   width: 4px;
   height: 4px;
@@ -177,9 +177,9 @@ input:focus, select:focus, textarea:focus {
   background: rgba(255, 255, 255, 0.4);
 }
 
-/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
-   繧｢繝励Μ繝ｬ繧､繧｢繧ｦ繝�
-   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
+/* ����������������������������������������������
+   アプリレイアウ�
+   ���������������������������������������������� */
 .app-container {
   display: flex;
   flex-direction: column;
@@ -189,9 +189,9 @@ input:focus, select:focus, textarea:focus {
   z-index: 1;
 }
 
-/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
-   繝倥ャ繝繝ｼ
-   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
+/* ����������������������������������������������
+   ヘッ�ー
+   ���������������������������������������������� */
 .app-header {
   position: sticky;
   top: 0;
@@ -240,7 +240,7 @@ input:focus, select:focus, textarea:focus {
   letter-spacing: -0.025em;
 }
 
-/* 繝翫ン繧ｲ繝ｼ繧ｷ繝ｧ繝ｳ繧ｿ繝� */
+/* ナビゲーションタ� */
 .nav-tabs {
   display: flex;
   gap: 4px;
@@ -280,7 +280,7 @@ input:focus, select:focus, textarea:focus {
   border-radius: 1px;
 }
 
-/* 譌･莉倥リ繝薙ご繝ｼ繧ｷ繝ｧ繝ｳ */
+/* 日付ナビゲーション */
 .date-nav {
   display: flex;
   align-items: center;
@@ -331,9 +331,9 @@ input:focus, select:focus, textarea:focus {
   cursor: pointer;
 }
 
-/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
-   繝｡繧､繝ｳ繧ｳ繝ｳ繝�Φ繝�お繝ｪ繧｢
-   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
+/* ����������������������������������������������
+   メインコン������リア
+   ���������������������������������������������� */
 .main-layout {
   display: flex;
   flex: 1;
@@ -347,7 +347,7 @@ input:focus, select:focus, textarea:focus {
   position: relative;
 }
 
-/* 繝薙Η繝ｼ繧ｻ繧ｯ繧ｷ繝ｧ繝ｳ */
+/* ビューセクション */
 .view-section {
   display: none;
   animation: fadeIn var(--transition-normal);
@@ -357,7 +357,7 @@ input:focus, select:focus, textarea:focus {
   display: block;
 }
 
-/* 莠育ｴ�｡ｨ繝薙Η繝ｼ縺ｯ繝輔Ν鬮倥＆縺ｧ蜀�Κ繧ｹ繧ｯ繝ｭ繝ｼ繝ｫ縺ｮ縺ｿ */
+/* 予���ビューはフル高さで���スクロールのみ */
 #view-reservation.active {
   display: flex;
   flex-direction: column;
@@ -366,9 +366,9 @@ input:focus, select:focus, textarea:focus {
 }
 
 
-/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
-   繧ｰ繝ｩ繧ｹ繝｢繝ｼ繝輔ぅ繧ｺ繝�繝代ロ繝ｫ
-   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
+/* ����������������������������������������������
+   グラスモーフィズ�パネル
+   ���������������������������������������������� */
 .glass-panel {
   background: var(--bg-glass);
   backdrop-filter: blur(12px);
@@ -394,10 +394,10 @@ input:focus, select:focus, textarea:focus {
   box-shadow: var(--shadow-md);
 }
 
-/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
-   繧ｿ繧､繝�繝ｩ繧､繝ｳ�井ｺ育ｴ�｡ｨ�� 窶� div繝吶�繧ｹ繧ｰ繝ｪ繝�ラ
-   讓ｪ霆ｸ: 譎る俣��9:00縲�19:00�峨∫ｸｦ霆ｸ: 繧ｹ繧ｿ繧､繝ｪ繧ｹ繝�
-   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
+/* ����������������������������������������������
+   タイ�ライン�予��� � divベ�スグリ���
+   横軸: 時間9:00�19:00���縦軸: スタイリス�
+   ���������������������������������������������� */
 .timeline-grid {
   position: relative;
   width: max-content;
@@ -525,7 +525,7 @@ input:focus, select:focus, textarea:focus {
   border-left: 2px solid rgba(99, 102, 241, 0.4);
 }
 
-/* 謗帙￠謖√■譎ゅ�鮟�牡閭梧勹繝上う繝ｩ繧､繝医�髱櫁｡ｨ遉ｺ縺ｫ縺吶ｋ */
+/* 掛�持ち時����背景ハイライト�非表示にする */
 .timeline-cell.overlap-highlight {
   background: transparent;
   box-shadow: none;
@@ -543,7 +543,7 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
 }
 
-/* 莠育ｴ�ヶ繝ｭ繝�け 窶� 繧ｿ繧､繝�繝ｩ繧､繝ｳ繧ｻ繝ｫ荳翫↓邨ｶ蟇ｾ驟咲ｽｮ */
+/* 予���ロ��� � タイ�ラインセル上に絶対配置 */
 .reservation-block {
   position: absolute;
   top: 2px;
@@ -565,7 +565,7 @@ input:focus, select:focus, textarea:focus {
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
   overflow: visible;
   z-index: 3;
-  user-select: none; /* 繝�く繧ｹ繝磯∈謚槭↓繧医ｋ繝峨Λ繝�げ蟷ｲ貂峨ｒ髦ｲ縺� */
+  user-select: none; /* ���スト選択によるドラ���干渉を防� */
   -webkit-user-drag: element; /* Safari蟇ｾ蠢� */
 }
 
@@ -578,7 +578,7 @@ input:focus, select:focus, textarea:focus {
   z-index: 6;
 }
 
-/* 蜿ｬ蝟壹�迚ｹ谿雁小蝟壹ヶ繝ｭ繝�け縺ｯ騾壼ｸｸ縺ｮ莠育ｴ�ヶ繝ｭ繝�け繧�ｩｺ縺肴凾髢薙ヶ繝ｭ繝�け繧医ｊ謇句燕縺ｫ陦ｨ遉ｺ縺吶ｋ */
+/* 召喚�特殊召喚ブロ���は通常の予���ロ������き時間ブロ���より手前に表示する */
 .reservation-block.summon-virtual-block {
   z-index: 4;
   border: 1px dashed rgba(255, 255, 255, 0.5);
@@ -586,8 +586,8 @@ input:focus, select:focus, textarea:focus {
 
 .reservation-block.forced-activity-block {
   z-index: 5;
-  backdrop-filter: blur(2px); /* 荳九繧｢繧ｵ繧､繝ｳ縺瑚ｦ九∴繧九ｈ縺↓霆ｽ縺⊂縺九＠ */
-  pointer-events: none; /* 荳九莠育ｴヶ繝ｭ繝け遲峨ｒ繧ｯ繝ｪ繝け蜿ｯ閭ｽ縺ｫ縺吶ｋ */
+  backdrop-filter: blur(2px); /* 下�アサインが見えるよぁ�軽ぁ�かし */
+  pointer-events: none; /* 下�予紃�ロヂ�等をクリヂ�可能にする */
 }
 
 .reservation-block.special-summon-block {
@@ -611,7 +611,7 @@ input:focus, select:focus, textarea:focus {
   white-space: nowrap;
 }
 
-/* 繝槭Φ繧ｻ繝ｫ繝悶Ο繝�け (繝√�繝�蛻ｶ逋ｺ蜍�) */
+/* マンセルブロ��� (チ��制発�) */
 .manncell-block {
   border: 2px solid rgba(255, 215, 0, 0.8);
   border-radius: var(--radius-sm);
@@ -662,7 +662,7 @@ input:focus, select:focus, textarea:focus {
   color: #000;
 }
 
-/* 繝槭Φ繧ｻ繝ｫ蟇ｾ雎｡繧ｹ繝ｭ繝�ヨ蜀��2谿ｵ陦ｨ遉ｺ繝�く繧ｹ繝� */
+/* マンセル対象スロ����2段表示���ス� */
 .manncell-assigned-text {
   display: flex !important;
   flex-direction: column !important;
@@ -688,7 +688,7 @@ input:focus, select:focus, textarea:focus {
   text-shadow: 0 0 4px rgba(0, 255, 128, 0.4);
 }
 
-/* 繧ｿ繧､繝�繝ｩ繧､繝ｳ遨ｺ繝｡繝�そ繝ｼ繧ｸ */
+/* タイ�ライン空メ���ージ */
 .timeline-empty-message {
   display: flex;
   flex-direction: column;
@@ -719,9 +719,9 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
 }
 
-/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
-   繝｡繝九Η繝ｼ繝舌��医�繝�ム繝ｼ逶ｴ荳九�荳企Κ驟咲ｽｮ��
-   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
+/* ����������������������������������������������
+   メニューバ������ー直下�上部配置
+   ���������������������������������������������� */
 #menu-bar {
   position: sticky;
   top: 64px;
@@ -778,7 +778,7 @@ input:focus, select:focus, textarea:focus {
   flex: 1;
 }
 
-/* 繝｡繝九Η繝ｼ繝舌�蜀�ヤ繝ｼ繝ｫ繝舌�繝懊ち繝ｳ */
+/* メニューバ����ールバ�ボタン */
 .menu-bar-toolbar-btn {
   background: var(--bg-tertiary);
   border: 1px solid var(--border-glass);
@@ -798,7 +798,7 @@ input:focus, select:focus, textarea:focus {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.2);
 }
-/* 蝗ｺ螳壹Δ繝ｼ繝� active: 繧ｷ繧｢繝ｳ�医ヴ繝ｳ逡吶ａ繝ｻ繝ｭ繝�け縺ｮ繧､繝｡繝ｼ繧ｸ�� */
+/* 固定モー� active: シアン�ピン留め・ロ���のイメージ */
 .menu-bar-toolbar-btn[data-action="manual-mode"].active {
   background: rgba(6, 182, 212, 0.2);
   color: #06b6d4;
@@ -812,7 +812,7 @@ input:focus, select:focus, textarea:focus {
   border-color: #ef4444;
   box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
 }
-/* 譖ｴ譁ｰ繝懊ち繝ｳ: 繧ｯ繝ｪ繝�け譎ゅ�蜊ｳ譎ゅヵ繧｣繝ｼ繝峨ヰ繝�け�域款縺励◆螳滓─�� */
+/* 更新ボタン: クリ���時�即時フィードバ����押した実感 */
 .menu-bar-toolbar-btn[data-action="refresh"]:active {
   transform: scale(0.95);
   background: rgba(255, 255, 255, 0.12);
@@ -827,7 +827,7 @@ input:focus, select:focus, textarea:focus {
   background: rgba(239, 68, 68, 0.25);
 }
 
-/* 繝｡繝九Η繝ｼ繝舌�蜀�い繝ｩ繝ｼ繝医ヰ繝�ず */
+/* メニューバ����ラートバ��� */
 .menu-bar-alert {
   padding: 4px 10px;
   border-radius: var(--radius-sm);
@@ -890,7 +890,7 @@ input:focus, select:focus, textarea:focus {
   max-width: 80px;
 }
 
-/* 繝峨Λ繝�げ荳ｭ縺ｮ繧ｹ繧ｿ繧､繝ｫ */
+/* ドラ���中のスタイル */
 .menu-btn.dragging {
   opacity: 0.5;
   transform: scale(0.9);
@@ -902,9 +902,9 @@ input:focus, select:focus, textarea:focus {
   border-radius: var(--radius-sm);
 }
 
-/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
-   繧｢繧ｷ繧ｹ繧ｿ繝ｳ繝医し繧､繝峨ヰ繝ｼ
-   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
+/* ����������������������������������������������
+   アシスタントサイドバー
+   ���������������������������������������������� */
 #assistant-sidebar {
   width: 220px;
   min-width: 220px;
@@ -982,7 +982,7 @@ input:focus, select:focus, textarea:focus {
 .skill-dot[data-level="4"] { background: var(--accent-success); }
 .skill-dot[data-level="5"] { background: var(--rank-owner); }
 
-/* 逍ｲ蜉ｴ蠎ｦ繝舌� */
+/* 疲労度バ� */
 .fatigue-bar {
   height: 4px;
   background: var(--bg-tertiary);
@@ -997,9 +997,9 @@ input:focus, select:focus, textarea:focus {
   transition: width var(--transition-normal);
 }
 
-/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
-   險ｭ螳夂判髱｢蜈ｱ騾�
-   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
+/* ����������������������������������������������
+   設定画面共�
+   ���������������������������������������������� */
 .settings-panel {
   max-width: 900px;
   margin: 0 auto;
@@ -1027,7 +1027,7 @@ input:focus, select:focus, textarea:focus {
   font-size: 0.9rem;
 }
 
-/* 繧ｹ繧ｿ繝�ヵ繧ｻ繧ｯ繧ｷ繝ｧ繝ｳ */
+/* スタ���セクション */
 .staff-sections {
   display: flex;
   flex-direction: column;
@@ -1035,7 +1035,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .staff-section {
-  /* 繧ｻ繧ｯ繧ｷ繝ｧ繝ｳ蛹ｺ蛻�ｊ */
+  /* セクション区��� */
 }
 
 .section-header {
@@ -1065,7 +1065,7 @@ input:focus, select:focus, textarea:focus {
   font-size: 0.9rem;
 }
 
-/* 繧ｹ繧ｿ繝�ヵ繧ｫ繝ｼ繝� */
+/* スタ���カー� */
 .staff-card {
   display: flex;
   align-items: center;
@@ -1095,7 +1095,7 @@ input:focus, select:focus, textarea:focus {
   font-weight: 500;
 }
 
-/* 繝ｩ繝ｳ繧ｯ蛻･繝舌ャ繧ｸ繧ｫ繝ｩ繝ｼ */
+/* ランク別バッジカラー */
 .rank-owner {
   background: rgba(251, 191, 36, 0.15);
   color: var(--rank-owner);
@@ -1153,7 +1153,7 @@ input:focus, select:focus, textarea:focus {
   min-width: 32px;
 }
 
-/* 繝医げ繝ｫ繧ｹ繧､繝�メ */
+/* トグルスイ��� */
 .toggle-switch {
   position: relative;
   display: inline-block;
@@ -1200,9 +1200,9 @@ input:focus, select:focus, textarea:focus {
   background: var(--accent-success);
 }
 
-/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
-   繝｡繝九Η繝ｼ險ｭ螳壹き繝ｼ繝�
-   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
+/* ����������������������������������������������
+   メニュー設定カー�
+   ���������������������������������������������� */
 .menu-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -1287,9 +1287,9 @@ input:focus, select:focus, textarea:focus {
   margin-left: auto;
 }
 
-/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
-   繝懊ち繝ｳ
-   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
+/* ����������������������������������������������
+   ボタン
+   ���������������������������������������������� */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -1329,9 +1329,9 @@ input:focus, select:focus, textarea:focus {
   font-size: 1em;
 }
 
-/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
-   繧ｨ繝ｩ繝ｼ逕ｻ髱｢
-   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
+/* ����������������������������������������������
+   エラー画面
+   ���������������������������������������������� */
 .error-screen {
   display: flex;
   flex-direction: column;
@@ -1364,11 +1364,11 @@ input:focus, select:focus, textarea:focus {
   word-break: break-all;
 }
 
-/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
-   繧｢繝九Γ繝ｼ繧ｷ繝ｧ繝ｳ
-   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
+/* ����������������������������������������������
+   アニメーション
+   ���������������������������������������������� */
 
-/* 蜿ｬ蝟壽凾縺ｮ繝代Ν繧ｹ繧｢繝九Γ繝ｼ繧ｷ繝ｧ繝ｳ */
+/* 召喚時のパルスアニメーション */
 @keyframes summonPulse {
   0% {
     box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.6);
@@ -1388,7 +1388,7 @@ input:focus, select:focus, textarea:focus {
   animation: summonPulse 0.6s ease-out;
 }
 
-/* 繧｢繝ｩ繝ｼ繝育せ貊� */
+/* アラート点� */
 @keyframes alertBlink {
   0%, 100% {
     opacity: 1;
@@ -1405,7 +1405,7 @@ input:focus, select:focus, textarea:focus {
   border-color: var(--accent-danger) !important;
 }
 
-/* 繝輔ぉ繝ｼ繝峨う繝ｳ */
+/* フェードイン */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -1421,7 +1421,7 @@ input:focus, select:focus, textarea:focus {
   animation: fadeIn var(--transition-normal);
 }
 
-/* 繧ｹ繝ｩ繧､繝峨う繝ｳ */
+/* スライドイン */
 @keyframes slideIn {
   from {
     opacity: 0;
@@ -1437,7 +1437,7 @@ input:focus, select:focus, textarea:focus {
   animation: slideIn var(--transition-normal);
 }
 
-/* 繧ｹ繝ｩ繧､繝峨い繝���医Γ繝九Η繝ｼ繝舌�逕ｨ�� */
+/* スライドア��メニューバ�用 */
 @keyframes slideUp {
   from {
     opacity: 0;
@@ -1449,7 +1449,7 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
-/* 蜈ｼ莉ｻ繝舌ャ繧ｸ 繝昴ャ繝励い繝九Γ繝ｼ繧ｷ繝ｧ繝ｳ */
+/* 兼任バッジ ポップアニメーション */
 @keyframes concurrentBadgePop {
   0% {
     opacity: 0;
@@ -1465,9 +1465,9 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
-/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
-   繝ｦ繝ｼ繝�ぅ繝ｪ繝�ぅ繧ｯ繝ｩ繧ｹ
-   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
+/* ����������������������������������������������
+   ユー���リ���クラス
+   ���������������������������������������������� */
 
 #assistant-sidebar.hidden {
   display: block !important;
@@ -1494,9 +1494,9 @@ input:focus, select:focus, textarea:focus {
   border: 0;
 }
 
-/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
-   繝ｬ繧ｹ繝昴Φ繧ｷ繝門ｯｾ蠢懶ｼ域怙菴�1024px��
-   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
+/* ����������������������������������������������
+   レスポンシブ対応（最�1024px
+   ���������������������������������������������� */
 @media (max-width: 1200px) {
   #assistant-sidebar {
     width: 180px;
@@ -1543,15 +1543,15 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
-/* 繝峨Λ繝�げ荳ｭ縺ｮ繝悶Ο繝�け騾城℃蜃ｦ逅�ｼ磯㍾縺ｭ縺ｦ繝峨Ο繝��縺ｧ縺阪ｋ繧医≧縺ｫ縺吶ｋ縺溘ａ�� */
+/* ドラ���中のブロ���透過処����ねてドロ�できるようにするため */
 /* 繝峨Λ繝�げ縺輔ｌ縺ｦ縺�↑縺�ヶ繝ｭ繝�け縺ｮ縺ｿ pointer-events: none 縺ｫ縺吶ｋ */
 body.is-dragging-item .reservation-block:not(.is-being-dragged) {
   pointer-events: none !important;
 }
 
-/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
-   繝ｪ繧ｵ繧､繧ｺ繝上Φ繝峨Ν
-   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
+/* ����������������������������������������������
+   リサイズハンドル
+   ���������������������������������������������� */
 
 .reservation-resize-handle {
   position: absolute;
@@ -1566,7 +1566,7 @@ body.is-dragging-item .reservation-block:not(.is-being-dragged) {
   transition: background 0.15s ease;
 }
 
-/* 繝上Φ繝峨Ν縺ｮ繧､繝ｳ繧ｸ繧ｱ繝ｼ繧ｿ繝ｼ邱夲ｼ育ｸｦ2譛ｬ�� */
+/* ハンドルのインジケーター線（縦2本） */
 .reservation-resize-handle::after {
   content: '';
   position: absolute;
@@ -1589,14 +1589,14 @@ body.is-dragging-item .reservation-block:not(.is-being-dragged) {
   box-shadow: -3px 0 0 rgba(255, 255, 255, 0.7);
 }
 
-/* 繝ｪ繧ｵ繧､繧ｺ荳ｭ: 繝壹�繧ｸ蜈ｨ菴薙�繧ｫ繝ｼ繧ｽ繝ｫ縺ｨ繝�く繧ｹ繝磯∈謚槭ｒ蛻ｶ蠕｡ */
+/* リサイズ中: ペ�ジ全体�カーソルと���スト選択を制御 */
 body.is-resizing,
 body.is-resizing * {
   cursor: ew-resize !important;
   user-select: none !important;
 }
 
-/* 繝ｪ繧ｵ繧､繧ｺ荳ｭ縺ｮ繝悶Ο繝�け繧偵ワ繧､繝ｩ繧､繝� */
+/* リサイズ中のブロ���をハイライ� */
 body.is-resizing .reservation-block {
   pointer-events: none;
 }
@@ -1604,9 +1604,9 @@ body.is-resizing .reservation-resize-handle {
   pointer-events: auto;
 }
 
-/* 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
-   遨ｺ縺肴凾髢馴∈謚槭Δ繝ｼ繝繝ｫ
-   笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏 */
+/* ����������������������������������������������
+   空き時間選択モー�ル
+   ���������������������������������������������� */
 
 .free-time-modal-overlay {
   position: fixed;
@@ -1788,7 +1788,7 @@ body.is-resizing .reservation-resize-handle {
   transform: translateY(-1px);
 }
 
-/* 繧ｿ繧､繝�繝ｩ繧､繝ｳ譎る俣螟厄ｼ井ｸ榊惠�峨そ繝ｫ */
+/* タイ�ライン時間外（不在�セル */
 .timeline-cell.off-duty {
   background: repeating-linear-gradient(
     135deg,
@@ -1804,7 +1804,7 @@ body.is-resizing .reservation-resize-handle {
 }
 
 .timeline-cell.off-duty::after {
-  content: '荳榊惠';
+  content: '\4e0d\5728'; /* 不在 */
   position: absolute;
   inset: 0;
   display: flex;
@@ -1827,7 +1827,7 @@ body.is-resizing .reservation-resize-handle {
   ) !important;
 }
 
-/* 笊絶武笊� 繧｢繧ｳ繝ｼ繝�ぅ繧ｪ繝ｳ螻暮幕 笊絶武笊� */
+/* ══� アコー���オン展開 ══� */
 .timeline-header-cell {
   cursor: pointer;
   transition: flex-grow 0.35s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease;
@@ -1846,7 +1846,7 @@ body.is-resizing .reservation-resize-handle {
   align-items: stretch;
 }
 
-/* 螻暮幕譎ゅ�繝｡繧､繝ｳ繝ｩ繝吶Ν */
+/* 展開時�メインラベル */
 .accordion-main-label {
   display: flex;
   align-items: center;
@@ -1855,9 +1855,9 @@ body.is-resizing .reservation-resize-handle {
   white-space: nowrap;
 }
 
-/* 螻暮幕繧､繝ｳ繧ｸ繧ｱ繝ｼ繧ｿ�遺明�� */
+/* 展開インジケータ�▾ */
 .accordion-main-label::after {
-  content: '笆ｾ';
+  content: '\25BE'; /* ▾ */
   color: var(--text-muted);
   font-size: 0.55rem;
   display: inline-block;
@@ -1869,7 +1869,7 @@ body.is-resizing .reservation-resize-handle {
   transform: rotate(180deg);
 }
 
-/* 繧ｵ繝悶Λ繝吶Ν��5蛻�綾縺ｿ�� */
+/* サブラベル5���み */
 .accordion-sub-labels {
   display: flex;
   flex-direction: row;
@@ -1890,7 +1890,7 @@ body.is-resizing .reservation-resize-handle {
   border-left: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* 繝懊ョ繧｣繧ｻ繝ｫ縺ｮ螻暮幕 */
+/* ボディセルの展開 */
 .timeline-cell {
   transition: flex-grow 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   min-width: 0;
@@ -1900,7 +1900,7 @@ body.is-resizing .reservation-resize-handle {
   flex: 6;
 }
 
-/* 繧ｬ繧､繝峨Λ繧､繝ｳ��5蛻�綾縺ｿ縺ｮ轤ｹ邱夲ｼ� */
+/* ガイドライン5���みの点線� */
 .accordion-gridlines {
   position: absolute;
   inset: 0;
@@ -1919,7 +1919,7 @@ body.is-resizing .reservation-resize-handle {
   border-left: none;
 }
 
-/* 繧ｵ繝悶�繝�ム繝ｼ縺ｮ螻暮幕 */
+/* サブ����ーの展開 */
 .timeline-header-sub-cell {
   transition: flex-grow 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -1949,7 +1949,7 @@ body.is-resizing .reservation-resize-handle {
   transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 莠育ｴ�ヶ繝ｭ繝�け繝ｻ繝槭Φ繧ｻ繝ｫ譫�縺ｮ繧ｹ繝�繝ｼ繧ｺ縺ｪ繧｢繝九Γ繝ｼ繧ｷ繝ｧ繝ｳ */
+/* 予���ロ���・マンセル�のス�ーズなアニメーション */
 .timeline-cells .reservation-block {
   transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1),
               width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
@@ -1962,9 +1962,9 @@ body.is-resizing .reservation-resize-handle {
               width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 笊絶武笊� 繧｢繧ｳ繝ｼ繝�ぅ繧ｪ繝ｳ螻暮幕譎ゑｼ壹せ繝ｭ繝�ヨ螳滓凾蛻ｻ繝ｩ繝吶Ν 笊絶武笊� */
+/* ══� アコー���オン展開時：スロ���実時刻ラベル ══� */
 
-/* 繧ｹ繝ｭ繝�ヨ譎る俣繝ｩ繝吶Ν�医ョ繝輔か繝ｫ繝磯撼陦ｨ遉ｺ縲√い繧ｳ繝ｼ繝�ぅ繧ｪ繝ｳ螻暮幕譎ゅ�縺ｿJS縺ｧ陦ｨ遉ｺ�� */
+/* スロ���時間ラベル�デフォルト非表示、アコー���オン展開時�みJSで表示 */
 .slot-time-label {
   display: none;
   font-size: 7.5px;
@@ -1981,12 +1981,12 @@ body.is-resizing .reservation-resize-handle {
   text-overflow: ellipsis;
 }
 
-/* 陦ｨ遉ｺ迥ｶ諷具ｼ�S縺ｧ .slot-time-visible 繧ｯ繝ｩ繧ｹ繧偵ヨ繧ｰ繝ｫ�� */
+/* 表示状態�Sで .slot-time-visible クラスをトグル */
 .slot-time-label.slot-time-visible {
   display: block;
 }
 
-/* 繝槭Φ繧ｻ繝ｫ譫�縺ｮ譎る俣繝倥ャ繝繝ｼ�医ョ繝輔か繝ｫ繝磯撼陦ｨ遉ｺ�� */
+/* マンセル�の時間ヘッ�ー�デフォルト非表示 */
 .manncell-time-header {
   display: none;
   position: absolute;
@@ -2008,16 +2008,16 @@ body.is-resizing .reservation-resize-handle {
   transform: translateY(-100%);
 }
 
-/* 陦ｨ遉ｺ迥ｶ諷具ｼ�S縺ｧ .manncell-time-visible 繧ｯ繝ｩ繧ｹ繧偵ヨ繧ｰ繝ｫ�� */
+/* 表示状態�Sで .manncell-time-visible クラスをトグル */
 .manncell-time-header.manncell-time-visible {
   display: block;
 }
 
-/* 笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武
-   鬆大ｼｵ繧碁�鄂ｮ (�櫨 Ganbare Assignment)
-   笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武 */
+/* ══════════════════════════════════════════════════
+   頑張れ�置 (�� Ganbare Assignment)
+   ══════════════════════════════════════════════════ */
 
-/* --- 繝倥ャ繝繝ｼ繝舌ャ繧ｸ�育ｸｮ蟆乗凾逕ｨ��--- */
+/* --- ヘッ�ーバッジ�縮小時用--- */
 .ganbare-header-badge {
   flex-shrink: 0;
   font-size: 8px;
@@ -2057,7 +2057,7 @@ body.is-resizing .reservation-resize-handle {
   transform-origin: center;
 }
 
-/* --- 鬆大ｼｵ繧後Δ繝ｼ繝峨�繧ｿ繝ｳ縺ｮactive迥ｶ諷� --- */
+/* --- 頑張れモード�タンのactive状� --- */
 .ganbare-mode-btn.active {
   background: rgba(249, 115, 22, 0.2) !important;
   color: #f97316 !important;
@@ -2065,7 +2065,7 @@ body.is-resizing .reservation-resize-handle {
   box-shadow: 0 0 8px rgba(249, 115, 22, 0.3);
 }
 
-/* --- 鬆大ｼｵ繧後Δ繝ｼ繝峨が繝ｼ繝舌�繝ｬ繧､ --- */
+/* --- 頑張れモードオーバ�レイ --- */
 .ganbare-mode-overlay {
   position: sticky;
   top: 0;
@@ -2080,7 +2080,7 @@ body.is-resizing .reservation-resize-handle {
   pointer-events: none;
 }
 
-/* --- 鬆大ｼｵ繧後ヰ繝ｼ繝√Ε繝ｫ繝悶Ο繝�け�医せ繧ｿ繝�ヵ繧ｿ繧､繝�繝ｩ繧､繝ｳ��--- */
+/* --- 頑張れバーチャルブロ����スタ���タイ�ライン--- */
 .ganbare-virtual-block {
   background: rgba(249, 115, 22, 0.15) !important;
   border: 1.5px dashed #f97316 !important;
@@ -2097,12 +2097,12 @@ body.is-resizing .reservation-resize-handle {
   font-size: 8px !important;
 }
 
-/* --- 鬆大ｼｵ繧後そ繝ｬ繧ｯ繧ｿ繝ｼ繝昴ャ繝励い繝�� --- */
+/* --- 頑張れセレクターポップア� --- */
 .ganbare-selector-popup label:hover {
   background: var(--bg-hover);
 }
 
-/* Gap Help - 髫咎俣驟咲ｽｮ繝悶Ο繝�け�磯ｻ�牡縺ｮ轤ｹ邱壽棧 + 繧ｰ繝ｭ繝ｼ�� */
+/* Gap Help - 隙間配置ブロ�������の点線枠 + グロー */
 .gap-help-block {
   border: 2px dashed #FFD700 !important;
   background-color: rgba(255, 215, 0, 0.15) !important;
@@ -2114,7 +2114,7 @@ body.is-resizing .reservation-resize-handle {
   background: rgba(255, 215, 0, 0.1) !important;
 }
 
-/* 繧ｹ繧ｭ繝槭�繝ｫ繝怜錐縺ｮ谿ｵ�医せ繝ｭ繝�ヨ蜀��壼ｸｸ繧｢繧ｵ繧､繝ｳ蜷阪�荳九↓陦ｨ遉ｺ�� */
+/* スキマ�ルプ名の段�スロ�����常アサイン名�下に表示 */
 .slot-gap-help-text {
   font-size: 8px;
   display: block;
@@ -2127,7 +2127,7 @@ body.is-resizing .reservation-resize-handle {
   line-height: 1.2;
 }
 
-/* 笏笏 繧｢繧ｷ繧ｹ繧ｿ繝ｳ繝磯�鄂ｮOFF縲後∴繧峨＞�√阪ヰ繝�ず 笏笏 */
+/* �� アシスタント�置OFF「えらい���バ��� �� */
 @keyframes eraiBounce {
   0% {
     opacity: 0;
@@ -2146,11 +2146,11 @@ body.is-resizing .reservation-resize-handle {
   }
 }
 
-/* �統 繝｡繝｢繧｢繧､繧ｳ繝ｳ縺ｮ繝吶�繧ｹ繧ｹ繧ｿ繧､繝ｫ */
+/* �� メモアイコンのベ�ススタイル */
 .memo-icon {
   display: inline-block;
   cursor: pointer;
-  font-size: 13px; /* 蟆代＠螟ｧ縺阪ａ縺ｫ */
+  font-size: 13px; /* 少し大きめに */
   margin-right: 4px;
   padding: 2px 4px;
   margin-left: -4px;
@@ -2165,18 +2165,18 @@ body.is-resizing .reservation-resize-handle {
   opacity: 0.8;
 }
 
-/* 繝｡繝｢縺悟�縺｣縺ｦ縺�ｋ譎ゅ�繧ｹ繧ｿ繧､繝ｫ */
+/* メモが�って���時�スタイル */
 .memo-icon.has-memo {
   opacity: 1 !important;
-  font-size: 14px; /* 縺輔ｉ縺ｫ蟆代＠螟ｧ縺阪￥ */
+  font-size: 14px; /* さらに少し大きく */
   animation: memoPulse 1.8s infinite alternate cubic-bezier(0.45, 0.05, 0.55, 0.95);
 }
 
 .memo-icon.has-memo:hover {
-  transform: scale(1.35) rotate(-5deg); /* 繝帙ヰ繝ｼ譎ゅ↓繧医ｊ鬟帙�蜃ｺ繧区─縺倥↓ */
+  transform: scale(1.35) rotate(-5deg); /* ホバー時により飛�出る感じに */
 }
 
-/* 繝｡繝｢繧｢繧､繧ｳ繝ｳ縺ｮ繧｢繝九Γ繝ｼ繧ｷ繝ｧ繝ｳ (鬟帙�蜃ｺ縺ｦ蜈峨ｋ) */
+/* メモアイコンのアニメーション (飛�出て光る) */
 @keyframes memoPulse {
   0% {
     transform: scale(1);
