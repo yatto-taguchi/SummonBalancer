@@ -293,6 +293,33 @@ export function loadMenus() {
         { startMinute: 100, endMinute: 120, requiredSkill: "color", requiredProficiency: 3 },
         { startMinute: 130, endMinute: 150, requiredSkill: "shampoo", requiredProficiency: 3 }
       ]
+    },
+    {
+      id: "inner_color",
+      name: "インナーカラー",
+      shortName: "IH",
+      duration: 180,
+      colorCode: "#ec4899",
+      assistantSlots: [
+        { startMinute: 0, endMinute: 60, requiredSkill: "color", requiredProficiency: 3 },
+        { startMinute: 80, endMinute: 100, requiredSkill: "shampoo", requiredProficiency: 3 },
+        { startMinute: 100, endMinute: 120, requiredSkill: "color", requiredProficiency: 3 },
+        { startMinute: 130, endMinute: 150, requiredSkill: "shampoo", requiredProficiency: 3 }
+      ],
+      stylistSlots: [
+        { startMinute: 0, endMinute: 180, type: "color" }
+      ]
+    },
+    {
+      id: "hair_set",
+      name: "ヘアセット",
+      shortName: "Se",
+      duration: 60,
+      colorCode: "#ea580c",
+      assistantSlots: [],
+      stylistSlots: [
+        { startMinute: 0, endMinute: 60, type: "set" }
+      ]
     }
   ];
 
@@ -315,6 +342,8 @@ export function loadMenus() {
         if (item.id === 'straight_cut') item.shortName = 'STC';
         if (item.id === 'straight_only') item.shortName = 'ST';
         if (item.id === 'head_spa') item.shortName = 'Spa';
+        if (item.id === 'inner_color') item.shortName = 'IH';
+        if (item.id === 'hair_set') item.shortName = 'Se';
       }
       if (item && item.name) {
         if (item.name.includes('カラー') || item.name.includes('ハイライト')) {
@@ -323,6 +352,8 @@ export function loadMenus() {
           item.colorCode = '#f59e0b';
         } else if (item.name.includes('スパ') || item.name.includes('ヘッドスパ')) {
           item.colorCode = '#10b981';
+        } else if (item.name.includes('セット') || item.name.includes('ヘアセット')) {
+          item.colorCode = '#ea580c';
         } else if (item.name.includes('その他')) {
           item.colorCode = '#6b7280';
         }
@@ -341,7 +372,8 @@ export function loadMenus() {
     if (name.includes('トリートメント') || name.includes('スパ') || name.includes('ヘッドスパ')) return 3;
     if (name.includes('パーマ')) return 4;
     if (name.includes('縮毛') || name.includes('ストレート')) return 5;
-    if (name.includes('その他')) return 6;
+    if (name.includes('セット') || name.includes('ヘアセット')) return 6;
+    if (name.includes('その他')) return 7;
     return 99;
   };
 

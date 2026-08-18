@@ -135,16 +135,6 @@
       ]
     },
     {
-      "id": "other",
-      "name": "その他",
-      "shortName": "OTH",
-      "duration": 30,
-      "colorCode": "#6b7280",
-      "assistantSlots": [
-        { "startMinute": 0, "endMinute": 30, "requiredSkill": "shampoo", "requiredProficiency": 3 }
-      ]
-    },
-    {
       "id": "perm_cut",
       "name": "パーマカット",
       "shortName": "PC",
@@ -196,6 +186,43 @@
         { "startMinute": 0,   "endMinute": 60,  "requiredSkill": "straight_1", "requiredProficiency": 3 },
         { "startMinute": 60,  "endMinute": 120, "requiredSkill": "iron",       "requiredProficiency": 3 },
         { "startMinute": 120, "endMinute": 180, "requiredSkill": "straight_2", "requiredProficiency": 3 }
+      ]
+    },
+    {
+      "id": "inner_color",
+      "name": "インナーカラー",
+      "shortName": "IH",
+      "duration": 180,
+      "colorCode": "#ec4899",
+      "assistantSlots": [
+        { "startMinute": 0, "endMinute": 60, "requiredSkill": "color", "requiredProficiency": 3 },
+        { "startMinute": 80, "endMinute": 100, "requiredSkill": "shampoo", "requiredProficiency": 3 },
+        { "startMinute": 100, "endMinute": 120, "requiredSkill": "color", "requiredProficiency": 3 },
+        { "startMinute": 130, "endMinute": 150, "requiredSkill": "shampoo", "requiredProficiency": 3 }
+      ],
+      "stylistSlots": [
+        { "startMinute": 0, "endMinute": 180, "type": "color" }
+      ]
+    },
+    {
+      "id": "hair_set",
+      "name": "ヘアセット",
+      "shortName": "Se",
+      "duration": 60,
+      "colorCode": "#ea580c",
+      "assistantSlots": [],
+      "stylistSlots": [
+        { "startMinute": 0, "endMinute": 60, "type": "set" }
+      ]
+    },
+    {
+      "id": "other",
+      "name": "その他",
+      "shortName": "OTH",
+      "duration": 30,
+      "colorCode": "#6b7280",
+      "assistantSlots": [
+        { "startMinute": 0, "endMinute": 30, "requiredSkill": "shampoo", "requiredProficiency": 3 }
       ]
     }
   ]

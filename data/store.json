@@ -401,6 +401,61 @@
       "colorCode": "#10b981"
     },
     {
+      "id": "inner_color",
+      "name": "インナーカラー",
+      "shortName": "IH",
+      "duration": 180,
+      "assistantSlots": [
+        {
+          "startMinute": 0,
+          "endMinute": 60,
+          "requiredSkill": "color",
+          "requiredProficiency": 3
+        },
+        {
+          "startMinute": 80,
+          "endMinute": 100,
+          "requiredSkill": "shampoo",
+          "requiredProficiency": 3
+        },
+        {
+          "startMinute": 100,
+          "endMinute": 120,
+          "requiredSkill": "color",
+          "requiredProficiency": 3
+        },
+        {
+          "startMinute": 130,
+          "endMinute": 150,
+          "requiredSkill": "shampoo",
+          "requiredProficiency": 3
+        }
+      ],
+      "stylistSlots": [
+        {
+          "startMinute": 0,
+          "endMinute": 180,
+          "type": "color"
+        }
+      ],
+      "colorCode": "#ec4899"
+    },
+    {
+      "id": "hair_set",
+      "name": "ヘアセット",
+      "shortName": "Se",
+      "duration": 60,
+      "assistantSlots": [],
+      "stylistSlots": [
+        {
+          "startMinute": 0,
+          "endMinute": 60,
+          "type": "set"
+        }
+      ],
+      "colorCode": "#ea580c"
+    },
+    {
       "id": "other",
       "name": "その他",
       "shortName": "OTH",
