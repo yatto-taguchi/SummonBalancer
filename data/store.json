@@ -473,16 +473,16 @@
   ],
   "sb_stylists": [
     {
-      "id": "stylist_1784677557052_zojf98",
-      "name": "田口　隼人",
-      "nickname": "Boss",
+      "id": "stylist_1784677572837_trrikn",
+      "name": "山崎　美佳",
+      "nickname": "みか",
       "type": "stylist",
-      "rank": "owner",
+      "rank": "stylist",
       "isWorking": true,
       "canDoubleBook": true,
-      "prioritySummon": true,
+      "prioritySummon": false,
       "workStartTime": "09:00",
-      "workEndTime": "19:00",
+      "workEndTime": "17:00",
       "skills": [],
       "joinDate": null,
       "breaks": {
@@ -499,16 +499,16 @@
       "workdays": []
     },
     {
-      "id": "stylist_1784677572837_trrikn",
-      "name": "山崎　美佳",
-      "nickname": "みか",
+      "id": "stylist_1784677557052_zojf98",
+      "name": "田口　隼人",
+      "nickname": "Boss",
       "type": "stylist",
-      "rank": "stylist",
+      "rank": "owner",
       "isWorking": true,
       "canDoubleBook": true,
-      "prioritySummon": false,
+      "prioritySummon": true,
       "workStartTime": "09:00",
-      "workEndTime": "17:00",
+      "workEndTime": "19:00",
       "skills": [],
       "joinDate": null,
       "breaks": {
@@ -1010,9 +1010,12 @@
       "assignedAssistants": {},
       "menuVariant": "",
       "fixedAssistants": {},
-      "nonOverlapSummonEnabled": true,
+      "ganbare": {},
       "slotTimeOverrides": {},
-      "items": null
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1784677790776_t1ccd9",
@@ -1023,9 +1026,12 @@
       "assignedAssistants": {},
       "menuVariant": "",
       "fixedAssistants": {},
-      "nonOverlapSummonEnabled": true,
+      "ganbare": {},
       "slotTimeOverrides": {},
-      "items": null
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1784677793846_igwsr5",
@@ -1036,9 +1042,12 @@
       "assignedAssistants": {},
       "menuVariant": "",
       "fixedAssistants": {},
-      "nonOverlapSummonEnabled": true,
+      "ganbare": {},
       "slotTimeOverrides": {},
-      "items": null
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1784677795518_0srn59",
@@ -1049,22 +1058,28 @@
       "assignedAssistants": {},
       "menuVariant": "",
       "fixedAssistants": {},
-      "nonOverlapSummonEnabled": true,
+      "ganbare": {},
       "slotTimeOverrides": {},
-      "items": null
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1784677797154_fwzhwg",
-      "menuItemId": "cut_color_color_first",
+      "menuItemId": "cut_color_cut_first",
       "stylistId": "stylist_1784677557052_zojf98",
       "startTime": 180,
       "endTime": 300,
       "assignedAssistants": {},
       "menuVariant": "",
       "fixedAssistants": {},
-      "nonOverlapSummonEnabled": true,
+      "ganbare": {},
       "slotTimeOverrides": {},
-      "items": null
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": true,
+      "memo": ""
     },
     {
       "id": "res_1784677798582_tdskkx",
@@ -1075,9 +1090,12 @@
       "assignedAssistants": {},
       "menuVariant": "",
       "fixedAssistants": {},
-      "nonOverlapSummonEnabled": true,
+      "ganbare": {},
       "slotTimeOverrides": {},
-      "items": null
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1784677800120_454wam",
@@ -1088,9 +1106,12 @@
       "assignedAssistants": {},
       "menuVariant": "",
       "fixedAssistants": {},
-      "nonOverlapSummonEnabled": true,
+      "ganbare": {},
       "slotTimeOverrides": {},
-      "items": null
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1784677802134_6dm19t",
@@ -1103,9 +1124,12 @@
       "fixedAssistants": {
         "1": "__none__"
       },
-      "nonOverlapSummonEnabled": true,
+      "ganbare": {},
       "slotTimeOverrides": {},
-      "items": null
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1784677804352_kb1zly",
@@ -1116,9 +1140,12 @@
       "assignedAssistants": {},
       "menuVariant": "",
       "fixedAssistants": {},
-      "nonOverlapSummonEnabled": true,
+      "ganbare": {},
       "slotTimeOverrides": {},
-      "items": null
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1784677806830_6cipnz",
@@ -1129,22 +1156,28 @@
       "assignedAssistants": {},
       "menuVariant": "",
       "fixedAssistants": {},
-      "nonOverlapSummonEnabled": true,
+      "ganbare": {},
       "slotTimeOverrides": {},
-      "items": null
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1784677808744_j2qqc6",
-      "menuItemId": "cut_color_color_first",
+      "menuItemId": "cut_color_cut_first",
       "stylistId": "stylist_1784677557052_zojf98",
       "startTime": 480,
       "endTime": 600,
       "assignedAssistants": {},
       "menuVariant": "",
       "fixedAssistants": {},
-      "nonOverlapSummonEnabled": true,
+      "ganbare": {},
       "slotTimeOverrides": {},
-      "items": null
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": true,
+      "memo": ""
     },
     {
       "id": "res_1784677967255_7a97aa",
@@ -1155,9 +1188,12 @@
       "assignedAssistants": {},
       "menuVariant": "",
       "fixedAssistants": {},
-      "nonOverlapSummonEnabled": true,
+      "ganbare": {},
       "slotTimeOverrides": {},
-      "items": null
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1784677976639_9tikyh",
@@ -1168,9 +1204,12 @@
       "assignedAssistants": {},
       "menuVariant": "",
       "fixedAssistants": {},
-      "nonOverlapSummonEnabled": true,
+      "ganbare": {},
       "slotTimeOverrides": {},
-      "items": null
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1784677979351_enxh66",
@@ -1181,9 +1220,12 @@
       "assignedAssistants": {},
       "menuVariant": "",
       "fixedAssistants": {},
-      "nonOverlapSummonEnabled": true,
+      "ganbare": {},
       "slotTimeOverrides": {},
-      "items": null
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1784681733574_2gmd7p",
@@ -1194,9 +1236,12 @@
       "assignedAssistants": {},
       "menuVariant": "",
       "fixedAssistants": {},
-      "nonOverlapSummonEnabled": true,
+      "ganbare": {},
       "slotTimeOverrides": {},
-      "items": null
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1784681738461_4s8sg4",
@@ -1207,9 +1252,12 @@
       "assignedAssistants": {},
       "menuVariant": "",
       "fixedAssistants": {},
-      "nonOverlapSummonEnabled": true,
+      "ganbare": {},
       "slotTimeOverrides": {},
-      "items": null
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1784681744965_gkr1lx",
@@ -1220,9 +1268,12 @@
       "assignedAssistants": {},
       "menuVariant": "",
       "fixedAssistants": {},
-      "nonOverlapSummonEnabled": true,
+      "ganbare": {},
       "slotTimeOverrides": {},
-      "items": null
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1784685019494_gztjct",
@@ -1233,9 +1284,12 @@
       "assignedAssistants": {},
       "menuVariant": "",
       "fixedAssistants": {},
-      "nonOverlapSummonEnabled": true,
+      "ganbare": {},
       "slotTimeOverrides": {},
-      "items": null
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1784685027765_q72hnz",
@@ -1248,9 +1302,12 @@
       "fixedAssistants": {
         "0": "__none__"
       },
-      "nonOverlapSummonEnabled": true,
+      "ganbare": {},
       "slotTimeOverrides": {},
-      "items": null
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1784708714808_7j1mu8",
@@ -1261,9 +1318,12 @@
       "assignedAssistants": {},
       "menuVariant": "",
       "fixedAssistants": {},
-      "nonOverlapSummonEnabled": true,
+      "ganbare": {},
       "slotTimeOverrides": {},
-      "items": null
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1784708781354_a259hi",
@@ -1274,9 +1334,12 @@
       "assignedAssistants": {},
       "menuVariant": "",
       "fixedAssistants": {},
-      "nonOverlapSummonEnabled": true,
+      "ganbare": {},
       "slotTimeOverrides": {},
-      "items": null
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1784712824112_1k0tdf",
@@ -1287,9 +1350,12 @@
       "assignedAssistants": {},
       "menuVariant": "",
       "fixedAssistants": {},
-      "nonOverlapSummonEnabled": true,
+      "ganbare": {},
       "slotTimeOverrides": {},
-      "items": null
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
     },
     {
       "id": "res_1784712831714_rtff3o",
@@ -1300,9 +1366,12 @@
       "assignedAssistants": {},
       "menuVariant": "",
       "fixedAssistants": {},
-      "nonOverlapSummonEnabled": true,
+      "ganbare": {},
       "slotTimeOverrides": {},
-      "items": null
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
     }
   ],
   "sb_reservations_2026-07-25": [
@@ -5686,5 +5755,7 @@
       "menuVariant": null
     }
   ],
-  "sb_blocked_times_2026-08-18": []
+  "sb_blocked_times_2026-08-18": [],
+  "sb_reservations_2026-08-20": [],
+  "sb_free_time_selections_2026-08-20": {}
 }

@@ -210,8 +210,14 @@ export function executeFreeTimeAllocation(state) {
   if (allStaff.length === 0) return nextState;
 
   // フリーズ境界（当日の過去時間は活動を配置しない）
-  const freezeTick = (nextState.freezeBoundary !== null && nextState.freezeBoundary !== undefined)
+  // rawFreezeTick: 5分Tick精度（お昼・休憩の自動配置に使用）
+  const rawFreezeTick = (nextState.freezeBoundary !== null && nextState.freezeBoundary !== undefined)
     ? Math.floor(nextState.freezeBoundary / 5)
+    : -1;
+  // freezeTick: 空き時間ブロック単位（30分=6Tick）でFloor
+  // → 5分Tick毎のフリーズ境界移動によるブロック消失・点滅を防止
+  const freezeTick = rawFreezeTick >= 0
+    ? Math.floor(rawFreezeTick / BLOCK_TICKS) * BLOCK_TICKS
     : -1;
 
   // ─── 出力用コレクション（最後にstateへ反映） ───
@@ -234,19 +240,27 @@ export function executeFreeTimeAllocation(state) {
   // これにより後付けマージ（旧セクション8）が不要になり、重複増殖を原理的に排除する。
   const frozenPracticeAssigned = {};  // staffId → boolean（過去に練習済みか）
   const frozenCleaningAssigned = {}; // staffId → boolean（過去に大掃除済みか）
+  const frozenEndTickByStaff = {};   // staffId → number（復元済み活動の最終endTick: 新規計算開始位置の安定化に使用）
 
   if (freezeTick >= 0 && nextState.frozenFreeTimeActivities && nextState.frozenFreeTimeActivities.length > 0) {
     nextState.frozenFreeTimeActivities.forEach(act => {
       const startT = Math.floor(act.startTime / 5);
-      // フリーズ境界以前の活動のみ復元（未来分は新規計算に任せる）
-      if (startT > freezeTick) return;
+      const endT = Math.ceil(act.endTime / 5);
+      // 【改善】ブロック全体がフリーズ境界内に収まっている場合のみ復元
+      // endT > freezeTick + 1 のブロックはフリーズ境界をまたいでいるため除外し、
+      // 新規計算で再生成させる。これにより境界付近のチラつきを防止する。
+      if (endT > freezeTick + 1) return;
 
       // 過去の活動をそのまま復元
       activities.push(act);
 
+      // スタッフごとの復元済み最終endTickを追跡（セクション4での新規計算開始位置に使用）
+      if (!frozenEndTickByStaff[act.staffId] || endT > frozenEndTickByStaff[act.staffId]) {
+        frozenEndTickByStaff[act.staffId] = endT;
+      }
+
       // 占有マップに反映（未来の新規計算時に同じ時間帯を空きと誤認しないように）
       if (staffOccupancies[act.staffId]) {
-        const endT = Math.ceil(act.endTime / 5);
         for (let t = startT; t < endT && t < TOTAL_TICKS; t++) {
           staffOccupancies[act.staffId][t] = true;
         }
@@ -333,7 +347,7 @@ export function executeFreeTimeAllocation(state) {
   allStaff.forEach(staff => {
     if (allocatedLunch[staff.id]) return; // 手動配置済み
 
-    const effectiveStart = Math.max(LUNCH_EARLIEST_TICK, freezeTick + 1);
+    const effectiveStart = Math.max(LUNCH_EARLIEST_TICK, rawFreezeTick + 1);
     const bestTick = findBestWindow(
       staffOccupancies[staff.id],
       effectiveStart,
@@ -378,7 +392,7 @@ export function executeFreeTimeAllocation(state) {
     if (!allocatedLunch[staff.id] || allocatedRest[staff.id]) return;
 
     const lunchEnd = allocatedLunch[staff.id].endTick;
-    const minRestStart = Math.max(lunchEnd + REST_GAP_TICKS, freezeTick + 1);
+    const minRestStart = Math.max(lunchEnd + REST_GAP_TICKS, rawFreezeTick + 1);
     const bestTick = findBestWindow(
       staffOccupancies[staff.id],
       minRestStart,
@@ -404,7 +418,11 @@ export function executeFreeTimeAllocation(state) {
     let cleaningAssigned = !!frozenCleaningAssigned[staff.id]; // 過去に大掃除済みならtrue
     const occupied = staffOccupancies[staff.id];
 
-    let t = Math.max(0, freezeTick + 1);
+    // 【改善】新規計算の開始位置を安定化:
+    // 復元済み活動の最終endTick（あれば）とfreezeTick+1の大きい方から開始し、
+    // 復元と新規計算の間にギャップ（空白）が生じないようにする。
+    const frozenEnd = frozenEndTickByStaff[staff.id] || 0;
+    let t = Math.max(0, freezeTick + 1, frozenEnd);
     while (t <= TOTAL_TICKS - BLOCK_TICKS) {
       // 連続6Tickの空きを探す
       let blockFree = true;

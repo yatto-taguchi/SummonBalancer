@@ -100,10 +100,21 @@ export class SummonEngine {
       // 例: 12:32 (212分) -> 12:30 (210分) にFloorでスナップ
       freezeBoundary = Math.floor(options.currentTime / 5) * 5;
     }
-    // === 日付変更時の防御: 当日以外を表示した場合、メモリ上のキャッシュをクリア ===
-    // 過去・未来の日付を表示した後に当日に戻った時、古いキャッシュが混入しないよう初期化する
+    // === 日付変更時の完全パージ: メモリ + localStorage の両方をクリア ===
+    // 過去・未来の日付を表示した後に当日に戻った時、古いキャッシュが混入しないよう完全初期化する
     if (!options.isToday) {
       this.previousState = null;
+      // localStorage上のエンジンキャッシュも削除（ページリロード後の復元を防止）
+      try {
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith(PREV_STATE_KEY_PREFIX)) {
+            keysToRemove.push(k);
+          }
+        }
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+      } catch (e) { /* localStorage アクセス不可時は無視 */ }
     }
     state.freezeBoundary = freezeBoundary;
 
