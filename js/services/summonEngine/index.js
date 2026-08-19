@@ -100,6 +100,11 @@ export class SummonEngine {
       // 例: 12:32 (212分) -> 12:30 (210分) にFloorでスナップ
       freezeBoundary = Math.floor(options.currentTime / 5) * 5;
     }
+    // === 日付変更時の防御: 当日以外を表示した場合、メモリ上のキャッシュをクリア ===
+    // 過去・未来の日付を表示した後に当日に戻った時、古いキャッシュが混入しないよう初期化する
+    if (!options.isToday) {
+      this.previousState = null;
+    }
     state.freezeBoundary = freezeBoundary;
 
     // === 過去の時間の「フリーズ（完全復元）」処理 ===
@@ -135,15 +140,52 @@ export class SummonEngine {
         }
       }
       // フリーズ済みアラート・スタイリスト召喚・マンセル記録も引き継ぐ
-      if (this.previousState.alerts) {
-        state.alerts = JSON.parse(JSON.stringify(this.previousState.alerts));
-      }
-      if (this.previousState.stylistSummons) {
-        state.stylistSummons = JSON.parse(JSON.stringify(this.previousState.stylistSummons));
-      }
+      // 【重要】未来のデータは予約状況が変わっている可能性があるため、
+      //         freezeBoundary 以前（過去〜現在進行中）のみに厳格にフィルタリングし、
+      //         未来分はパイプラインでゼロベース再計算させる。
+      //         これにより予約削除・移動後のゴースト残留を完全に防止する。
+
+      // --- manncellTicks: timeStr フィールドで過去分のみ復元 ---
       if (this.previousState.manncellTicks) {
-        state.manncellTicks = JSON.parse(JSON.stringify(this.previousState.manncellTicks));
+        state.manncellTicks = JSON.parse(JSON.stringify(
+          this.previousState.manncellTicks.filter(tick => {
+            const [h, m] = tick.timeStr.split(':').map(Number);
+            const tickMins = (h - 9) * 60 + m;
+            return tickMins <= freezeBoundary;
+          })
+        ));
       }
+
+      // --- alerts: timeStr フィールドで過去分のみ復元 ---
+      //     （UIアダプター層 L206 でリセットされるが、多層防御として過去分のみに制限）
+      if (this.previousState.alerts) {
+        const filteredAlerts = this.previousState.alerts.filter(alert => {
+          // alerts に timeStr がある場合はフィルタリング、ない場合は全通過
+          if (alert.timeStr) {
+            const [h, m] = alert.timeStr.split(':').map(Number);
+            const tickMins = (h - 9) * 60 + m;
+            return tickMins <= freezeBoundary;
+          }
+          return true; // timeStr がない形式のアラートはそのまま引き継ぐ
+        });
+        state.alerts = JSON.parse(JSON.stringify(filteredAlerts));
+      }
+
+      // --- stylistSummons: startTime フィールドで過去分のみ復元 ---
+      if (this.previousState.stylistSummons) {
+        state.stylistSummons = JSON.parse(JSON.stringify(
+          this.previousState.stylistSummons.filter(summon => {
+            const [h, m] = summon.startTime.split(':').map(Number);
+            const startMins = (h - 9) * 60 + m;
+            return startMins <= freezeBoundary;
+          })
+        ));
+      }
+
+      // --- ongoingTasks / lockedUnassignedTasks ---
+      //     キーが reservationId_slotIndex 形式で時間情報を持たないが、
+      //     パイプラインの各Phase が未来Tickで正しく再計算するため全復元でOK。
+      //     フリーズ境界付近のアサイン継続性を維持する目的で引き継ぐ。
       if (this.previousState.ongoingTasks) {
         state.ongoingTasks = JSON.parse(JSON.stringify(this.previousState.ongoingTasks));
       }
@@ -688,7 +730,17 @@ export class SummonEngine {
         }
       });
     }
-    state.manncells = manncells;
+    // === 【多層防御フェイルセーフ】実在予約バリデーション ===
+    // マンセルブロックの reservationIds が現在の予約リストに1件も存在しない場合は除外。
+    // フリーズ復元フィルタリングで本来防止されるが、二重安全策として実施。
+    const currentReservationIds = new Set((reservations || []).map(r => r.id));
+    state.manncells = manncells.filter(block => {
+      if (!block.reservationIds || block.reservationIds.length === 0) {
+        return true; // reservationIds が無いブロックはそのまま通過
+      }
+      // reservationIds のうち1件でも現在の予約に存在すれば有効
+      return block.reservationIds.some(id => currentReservationIds.has(id));
+    });
 
     // === 【修正B】UIアダプター層：不在ブロックとの重複フィルタリング（最終防御壁） ===
     // エンジン層で防御済みのはずだが、UIに渡す最終データとして不在ブロック時間と
