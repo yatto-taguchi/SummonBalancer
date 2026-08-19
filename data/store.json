@@ -5595,5 +5595,95 @@
   ],
   "sb_reservations_2026-08-19": [],
   "sb_free_time_selections_2026-08-19": {},
-  "sb_free_time_selections_2026-08-18": {}
+  "sb_free_time_selections_2026-08-18": {},
+  "sb_reservations_2026-08-16": [
+    {
+      "id": "res_1787116847836_l6z6nt",
+      "menuItemId": "cut_color_color_first",
+      "stylistId": "stylist_1784677557052_zojf98",
+      "startTime": 30,
+      "endTime": 190,
+      "assignedAssistants": {},
+      "menuVariant": "",
+      "fixedAssistants": {},
+      "ganbare": {},
+      "slotTimeOverrides": {},
+      "items": [
+        {
+          "menuItemId": "cut_color_color_first",
+          "duration": 120
+        },
+        {
+          "menuItemId": "cut_only",
+          "duration": 60
+        }
+      ],
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
+    },
+    {
+      "id": "res_1787116857876_fgumo0",
+      "menuItemId": "double_color",
+      "stylistId": "stylist_1784677572837_trrikn",
+      "startTime": 60,
+      "endTime": 320,
+      "assignedAssistants": {},
+      "menuVariant": "",
+      "fixedAssistants": {},
+      "ganbare": {},
+      "slotTimeOverrides": {},
+      "items": [
+        {
+          "menuItemId": "double_color",
+          "duration": 180
+        },
+        {
+          "menuItemId": "cut_only",
+          "duration": 60
+        },
+        {
+          "menuItemId": "cut_only",
+          "duration": 60
+        }
+      ],
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
+    },
+    {
+      "id": "res_1787116928492_tafcd1",
+      "menuItemId": "color_only",
+      "stylistId": "stylist_1784677588932_mw5vv7",
+      "startTime": 60,
+      "endTime": 180,
+      "assignedAssistants": {},
+      "menuVariant": "",
+      "fixedAssistants": {},
+      "ganbare": {},
+      "slotTimeOverrides": {},
+      "items": [
+        {
+          "menuItemId": "cut_only",
+          "duration": 60
+        },
+        {
+          "menuItemId": "color_only",
+          "duration": 90
+        }
+      ],
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
+    },
+    {
+      "id": "res_1787116952968_qsfafm",
+      "menuItemId": "double_color",
+      "stylistId": "stylist_1784677588932_mw5vv7",
+      "startTime": 210,
+      "endTime": 390,
+      "assignedAssistants": {},
+      "menuVariant": null
+    }
+  ]
 }

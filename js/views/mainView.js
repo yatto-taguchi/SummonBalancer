@@ -3878,10 +3878,21 @@ export class MainView {
     } else {
       items.push(newItem);
     }
-    // 前につなげた場合も後ろにつなげた場合も、startTimeは固定してendTimeを延ばす
-    targetRes.endTime = targetRes.endTime + newMenu.duration;
 
     targetRes.items = items;
+
+    // スロット構成が変化するため、誤アサイン防止のために固定設定とアサインを安全にリセット
+    targetRes.fixedAssistants = {};
+    targetRes.assignedAssistants = {};
+
+    // 結合後の実効メニュー(EffectiveMenu)から正確な duration を計算して endTime を設定
+    const effectiveMenu = Reservation.getEffectiveMenu(targetRes, menus);
+    if (effectiveMenu && typeof effectiveMenu.duration === 'number') {
+      targetRes.endTime = targetRes.startTime + effectiveMenu.duration;
+    } else {
+      // フォールバック: 前につなげた場合も後ろにつなげた場合も、startTimeは固定してendTimeを延ばす
+      targetRes.endTime = targetRes.endTime + newMenu.duration;
+    }
 
     Storage.saveReservation(dateStr, targetRes);
     this._runSummon();

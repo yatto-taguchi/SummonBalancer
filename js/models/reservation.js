@@ -286,39 +286,144 @@ export class Reservation {
       return baseMenu; // 結合されていない場合はベースをそのまま返す
     }
 
-    // 合成用の新しいメニューオブジェクトを作成
-    const effectiveMenu = JSON.parse(JSON.stringify(baseMenu));
-    
-    // 名前は結合されたすべてのメニュー名を繋げる
-    effectiveMenu.name = resData.items.map(item => {
+    const items = resData.items;
+    const combinedName = items.map(item => {
       const m = allMenus.find(x => x.id === item.menuItemId);
       return m ? m.name : '不明';
     }).join(' + ');
-    
-    // 合成するスロットを空にしてから、順番に詰め直す
+
+    // =========================================================
+    // Step 1: 既存の標準マスターメニューへの直接マッピング（正規化）
+    // =========================================================
+    if (items.length === 2) {
+      const id0 = items[0].menuItemId;
+      const id1 = items[1].menuItemId;
+      const isCut0 = (id0 === 'cut_only' || id0 === 'cut_only_mens');
+      const isCut1 = (id1 === 'cut_only' || id1 === 'cut_only_mens');
+
+      // 1. カラー ＋ カット (先カラー)
+      if (id0 === 'color_only' && isCut1) {
+        const target = allMenus.find(m => m.id === 'cut_color_color_first');
+        if (target) {
+          const eff = JSON.parse(JSON.stringify(target));
+          eff.name = combinedName;
+          return eff;
+        }
+      }
+
+      // 2. カット ＋ カラー (先カット)
+      if (isCut0 && id1 === 'color_only') {
+        const target = allMenus.find(m => m.id === 'cut_color_cut_first');
+        if (target) {
+          const eff = JSON.parse(JSON.stringify(target));
+          eff.name = combinedName;
+          return eff;
+        }
+      }
+
+      // 3. パーマ ＋ カット (パーマカット PC)
+      if ((id0 === 'perm_only' && isCut1) || (isCut0 && id1 === 'perm_only')) {
+        const target = allMenus.find(m => m.id === 'perm_cut');
+        if (target) {
+          const eff = JSON.parse(JSON.stringify(target));
+          eff.name = combinedName;
+          return eff;
+        }
+      }
+
+      // 4. 縮毛矯正 ＋ カット (縮毛矯正カット STC)
+      if ((id0 === 'straight_only' && isCut1) || (isCut0 && id1 === 'straight_only')) {
+        const target = allMenus.find(m => m.id === 'straight_cut');
+        if (target) {
+          const eff = JSON.parse(JSON.stringify(target));
+          eff.name = combinedName;
+          return eff;
+        }
+      }
+    }
+
+    // =========================================================
+    // Step 2: 動的重複排除＆インテリジェント・スロットマージ
+    // =========================================================
+    const effectiveMenu = JSON.parse(JSON.stringify(baseMenu));
+    effectiveMenu.name = combinedName;
     effectiveMenu.assistantSlots = [];
+    effectiveMenu.stylistSlots = [];
     effectiveMenu.duration = 0;
 
     let currentOffset = 0;
+    let prevLastSkill = null; // 直前スロットのスキル種別
 
-    resData.items.forEach(item => {
+    items.forEach((item, itemIdx) => {
       const menuDef = allMenus.find(m => m.id === item.menuItemId);
       if (!menuDef) return;
 
-      if (menuDef.assistantSlots && menuDef.assistantSlots.length > 0) {
-        menuDef.assistantSlots.forEach(slot => {
-          effectiveMenu.assistantSlots.push({
-            ...slot,
-            startMinute: slot.startMinute + currentOffset,
-            endMinute: slot.endMinute + currentOffset
-          });
-        });
+      const itemSlots = (menuDef.assistantSlots || []).map(s => ({ ...s }));
+      const itemStylistSlots = (menuDef.stylistSlots || []).map(s => ({ ...s }));
+      let itemDuration = item.duration || menuDef.duration || 30;
+
+      // 直前がシャンプー系で終わっており、かつ今回がトリートメントまたはヘッドスパの場合
+      // 直前のシャンプーをトリートメント/スパに置換・昇格（統合）
+      if (prevLastSkill === 'shampoo' && (item.menuItemId === 'treatment' || item.menuItemId === 'head_spa')) {
+        const targetSkill = item.menuItemId === 'treatment' ? 'treatment' : 'spa';
+        if (effectiveMenu.assistantSlots.length > 0) {
+          const lastSlot = effectiveMenu.assistantSlots[effectiveMenu.assistantSlots.length - 1];
+          if (lastSlot.requiredSkill === 'shampoo') {
+            lastSlot.requiredSkill = targetSkill;
+            prevLastSkill = targetSkill;
+            return; // 別枠としては追加せず、既存シャンプーを昇格させて終了
+          }
+        }
       }
 
-      // 次のメニューの開始位置（オフセット）をこのメニューの所要時間分進める
-      currentOffset += item.duration;
-      effectiveMenu.duration += item.duration;
+      // 直前がシャンプー系で終わっており、今回のメニューの先頭がシャンプー（カット前シャンプー等）の場合
+      // 先頭の重複シャンプーをスキップし、スロット時間を前倒し
+      let skipFirstShampooOffset = 0;
+      if (prevLastSkill === 'shampoo' && itemSlots.length > 0 && itemSlots[0].startMinute === 0 && itemSlots[0].requiredSkill === 'shampoo') {
+        const skippedSlot = itemSlots.shift(); // 先頭シャンプーを除去
+        skipFirstShampooOffset = skippedSlot.endMinute - skippedSlot.startMinute;
+        // 先頭シャンプーがなくなった分、後続スロット・スタイリスト枠の開始時間を前倒し
+        itemSlots.forEach(s => {
+          s.startMinute = Math.max(0, s.startMinute - skipFirstShampooOffset);
+          s.endMinute = Math.max(0, s.endMinute - skipFirstShampooOffset);
+        });
+        itemStylistSlots.forEach(s => {
+          s.startMinute = Math.max(0, s.startMinute - skipFirstShampooOffset);
+          s.endMinute = Math.max(0, s.endMinute - skipFirstShampooOffset);
+        });
+        itemDuration = Math.max(30, itemDuration - skipFirstShampooOffset);
+      }
+
+      // スロットを offset を加えて追加（5分刻みに丸める）
+      itemSlots.forEach(slot => {
+        const start = Math.round((slot.startMinute + currentOffset) / 5) * 5;
+        const end = Math.round((slot.endMinute + currentOffset) / 5) * 5;
+        effectiveMenu.assistantSlots.push({
+          ...slot,
+          startMinute: start,
+          endMinute: end
+        });
+        prevLastSkill = slot.requiredSkill;
+      });
+
+      itemStylistSlots.forEach(slot => {
+        const start = Math.round((slot.startMinute + currentOffset) / 5) * 5;
+        const end = Math.round((slot.endMinute + currentOffset) / 5) * 5;
+        effectiveMenu.stylistSlots.push({
+          ...slot,
+          startMinute: start,
+          endMinute: end
+        });
+      });
+
+      // 次のアイテムへのオフセット加算
+      const roundedDuration = Math.round(itemDuration / 5) * 5;
+      currentOffset += roundedDuration;
+      effectiveMenu.duration += roundedDuration;
     });
+
+    // 5分Tick正規化
+    effectiveMenu.duration = Math.max(30, Math.round(effectiveMenu.duration / 5) * 5);
 
     return effectiveMenu;
   }

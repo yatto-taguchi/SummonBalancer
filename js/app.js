@@ -9,7 +9,7 @@
  */
 
 import { initializeDefaults, importMenusFromDefaults, initFromServer, startPolling } from './services/storage.js';
-import { MainView } from './views/mainView.js?v=104';
+import { MainView } from './views/mainView.js?v=105';
 import { StaffSettingsView } from './views/staffSettings.js?v=3';
 import { MenuSettingsView } from './views/menuSettings.js';
 import { HelpModal } from './components/helpModal.js';
