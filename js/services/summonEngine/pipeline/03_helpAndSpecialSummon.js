@@ -1,5 +1,6 @@
 import { hasSkill } from '../utils/skillUtils.js?v=3';
 import { isStaffBlocked, isStaffWorkingAtTime } from '../utils/timeUtils.js?v=3';
+import { getRankPriority } from '../../../models/staff.js?v=3';
 
 /**
  * Phase 3: 空きスタイリスト召喚＆特殊召喚（お昼・休憩交代）
@@ -106,17 +107,22 @@ export const summonStylistAndSpecial = (timeSlotState, master, tracker, ongoingT
     // ソフトロック（継続性）のための直前担当者を取得
     const ongoingAssistantId = currentOngoingTasks[taskKey] || null;
 
-    // 候補者のソート：継続性を最優先（ソフトロック）し、次に疲労度（アサイン済み枠数）が低い順にソート
+    // 候補者のソート：継続性→疲労度→リスト下位優先
+    const staffIndexMap = master.staffIndexMap || {};
     candidates.sort((a, b) => {
-      // 1. 交代可能・不可に関わらず、直前のTickでアサインされている人を最優先（細切れ防止）
+      // 1. 継続性（直前Tickの担当者を最優先・細切れ防止）
       if (ongoingAssistantId) {
         if (a.id === ongoingAssistantId) return -1;
         if (b.id === ongoingAssistantId) return 1;
       }
-      // 2. それ以外は疲労度が低い順にソート
+      // 2. 疲労度が低い順
       const loadA = currentTracker[a.id]?.totalAssignedSlots || 0;
       const loadB = currentTracker[b.id]?.totalAssignedSlots || 0;
-      return loadA - loadB;
+      if (loadA !== loadB) return loadA - loadB;
+      // 3. UI表示リストの下から（配列インデックス降順）
+      const idxA = staffIndexMap[a.id] ?? 0;
+      const idxB = staffIndexMap[b.id] ?? 0;
+      return idxB - idxA;
     });
 
     if (candidates.length > 0) {
@@ -225,17 +231,30 @@ export const summonStylistAndSpecial = (timeSlotState, master, tracker, ongoingT
     // ソフトロック（継続性）のための直前担当者を取得
     const ongoingAssistantId = currentOngoingTasks[taskKey] || null;
 
-    // 候補者のソート：継続性を最優先（ソフトロック）し、次に疲労度（アサイン済み枠数）が低い順にソート
+    // 候補者のソート：継続性→疲労度→ランク逆順→優先トグル→リスト下位優先
+    const stylistIndexMap = master.staffIndexMap || {};
     candidates.sort((a, b) => {
-      // 1. 交代可能・不可に関わらず、直前のTickでアサインされている人を最優先（細切れ防止）
+      // 1. 継続性（直前Tickの担当者を最優先・細切れ防止）
       if (ongoingAssistantId) {
         if (a.id === ongoingAssistantId) return -1;
         if (b.id === ongoingAssistantId) return 1;
       }
-      // 2. それ以外は疲労度（アサイン済み枠数）が低い順にソート
+      // 2. 疲労度が低い順
       const loadA = currentTracker[a.id]?.totalAssignedSlots || 0;
       const loadB = currentTracker[b.id]?.totalAssignedSlots || 0;
-      return loadA - loadB;
+      if (loadA !== loadB) return loadA - loadB;
+      // 3. ランク逆順（junior=4→stylist=3→top_stylist=2→owner=1: 下位ランクを先に拾う）
+      const rankA = getRankPriority(a.rank);
+      const rankB = getRankPriority(b.rank);
+      if (rankA !== rankB) return rankB - rankA;
+      // 4. 優先トグル（OFFを先、ONを後回し）
+      const prioA = a.prioritySummon ? 1 : 0;
+      const prioB = b.prioritySummon ? 1 : 0;
+      if (prioA !== prioB) return prioA - prioB;
+      // 5. UI表示リストの下から（配列インデックス降順）
+      const idxA = stylistIndexMap[a.id] ?? 0;
+      const idxB = stylistIndexMap[b.id] ?? 0;
+      return idxB - idxA;
     });
 
     // 候補者から最適なスタッフを選出（特殊召喚の判定を含む）

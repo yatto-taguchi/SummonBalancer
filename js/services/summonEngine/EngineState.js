@@ -35,7 +35,8 @@ export class EngineState {
         reservations: this.reservations,
         staff: this.staff,
         menus: this.menus,
-        staffMap: initialState.master ? initialState.master.staffMap : {}
+        staffMap: initialState.master ? initialState.master.staffMap : {},
+        staffIndexMap: initialState.master ? initialState.master.staffIndexMap : {}
       };
       this.tracker = initialState.tracker 
         ? JSON.parse(JSON.stringify(initialState.tracker))
@@ -76,10 +77,12 @@ export class EngineState {
         reservations: this.reservations,
         staff: this.staff,
         menus: this.menus,
-        staffMap: {}
+        staffMap: {},
+        staffIndexMap: {}
       };
-      this.staff.forEach(s => {
+      this.staff.forEach((s, idx) => {
         this.master.staffMap[s.id] = s;
+        this.master.staffIndexMap[s.id] = idx;
       });
 
       this.tracker = {};

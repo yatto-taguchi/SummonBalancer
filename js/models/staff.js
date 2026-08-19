@@ -24,6 +24,25 @@ export const RANKS = {
 };
 
 /**
+ * ランクID → 優先度数値マッピング（候補者選出ソート用）
+ * 数値が大きい方が下位ランク（先に拾われる）
+ * @readonly
+ * @type {Record<string, number>}
+ */
+export const RANK_PRIORITY = Object.fromEntries(
+  Object.values(RANKS).map(r => [r.id, r.priority])
+);
+
+/**
+ * ランクIDから優先度数値を取得する（デフォルト: 3 = スタイリスト相当）
+ * @param {string|null} rankId - ランクID
+ * @returns {number} 優先度数値（1=owner, 2=top_stylist, 3=stylist, 4=junior）
+ */
+export function getRankPriority(rankId) {
+  return RANK_PRIORITY[rankId] ?? 3;
+}
+
+/**
  * アシスタントのスキル定義
  * @readonly
  * @enum {{ id: string, label: string }}

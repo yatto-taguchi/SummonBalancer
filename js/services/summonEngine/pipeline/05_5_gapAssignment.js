@@ -1,6 +1,7 @@
 import { hasSkill } from '../utils/skillUtils.js?v=3';
 import { toTimestamp, isStaffBlocked, isStaffWorkingAtTime } from '../utils/timeUtils.js?v=3';
 import { Reservation } from '../../../models/reservation.js?v=3';
+import { getRankPriority } from '../../../models/staff.js?v=3';
 
 /**
  * Phase 5.5: 隙間配置フェーズ (Gap Assignment & SP Special Summon)
@@ -20,6 +21,23 @@ export function executeGapAssignment(state) {
 
   let currentTracker = { ...(nextState.tracker || {}) };
   let currentOngoingTasks = { ...(nextState.ongoingTasks || {}) };
+  const staffIndexMap = nextState.master?.staffIndexMap || {};
+
+  // スタイリスト候補をランク逆順（下位ランクから先に拾う）でソート
+  const sortedStylists = [...stylists].sort((a, b) => {
+    // 1. ランク逆順（junior=4→stylist=3→top_stylist=2→owner=1）
+    const rankA = getRankPriority(a.rank);
+    const rankB = getRankPriority(b.rank);
+    if (rankA !== rankB) return rankB - rankA;
+    // 2. 優先トグル（OFFを先、ONを後回し）
+    const prioA = a.prioritySummon ? 1 : 0;
+    const prioB = b.prioritySummon ? 1 : 0;
+    if (prioA !== prioB) return prioA - prioB;
+    // 3. UI表示リストの下から（配列インデックス降順）
+    const idxA = staffIndexMap[a.id] ?? 0;
+    const idxB = staffIndexMap[b.id] ?? 0;
+    return idxB - idxA;
+  });
 
   // 時間枠をソートして処理 (Tick順)
   const sortedTimes = Object.keys(nextState.timeSlots).sort();
@@ -103,6 +121,15 @@ export function executeGapAssignment(state) {
           .filter(Boolean)
           .filter(a => !isStaffBlocked(a.id, timeStr, currentTracker))
           .filter(a => isStaffWorkingAtTime(a, timeStr));  // 勤務時間外の絶対排除（念押し）
+        // ソート：疲労度→リスト下位優先
+        availableAssistants.sort((a, b) => {
+          const loadA = currentTracker[a.id]?.totalAssignedSlots || 0;
+          const loadB = currentTracker[b.id]?.totalAssignedSlots || 0;
+          if (loadA !== loadB) return loadA - loadB;
+          const idxA = staffIndexMap[a.id] ?? 0;
+          const idxB = staffIndexMap[b.id] ?? 0;
+          return idxB - idxA;
+        });
         for (const a of availableAssistants) {
           // 【厳守事項3】レベル1で判定
           if (hasSkill(a, req.requiredSkill, 1)) {
@@ -116,7 +143,7 @@ export function executeGapAssignment(state) {
     // 【第一段階】玉突きスワップ（アシスタントの放出）
     // （※アシスタントを放出できるスタイリストを探す）
     if (!assignedAssistantId) {
-      for (const s of stylists) {
+      for (const s of sortedStylists) {
         if (s.id === req.stylistId) continue;
         if (busyGapStylists.has(s.id)) continue;
         if (isStaffBlocked(s.id, timeStr, currentTracker)) continue;
@@ -205,7 +232,7 @@ export function executeGapAssignment(state) {
 
     // 【第三段階】それでもダメなら、究極のSP特殊召喚
     if (!assignedAssistantId) {
-      for (const s of stylists) {
+      for (const s of sortedStylists) {
         if (s.id === req.stylistId) continue;
         if (busyGapStylists.has(s.id)) continue;
         if (isStaffBlocked(s.id, timeStr, currentTracker)) continue;

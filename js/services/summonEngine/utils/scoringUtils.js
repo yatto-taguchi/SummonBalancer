@@ -112,6 +112,9 @@ export function compareAssistants(a, b, state, previousAssigneeId = null, curren
     return scoreB - scoreA;
   }
 
-  // 同点の場合はIDで文字列昇順ソートし、完全に決定論的（リロードでブレない）にする
-  return a.id.localeCompare(b.id);
+  // 同点の場合はUI表示リストの下から（配列インデックス降順）で決定論的にソート
+  const staffIndexMap = state.master?.staffIndexMap || {};
+  const idxA = staffIndexMap[a.id] ?? 0;
+  const idxB = staffIndexMap[b.id] ?? 0;
+  return idxB - idxA;
 }

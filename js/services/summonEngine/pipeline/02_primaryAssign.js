@@ -210,7 +210,11 @@ export function executePrimaryAssign(state) {
         const bLevel = getSkillLevel(b, req.requiredSkill);
         if (aLevel !== bLevel) return aLevel - bLevel;
 
-        return a.id.localeCompare(b.id);
+        // 4. UI表示リストの下から（配列インデックス降順）
+        const staffIndexMap = nextState.master?.staffIndexMap || {};
+        const idxA = staffIndexMap[a.id] ?? 0;
+        const idxB = staffIndexMap[b.id] ?? 0;
+        return idxB - idxA;
       });
 
       const selected = candidates[0];

@@ -473,16 +473,16 @@
   ],
   "sb_stylists": [
     {
-      "id": "stylist_1784677572837_trrikn",
-      "name": "山崎　美佳",
-      "nickname": "みか",
+      "id": "stylist_1784677557052_zojf98",
+      "name": "田口　隼人",
+      "nickname": "Boss",
       "type": "stylist",
-      "rank": "stylist",
+      "rank": "owner",
       "isWorking": true,
       "canDoubleBook": true,
-      "prioritySummon": false,
+      "prioritySummon": true,
       "workStartTime": "09:00",
-      "workEndTime": "17:00",
+      "workEndTime": "19:00",
       "skills": [],
       "joinDate": null,
       "breaks": {
@@ -499,16 +499,16 @@
       "workdays": []
     },
     {
-      "id": "stylist_1784677557052_zojf98",
-      "name": "田口　隼人",
-      "nickname": "Boss",
+      "id": "stylist_1784677572837_trrikn",
+      "name": "山崎　美佳",
+      "nickname": "みか",
       "type": "stylist",
-      "rank": "owner",
+      "rank": "stylist",
       "isWorking": true,
       "canDoubleBook": true,
-      "prioritySummon": true,
+      "prioritySummon": false,
       "workStartTime": "09:00",
-      "workEndTime": "19:00",
+      "workEndTime": "17:00",
       "skills": [],
       "joinDate": null,
       "breaks": {
@@ -5756,6 +5756,32 @@
     }
   ],
   "sb_blocked_times_2026-08-18": [],
-  "sb_reservations_2026-08-20": [],
+  "sb_reservations_2026-08-20": [
+    {
+      "id": "res_1787180744672_bbkd7x",
+      "menuItemId": "cut_only",
+      "stylistId": "stylist_1784677557052_zojf98",
+      "startTime": 0,
+      "endTime": 60,
+      "assignedAssistants": {},
+      "menuVariant": "",
+      "fixedAssistants": {},
+      "ganbare": {},
+      "slotTimeOverrides": {},
+      "items": null,
+      "manualVariantSelection": false,
+      "autoSwitchedVariant": false,
+      "memo": ""
+    },
+    {
+      "id": "res_1787180745890_219ify",
+      "menuItemId": "cut_only",
+      "stylistId": "stylist_1784677557052_zojf98",
+      "startTime": 60,
+      "endTime": 120,
+      "assignedAssistants": {},
+      "menuVariant": null
+    }
+  ],
   "sb_free_time_selections_2026-08-20": {}
 }
