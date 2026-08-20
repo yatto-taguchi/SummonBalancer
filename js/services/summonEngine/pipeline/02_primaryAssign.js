@@ -1,5 +1,5 @@
 import { hasSkill } from '../utils/skillUtils.js?v=3';
-import { isStaffFree, toTimestamp, isStaffBlocked, isStaffWorkingAtTime } from '../utils/timeUtils.js?v=3';
+import { isStaffFree, toTimestamp, isStaffBlocked, isStaffInLesson, isStaffWorkingAtTime } from '../utils/timeUtils.js?v=3';
 
 /**
  * 対象スタッフの特定スキルのレベルを取得する
@@ -159,6 +159,7 @@ export function executePrimaryAssign(state) {
         .map(id => assistants.find(a => a.id === id))
         .filter(a => a && hasSkill(a, req.requiredSkill, req.minSkillLevel)
           && !isStaffBlocked(a.id, time, nextState.tracker)
+          && !isStaffInLesson(a.id, time, nextState)
           && isStaffWorkingAtTime(a, time)  // 勤務時間外の絶対排除（念押しチェック）
         );
 

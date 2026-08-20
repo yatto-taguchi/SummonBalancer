@@ -235,6 +235,62 @@ export function executeFreeTimeAllocation(state) {
     baseBusyCounts[staff.id] = occ.reduce((sum, val) => sum + (val ? 1 : 0), 0);
   });
 
+  // ─── 1.2. 水・木レッスン日（lesson_day: 9:00〜10:00）の配置 ───
+  // 対象アシスタント（金〜火で3回未満）に対し、9:00〜10:00（12Tick）をレッスン日として配置
+  // レッスン＝練習済みのため、練習は配置せず大掃除のみレッスン直後の空き枠に配置する
+  const LESSON_TICKS = 12; // 60分 = 12 ticks
+  const lessonCleaningAssigned = {}; // staffId → boolean（セクション1.2で大掃除配置済みか）
+  if (nextState.lessonStaffIds && Array.isArray(nextState.lessonStaffIds)) {
+    allStaff.forEach(staff => {
+      if (nextState.lessonStaffIds.includes(staff.id)) {
+        // 占有マップの0〜11 Tick を占有済みにマーク
+        for (let t = 0; t < LESSON_TICKS && t < TOTAL_TICKS; t++) {
+          if (staffOccupancies[staff.id]) {
+            staffOccupancies[staff.id][t] = true;
+          }
+        }
+        activities.push({
+          staffId: staff.id,
+          startTime: 0,
+          endTime: 60,
+          activity: 'lesson_day'
+        });
+
+        // 🧹 大掃除をレッスン直後（10:00〜）の最初の空き6Tickに配置
+        const occ = staffOccupancies[staff.id];
+        if (occ) {
+          let cleanTick = LESSON_TICKS; // tick 12 = 10:00 から探索開始
+          let cleanPlaced = false;
+          while (cleanTick <= TOTAL_TICKS - BLOCK_TICKS) {
+            let blockFree = true;
+            for (let offset = 0; offset < BLOCK_TICKS; offset++) {
+              if (occ[cleanTick + offset]) {
+                blockFree = false;
+                cleanTick = cleanTick + offset + 1;
+                break;
+              }
+            }
+            if (blockFree) {
+              // 空き枠発見 → 大掃除を配置
+              for (let t = cleanTick; t < cleanTick + BLOCK_TICKS && t < TOTAL_TICKS; t++) {
+                occ[t] = true;
+              }
+              activities.push({
+                staffId: staff.id,
+                startTime: cleanTick * 5,
+                endTime: (cleanTick + BLOCK_TICKS) * 5,
+                activity: 'cleaning'
+              });
+              lessonCleaningAssigned[staff.id] = true;
+              cleanPlaced = true;
+              break;
+            }
+          }
+        }
+      }
+    });
+  }
+
   // ─── 1.5. フリーズ済み過去活動の復元（過去=復元、未来=新規計算の原則） ───
   // フリーズ境界以前の確定済み活動をそのまま復元し、占有マップに反映する。
   // これにより後付けマージ（旧セクション8）が不要になり、重複増殖を原理的に排除する。
@@ -244,6 +300,28 @@ export function executeFreeTimeAllocation(state) {
 
   if (freezeTick >= 0 && nextState.frozenFreeTimeActivities && nextState.frozenFreeTimeActivities.length > 0) {
     nextState.frozenFreeTimeActivities.forEach(act => {
+      // lesson_day はセクション1.2で常に新規生成されるため、フリーズ復元からは除外（重複増殖防止）
+      if (act.activity === 'lesson_day') return;
+
+      // レッスン日スタッフの frozen 活動の制御:
+      // - practice: レッスン＝練習済みのため、時間帯を問わず全スキップ
+      // - cleaning: セクション1.2で正しい位置に配置済みのため全スキップ
+      // - その他（free_time等）: セクション1.2の占有マップと重複するものをスキップ
+      const isLessonStaff = nextState.lessonStaffIds && nextState.lessonStaffIds.includes(act.staffId);
+      if (isLessonStaff) {
+        if (act.activity === 'practice') return;
+        if (act.activity === 'cleaning') return;
+        // セクション1.2で配置したlesson_day/cleaningと時間が重なるfrozen活動をスキップ
+        const occMap = staffOccupancies[act.staffId];
+        if (occMap) {
+          const sT = Math.floor(act.startTime / 5);
+          const eT = Math.ceil(act.endTime / 5);
+          for (let tick = sT; tick < eT && tick < TOTAL_TICKS; tick++) {
+            if (occMap[tick]) return; // 既に占有済み → スキップ
+          }
+        }
+      }
+
       const startT = Math.floor(act.startTime / 5);
       const endT = Math.ceil(act.endTime / 5);
       // 【改善】ブロック全体がフリーズ境界内に収まっている場合のみ復元
@@ -457,8 +535,9 @@ export function executeFreeTimeAllocation(state) {
   // ─── 4. その他の活動アサイン（練習・大掃除・空き時間） ───
   allStaff.forEach(staff => {
     const isOwner = isOwnerStaff(staff);
-    let practiceAssigned = !!frozenPracticeAssigned[staff.id] || !!forcedPracticeAssigned[staff.id]; // 過去または手動で練習済みならtrue
-    let cleaningAssigned = !!frozenCleaningAssigned[staff.id] || !!forcedCleaningAssigned[staff.id]; // 過去または手動で大掃除済みならtrue
+    const isLessonDayStaff = nextState.lessonStaffIds && nextState.lessonStaffIds.includes(staff.id);
+    let practiceAssigned = !!frozenPracticeAssigned[staff.id] || !!forcedPracticeAssigned[staff.id] || isLessonDayStaff; // 過去/手動/レッスン日で練習済みならtrue
+    let cleaningAssigned = !!frozenCleaningAssigned[staff.id] || !!forcedCleaningAssigned[staff.id] || !!lessonCleaningAssigned[staff.id]; // 過去/手動/レッスン日で大掃除済みならtrue
     const occupied = staffOccupancies[staff.id];
 
     // 【改善】新規計算の開始位置を安定化:
@@ -508,6 +587,9 @@ export function executeFreeTimeAllocation(state) {
 
   // ─── 5. UI用バッジフラグの判定 ───
   activities.forEach(act => {
+    // 手動配置（isForced）のブロックは変換不可（ユーザーが明示的に選択した活動のため）
+    if (act.isForced) return;
+
     const lunch = allocatedLunch[act.staffId];
     const rest = allocatedRest[act.staffId];
     const actStartTick = Math.floor(act.startTime / 5);

@@ -1,5 +1,5 @@
 import { hasSkill } from '../utils/skillUtils.js?v=3';
-import { isStaffFree, toTimestamp, formatTime, isStaffBlocked } from '../utils/timeUtils.js?v=3';
+import { isStaffFree, toTimestamp, formatTime, isStaffBlocked, isStaffInLesson } from '../utils/timeUtils.js?v=3';
 import { compareAssistants } from '../utils/scoringUtils.js?v=3';
 
 export function executeFallbackReassign(state) {
@@ -68,6 +68,7 @@ export function executeFallbackReassign(state) {
       // slot.startTime はミリ秒(例: 30600000) なので、60000で割って9時基準の分数(例: 510)に変換する
       const relativeMinutes = Math.floor(slot.startTime / 60000);
       if (isStaffBlocked(a.id, relativeMinutes, nextState.tracker)) return false;
+      if (isStaffInLesson(a.id, relativeMinutes, nextState)) return false;
       // 空き時間チェック
       if (!isStaffFree(a.id, slot.startTime, slot.endTime, nextState.slots, nextState.assignments, nextState.reservations)) return false;
       return true;

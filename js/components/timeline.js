@@ -8,6 +8,7 @@
 
 import { RANKS } from '../models/staff.js';
 import * as Storage from '../services/storage.js?v=12';
+import * as PracticeTracker from '../services/practiceTracker.js?v=2';
 import accordionManager, { SUB_SLOT_COUNT, SUB_SLOT_MINUTES } from './accordionManager.js';
 
 /** セル幅(px) */
@@ -214,6 +215,57 @@ function renderStaffInfoContent(staffInfoEl, staff, rate, stats, type, index, to
     gapSpan.textContent = `隙間時間 ${gapMinutesVal}分`;
     gapSpan.style.cssText = 'color: #94a3b8; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;';
     bottomRow.appendChild(gapSpan);
+
+    // アシスタントの場合は練習進捗（今週X/3回、通算Y回）を表示
+    if (type === 'assistant') {
+      const currentDateStr = (window.mainApp && window.mainApp.currentDate)
+        ? `${window.mainApp.currentDate.getFullYear()}-${String(window.mainApp.currentDate.getMonth() + 1).padStart(2, '0')}-${String(window.mainApp.currentDate.getDate()).padStart(2, '0')}`
+        : `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
+      
+      const pStats = PracticeTracker.getAssistantPracticeStats(staff.id, currentDateStr);
+      const isAchieved = pStats.currentWeekCount >= 3;
+
+      const practiceBadge = document.createElement('div');
+      practiceBadge.className = 'staff-practice-badge';
+      practiceBadge.title = `金〜火の練習実績: ${pStats.currentWeekCount}/3回 (通算: ${pStats.totalCount}回)\nクリックで練習実績の詳細を確認・切り替え`;
+      practiceBadge.style.cssText = `
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 2px;
+        padding: 2px 4px;
+        background: ${isAchieved ? 'rgba(16, 185, 129, 0.2)' : 'rgba(168, 85, 247, 0.2)'};
+        border: 1px solid ${isAchieved ? 'rgba(16, 185, 129, 0.6)' : 'rgba(168, 85, 247, 0.5)'};
+        border-radius: 4px;
+        font-size: 8.5px;
+        font-weight: 700;
+        color: ${isAchieved ? '#34d399' : '#d8b4fe'};
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.15s ease;
+      `;
+      practiceBadge.innerHTML = `
+        <span>🎯 今週 ${pStats.currentWeekCount}/3回</span>
+        <span style="font-weight: 500; font-size: 7.5px; opacity: 0.85;">(通算${pStats.totalCount})</span>
+      `;
+
+      practiceBadge.addEventListener('mouseenter', () => {
+        practiceBadge.style.transform = 'scale(1.02)';
+        practiceBadge.style.boxShadow = `0 0 6px ${isAchieved ? 'rgba(16, 185, 129, 0.4)' : 'rgba(168, 85, 247, 0.4)'}`;
+      });
+      practiceBadge.addEventListener('mouseleave', () => {
+        practiceBadge.style.transform = 'scale(1)';
+        practiceBadge.style.boxShadow = 'none';
+      });
+      practiceBadge.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (window.eventBus) {
+          window.eventBus.emit('openPracticeStatsModal', { staffId: staff.id, staffName: staff.name, dateStr: currentDateStr });
+        }
+      });
+
+      bottomRow.appendChild(practiceBadge);
+    }
 
     staffInfoEl.appendChild(bottomRow);
 

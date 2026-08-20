@@ -221,7 +221,8 @@ export class ReservationBlock {
       teaching: { label: '指導', color: '#ec4899' },
       helper: { label: 'ヘルプ', color: '#6366f1' },
       free_time: { label: '空き時間', color: '#64748b' },
-      ganbare: { label: '頑張れ', color: '#f97316' }
+      ganbare: { label: '頑張れ', color: '#f97316' },
+      lesson_day: { label: '🎓 レッスン日', color: '#8b5cf6' }
     };
 
     let colorCode = '#6366f1';
@@ -612,6 +613,13 @@ export class ReservationBlock {
       menuNameEl.innerHTML = `${blockLabel} <span style="font-size: 8px; font-weight: normal; opacity: 0.85;">（休憩可）</span>`;
       menuNameEl.style.whiteSpace = 'nowrap';
       menuNameEl.style.lineHeight = '1.2';
+    } else if (res.activityType === 'practice') {
+      const verified = res.isPracticeVerified;
+      menuNameEl.innerHTML = verified
+        ? `${blockLabel} <span style="font-size: 8px; color: #34d399; font-weight: 700;">✔ 実施済</span>`
+        : `${blockLabel} <span style="font-size: 8px; color: #facc15; font-weight: 700;">❓ 未確認</span>`;
+      menuNameEl.style.whiteSpace = 'nowrap';
+      menuNameEl.style.lineHeight = '1.2';
     } else {
       menuNameEl.textContent = blockLabel;
       menuNameEl.style.whiteSpace = 'nowrap';
@@ -763,6 +771,29 @@ export class ReservationBlock {
             window.eventBus.emit('convertActivityToRest', {
               staffId: res.stylistId,
               startTimeOffset: startMinutes
+            });
+          }
+        }, { signal });
+      } else if (res.activityType === 'practice') {
+        block.style.cursor = 'pointer';
+        block.addEventListener('mouseenter', () => {
+          block.style.boxShadow = `0 0 16px ${colorCode}66`;
+          block.style.zIndex = '20';
+        }, { signal });
+        block.addEventListener('mouseleave', () => {
+          block.style.boxShadow = 'none';
+          block.style.zIndex = '10';
+        }, { signal });
+
+        block.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const startMinutes = timeToMinutes(res.startTime);
+          if (window.eventBus) {
+            window.eventBus.emit('openPracticeVerificationModal', {
+              staffId: res.stylistId,
+              startTime: startMinutes,
+              duration: 30,
+              isVerified: !!res.isPracticeVerified
             });
           }
         }, { signal });

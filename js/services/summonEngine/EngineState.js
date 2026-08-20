@@ -42,6 +42,8 @@ export class EngineState {
         ? JSON.parse(JSON.stringify(initialState.tracker))
         : {};
       this.freezeBoundary = initialState.freezeBoundary ?? null;
+      this.date = initialState.date || null;
+      this.lessonStaffIds = initialState.lessonStaffIds ? [...initialState.lessonStaffIds] : [];
     } else {
       // Initialize new state (Shallow copy to prevent crash from circular references)
       this.reservations = [...(reservations || [])];
@@ -107,6 +109,8 @@ export class EngineState {
       }
 
       this.freezeBoundary = null;
+      this.date = options.date || null;
+      this.lessonStaffIds = options.lessonStaffIds ? [...options.lessonStaffIds] : [];
     }
   }
 

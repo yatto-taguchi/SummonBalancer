@@ -917,7 +917,7 @@ export function clearForcedFreeTimes(dateStr) {
 // サーバー同期機能（ローカルネット共有用）
 // ──────────────────────────────────────────────
 
-const _SERVER_BASE = window.location.origin;
+const _SERVER_BASE = (typeof window !== 'undefined' && window.location) ? window.location.origin : 'http://localhost';
 let _lastServerVersion = null;
 let _pollingTimer = null;
 

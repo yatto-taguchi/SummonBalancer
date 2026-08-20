@@ -1,5 +1,5 @@
 import { hasSkill } from '../utils/skillUtils.js?v=3';
-import { toTimestamp, isStaffBlocked, isStaffWorkingAtTime } from '../utils/timeUtils.js?v=3';
+import { toTimestamp, isStaffBlocked, isStaffInLesson, isStaffWorkingAtTime } from '../utils/timeUtils.js?v=3';
 import { Reservation } from '../../../models/reservation.js?v=3';
 import { getRankPriority } from '../../../models/staff.js?v=3';
 
@@ -108,8 +108,8 @@ export function executeGapAssignment(state) {
       const ongoingId = currentOngoingTasks[taskKey];
       if (ongoingId && freeAssistantIds.has(ongoingId)) {
         const staffObj = assistants.find(a => a.id === ongoingId);
-        // 【厳守事項3】最低スキルチェック ＋ 【追加修正】ブロック中ではないか確認
-        if (staffObj && hasSkill(staffObj, req.requiredSkill, 1) && !isStaffBlocked(ongoingId, timeStr, currentTracker)) {
+        // 【厳守事項3】最低スキルチェック ＋ 【追加修正】ブロック中ではないか確認 ＋ レッスン日確認
+        if (staffObj && hasSkill(staffObj, req.requiredSkill, 1) && !isStaffBlocked(ongoingId, timeStr, currentTracker) && !isStaffInLesson(ongoingId, timeStr, nextState)) {
           assignedAssistantId = ongoingId;
         }
       }
@@ -120,6 +120,7 @@ export function executeGapAssignment(state) {
           .map(id => assistants.find(a => a.id === id))
           .filter(Boolean)
           .filter(a => !isStaffBlocked(a.id, timeStr, currentTracker))
+          .filter(a => !isStaffInLesson(a.id, timeStr, nextState))
           .filter(a => isStaffWorkingAtTime(a, timeStr));  // 勤務時間外の絶対排除（念押し）
         // ソート：疲労度→リスト下位優先
         availableAssistants.sort((a, b) => {

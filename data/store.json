@@ -5785,5 +5785,145 @@
   ],
   "sb_free_time_selections_2026-08-20": {},
   "forced_free_time_2026-08-23": {},
-  "forced_free_time_2026-08-20": {}
+  "forced_free_time_2026-08-20": {
+    "stylist_1784677588932_mw5vv7": {
+      "practice": 400,
+      "cleaning": 400,
+      "lunch": 465,
+      "break": 465
+    },
+    "assistant_1784762178214_mhwaa8": {
+      "practice": 420,
+      "cleaning": 420
+    },
+    "stylist_1784677604555_kdrcpf": {
+      "practice": 470,
+      "cleaning": 470
+    },
+    "assistant_1784762217527_r00tiz": {
+      "break": 470
+    }
+  },
+  "sb_practice_logs": [
+    {
+      "id": "practice_stylist_1784677572837_trrikn_2026-08-20_0",
+      "staffId": "stylist_1784677572837_trrikn",
+      "date": "2026-08-20",
+      "startTime": 0,
+      "duration": 30,
+      "verified": false,
+      "isForced": false,
+      "updatedAt": "2026-08-20T06:41:59.754Z"
+    },
+    {
+      "id": "practice_stylist_1784677588932_mw5vv7_2026-08-20_0",
+      "staffId": "stylist_1784677588932_mw5vv7",
+      "date": "2026-08-20",
+      "startTime": 0,
+      "duration": 30,
+      "verified": false,
+      "isForced": false,
+      "updatedAt": "2026-08-20T06:41:59.755Z"
+    },
+    {
+      "id": "practice_stylist_1784677604555_kdrcpf_2026-08-20_0",
+      "staffId": "stylist_1784677604555_kdrcpf",
+      "date": "2026-08-20",
+      "startTime": 0,
+      "duration": 30,
+      "verified": false,
+      "isForced": false,
+      "updatedAt": "2026-08-20T06:41:59.756Z"
+    },
+    {
+      "id": "practice_stylist_1784677618660_quwary_2026-08-20_0",
+      "staffId": "stylist_1784677618660_quwary",
+      "date": "2026-08-20",
+      "startTime": 0,
+      "duration": 30,
+      "verified": false,
+      "isForced": false,
+      "updatedAt": "2026-08-20T06:41:59.757Z"
+    },
+    {
+      "id": "practice_assistant_1784762178214_mhwaa8_2026-08-20_0",
+      "staffId": "assistant_1784762178214_mhwaa8",
+      "date": "2026-08-20",
+      "startTime": 0,
+      "duration": 30,
+      "verified": false,
+      "isForced": false,
+      "updatedAt": "2026-08-20T06:41:59.759Z"
+    },
+    {
+      "id": "practice_assistant_1784762217527_r00tiz_2026-08-20_0",
+      "staffId": "assistant_1784762217527_r00tiz",
+      "date": "2026-08-20",
+      "startTime": 0,
+      "duration": 30,
+      "verified": false,
+      "isForced": false,
+      "updatedAt": "2026-08-20T06:41:59.760Z"
+    },
+    {
+      "id": "practice_assistant_1784762281270_g5qbk2_2026-08-20_20",
+      "staffId": "assistant_1784762281270_g5qbk2",
+      "date": "2026-08-20",
+      "startTime": 20,
+      "duration": 30,
+      "verified": false,
+      "isForced": false,
+      "updatedAt": "2026-08-20T06:41:59.761Z"
+    },
+    {
+      "id": "practice_assistant_1784762298350_3phnmd_2026-08-20_0",
+      "staffId": "assistant_1784762298350_3phnmd",
+      "date": "2026-08-20",
+      "startTime": 0,
+      "duration": 30,
+      "verified": false,
+      "isForced": false,
+      "updatedAt": "2026-08-20T06:41:59.762Z"
+    },
+    {
+      "id": "practice_assistant_1784762324367_t20z3i_2026-08-20_0",
+      "staffId": "assistant_1784762324367_t20z3i",
+      "date": "2026-08-20",
+      "startTime": 0,
+      "duration": 30,
+      "verified": false,
+      "isForced": false,
+      "updatedAt": "2026-08-20T06:41:59.763Z"
+    },
+    {
+      "id": "practice_stylist_1784677588932_mw5vv7_2026-08-20_400",
+      "staffId": "stylist_1784677588932_mw5vv7",
+      "date": "2026-08-20",
+      "startTime": 400,
+      "duration": 30,
+      "verified": false,
+      "isForced": true,
+      "updatedAt": "2026-08-20T06:42:04.039Z"
+    },
+    {
+      "id": "practice_assistant_1784762178214_mhwaa8_2026-08-20_420",
+      "staffId": "assistant_1784762178214_mhwaa8",
+      "date": "2026-08-20",
+      "startTime": 420,
+      "duration": 30,
+      "verified": true,
+      "isForced": true,
+      "updatedAt": "2026-08-20T07:03:14.878Z"
+    },
+    {
+      "id": "practice_stylist_1784677604555_kdrcpf_2026-08-20_470",
+      "staffId": "stylist_1784677604555_kdrcpf",
+      "date": "2026-08-20",
+      "startTime": 470,
+      "duration": 30,
+      "verified": true,
+      "isForced": true,
+      "updatedAt": "2026-08-20T07:50:01.320Z"
+    }
+  ]
 }

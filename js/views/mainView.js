@@ -20,6 +20,7 @@ import { sosManager } from '../components/sosManager.js';
 import { blockManager } from '../components/blockManager.js';
 import { memoPopover } from '../components/memoPopover.js';
 import { Reservation } from '../models/reservation.js';
+import * as PracticeTracker from '../services/practiceTracker.js?v=2';
 
 export class MainView {
   /**
@@ -261,11 +262,21 @@ export class MainView {
       this._showStaffHolidayModal(data.staffId, data.staffType);
     };
 
+    // 練習実績確認モーダル
+    this._eventHandlers.openPracticeVerificationModal = (data) => {
+      this._openPracticeVerificationModal(data);
+    };
+    this._eventHandlers.openPracticeStatsModal = (data) => {
+      this._openPracticeStatsModal(data);
+    };
+
     bus.on('openFreeTimeModal', this._eventHandlers.openFreeTimeModal);
     bus.on('freeTimeActivitySelected', this._eventHandlers.freeTimeActivitySelected);
     bus.on('reservationUpdated', this._eventHandlers.reservationUpdated);
     bus.on('reservationResized', this._eventHandlers.reservationResized);
     bus.on('openStaffHolidayModal', this._eventHandlers.openStaffHolidayModal);
+    bus.on('openPracticeVerificationModal', this._eventHandlers.openPracticeVerificationModal);
+    bus.on('openPracticeStatsModal', this._eventHandlers.openPracticeStatsModal);
 
     this._eventHandlers.menuDroppedOnReservation = (data) => {
       this._showMenuCombineModal(data);
@@ -1397,11 +1408,20 @@ export class MainView {
     const todayStr = this._formatDate(new Date());
     const isToday = (dateStr === todayStr);
     const currentTime = isToday ? (now.getHours() - 9) * 60 + now.getMinutes() : null;
-    
+
+    // 練習実績トラッカーから水・木レッスン日対象のアシスタントを判定
+    const lessonStaffIds = [];
+    (assistants || []).forEach(a => {
+      const stats = PracticeTracker.getAssistantPracticeStats(a.id, dateStr);
+      if (stats.isLessonRequired) {
+        lessonStaffIds.push(a.id);
+      }
+    });
+
     const result = this.summonEngine.calculate(
       reservations, stylists, assistants, menus,
       lunchOverrides, restOverrides,
-      { isToday, currentTime, forcedFreeTimes, blockedTimes }
+      { isToday, currentTime, forcedFreeTimes, blockedTimes, date: dateStr, lessonStaffIds }
     );
     this.lastSummonResult = result;
 
@@ -1799,6 +1819,24 @@ export class MainView {
       const selectionKey = `${act.staffId}-${startMinutes}`;
       const savedSelection = act.activity === 'free_time' ? (freeTimeSelections[selectionKey] || null) : null;
 
+      // practiceブロックの場合、練習ログを取得・記録
+      let isPracticeVerified = false;
+      if (act.activity === 'practice' && startMinutes !== null) {
+        const allLogs = PracticeTracker.loadPracticeLogs();
+        let log = allLogs.find(l => l.staffId === act.staffId && l.date === dateStr && l.startTime === startMinutes);
+        if (!log) {
+          log = PracticeTracker.recordPracticeLog({
+            staffId: act.staffId,
+            date: dateStr,
+            startTime: startMinutes,
+            duration: (act.endTime - act.startTime),
+            verified: !!act.isForced,
+            isForced: !!act.isForced
+          });
+        }
+        isPracticeVerified = !!log.verified;
+      }
+
       const virtualRes = {
         id: `activity-virtual-${act.staffId}-${idx}`,
         menuItemId: null,
@@ -1812,7 +1850,8 @@ export class MainView {
         isLunchConvertible: !!act.isLunchConvertible,
         isConvertibleToRest: !!act.isConvertibleToRest,
         freeTimeSelection: savedSelection,
-        isForced: !!act.isForced
+        isForced: !!act.isForced,
+        isPracticeVerified: isPracticeVerified
       };
 
       const timelineArea = this.container.querySelector('#timeline-area');
@@ -3685,6 +3724,283 @@ export class MainView {
 
     // ブロック表示を更新（全体再描画）
     this._runSummon();
+  }
+
+  /**
+   * 練習ブロックの実施確認モーダルを開く
+   * @param {Object} data - { staffId, startTime, duration, isVerified }
+   * @private
+   */
+  _openPracticeVerificationModal(data) {
+    const existing = document.querySelector('.practice-verify-modal-overlay');
+    if (existing) existing.remove();
+
+    const dateStr = this._formatDate(this.currentDate);
+    const assistants = Storage.loadAssistants();
+    const staff = assistants.find(a => a.id === data.staffId) || Storage.loadStylists().find(s => s.id === data.staffId);
+    const staffName = staff ? (staff.nickname || staff.name) : data.staffId;
+
+    const startH = String(Math.floor(data.startTime / 60) + 9).padStart(2, '0');
+    const startM = String(data.startTime % 60).padStart(2, '0');
+    const endH = String(Math.floor((data.startTime + data.duration) / 60) + 9).padStart(2, '0');
+    const endM = String((data.startTime + data.duration) % 60).padStart(2, '0');
+    const timeRangeStr = `${startH}:${startM} 〜 ${endH}:${endM}`;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'practice-verify-modal-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      animation: fadeIn 0.15s ease-out;
+    `;
+
+    overlay.innerHTML = `
+      <div class="practice-verify-modal" style="
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
+        border: 1px solid rgba(168, 85, 247, 0.4);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(168, 85, 247, 0.2);
+        border-radius: 16px;
+        width: 360px;
+        max-width: 90vw;
+        padding: 24px;
+        color: #f8fafc;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      ">
+        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 20px;">🎯</span>
+            <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #d8b4fe;">練習の実施確認</h3>
+          </div>
+          <button class="btn-close" style="background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer; padding: 4px;">✕</button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px; background: rgba(0, 0, 0, 0.25); padding: 12px; border-radius: 8px;">
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: #94a3b8;">スタッフ:</span>
+            <span style="font-weight: 700; color: #f8fafc;">${staffName}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: #94a3b8;">日付 / 時間:</span>
+            <span style="font-weight: 600; color: #cbd5e1;">${dateStr} (${timeRangeStr})</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: #94a3b8;">現在の状態:</span>
+            <span style="font-weight: 700; color: ${data.isVerified ? '#34d399' : '#facc15'};">
+              ${data.isVerified ? '✔ 実施済み (カウント済)' : '❓ 未確認 / 未実施'}
+            </span>
+          </div>
+        </div>
+
+        <p style="margin: 0; font-size: 12px; color: #cbd5e1; line-height: 1.5; text-align: center;">
+          この時間帯に実際に練習を行いましたか？<br>
+          <span style="font-size: 11px; color: #94a3b8;">※実施した枠のみが週合計および通算回数に加算されます。</span>
+        </p>
+
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px;">
+          <button class="btn-verify-yes" style="
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(52, 211, 153, 0.6);
+            background: linear-gradient(135deg, #059669, #10b981);
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            transition: all 0.15s ease;
+          ">✅ 実施した（回数に加算）</button>
+
+          <button class="btn-verify-no" style="
+            padding: 9px;
+            border-radius: 8px;
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+          ">❌ 実施しなかった（加算しない）</button>
+        </div>
+      </div>
+    `;
+
+    overlay.querySelector('.btn-close').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.remove();
+    });
+
+    overlay.querySelector('.btn-verify-yes').addEventListener('click', () => {
+      PracticeTracker.verifyPracticeLog(data.staffId, dateStr, data.startTime, true);
+      overlay.remove();
+      this.refresh();
+    });
+
+    overlay.querySelector('.btn-verify-no').addEventListener('click', () => {
+      PracticeTracker.verifyPracticeLog(data.staffId, dateStr, data.startTime, false);
+      overlay.remove();
+      this.refresh();
+    });
+
+    document.body.appendChild(overlay);
+  }
+
+  /**
+   * アシスタントの練習進捗・実績モーダルを開く
+   * @param {Object} data - { staffId, staffName, dateStr }
+   * @private
+   */
+  _openPracticeStatsModal(data) {
+    const existing = document.querySelector('.practice-stats-modal-overlay');
+    if (existing) existing.remove();
+
+    const dateStr = data.dateStr || this._formatDate(this.currentDate);
+    const pStats = PracticeTracker.getAssistantPracticeStats(data.staffId, dateStr);
+    const isAchieved = pStats.currentWeekCount >= 3;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'practice-stats-modal-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      animation: fadeIn 0.15s ease-out;
+    `;
+
+    const cycleStart = pStats.cycleDates[0] || '';
+    const cycleEnd = pStats.cycleDates[pStats.cycleDates.length - 1] || '';
+
+    // 当該サイクルのログ一覧を取得
+    const allLogs = PracticeTracker.loadPracticeLogs().filter(l => l.staffId === data.staffId);
+    const cycleSet = new Set(pStats.cycleDates);
+    const cycleLogs = allLogs.filter(l => cycleSet.has(l.date));
+
+    let logsHtml = '';
+    if (cycleLogs.length === 0) {
+      logsHtml = '<div style="text-align: center; color: #94a3b8; font-size: 12px; padding: 16px;">今週の練習予定・実績はまだありません</div>';
+    } else {
+      logsHtml = cycleLogs.map(l => {
+        const startH = String(Math.floor(l.startTime / 60) + 9).padStart(2, '0');
+        const startM = String(l.startTime % 60).padStart(2, '0');
+        const endH = String(Math.floor((l.startTime + (l.duration || 30)) / 60) + 9).padStart(2, '0');
+        const endM = String((l.startTime + (l.duration || 30)) % 60).padStart(2, '0');
+        return `
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(0, 0, 0, 0.2); border-radius: 6px; font-size: 12px;">
+            <div>
+              <span style="font-weight: 700; color: #e2e8f0;">${l.date}</span>
+              <span style="color: #94a3b8; margin-left: 6px;">${startH}:${startM}〜${endH}:${endM}</span>
+              ${l.isForced ? '<span style="font-size: 10px; background: rgba(168, 85, 247, 0.3); color: #d8b4fe; padding: 1px 4px; border-radius: 3px; margin-left: 4px;">手動</span>' : '<span style="font-size: 10px; background: rgba(100, 116, 139, 0.3); color: #cbd5e1; padding: 1px 4px; border-radius: 3px; margin-left: 4px;">自動</span>'}
+            </div>
+            <button class="btn-toggle-log" data-log-date="${l.date}" data-log-time="${l.startTime}" data-verified="${l.verified}" style="
+              padding: 4px 10px;
+              border-radius: 4px;
+              border: 1px solid ${l.verified ? 'rgba(52, 211, 153, 0.6)' : 'rgba(250, 204, 21, 0.5)'};
+              background: ${l.verified ? 'rgba(16, 185, 129, 0.25)' : 'rgba(250, 204, 21, 0.15)'};
+              color: ${l.verified ? '#34d399' : '#facc15'};
+              font-size: 11px;
+              font-weight: 700;
+              cursor: pointer;
+            ">${l.verified ? '✔ 実施済' : '❓ 未確認'}</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    overlay.innerHTML = `
+      <div class="practice-stats-modal" style="
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
+        border: 1px solid rgba(168, 85, 247, 0.4);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(168, 85, 247, 0.2);
+        border-radius: 16px;
+        width: 440px;
+        max-width: 90vw;
+        max-height: 85vh;
+        padding: 24px;
+        color: #f8fafc;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        overflow-y: auto;
+      ">
+        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 22px;">🎯</span>
+            <div>
+              <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #f8fafc;">${data.staffName} 練習実績</h3>
+              <div style="font-size: 11px; color: #94a3b8;">集計週: ${cycleStart} 〜 ${cycleEnd}</div>
+            </div>
+          </div>
+          <button class="btn-close" style="background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer; padding: 4px;">✕</button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div style="background: rgba(0, 0, 0, 0.25); border: 1px solid ${isAchieved ? 'rgba(52, 211, 153, 0.4)' : 'rgba(168, 85, 247, 0.3)'}; border-radius: 10px; padding: 12px; text-align: center;">
+            <div style="font-size: 11px; color: #94a3b8; font-weight: 600;">今週（金〜火）</div>
+            <div style="font-size: 24px; font-weight: 800; color: ${isAchieved ? '#34d399' : '#d8b4fe'}; margin-top: 2px;">
+              ${pStats.currentWeekCount} <span style="font-size: 14px; font-weight: 600; color: #94a3b8;">/ 3回</span>
+            </div>
+            <div style="font-size: 10px; color: ${isAchieved ? '#34d399' : '#facc15'}; font-weight: 700; margin-top: 2px;">
+              ${isAchieved ? '🎉 目標達成（水木通常営業）' : '⏳ 3回未満（水木レッスン日）'}
+            </div>
+          </div>
+
+          <div style="background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; padding: 12px; text-align: center;">
+            <div style="font-size: 11px; color: #94a3b8; font-weight: 600;">通算累積回数</div>
+            <div style="font-size: 24px; font-weight: 800; color: #60a5fa; margin-top: 2px;">
+              ${pStats.totalCount} <span style="font-size: 14px; font-weight: 600; color: #94a3b8;">回</span>
+            </div>
+            <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">
+              全期間の確定練習合計
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="font-size: 12px; font-weight: 700; color: #cbd5e1;">今週の練習スロット一覧</div>
+          <div style="display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto;">
+            ${logsHtml}
+          </div>
+        </div>
+
+        <div style="font-size: 11px; color: #94a3b8; line-height: 1.4; background: rgba(255, 255, 255, 0.05); padding: 10px; border-radius: 8px;">
+          💡 <strong>水・木のレッスン日ルール</strong>:<br>
+          金〜火の練習が3回以上の場合、水・木 9:00〜10:00 は仕事（通常営業）として自動開放されます。3回未満の場合は「🎓 レッスン日」として自動アサインが遮断されます（手動固定のみアサイン可能）。
+        </div>
+      </div>
+    `;
+
+    overlay.querySelector('.btn-close').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.remove();
+    });
+
+    overlay.querySelectorAll('.btn-toggle-log').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const logDate = btn.dataset.logDate;
+        const logTime = parseInt(btn.dataset.logTime, 10);
+        const currentVerified = btn.dataset.verified === 'true';
+        PracticeTracker.verifyPracticeLog(data.staffId, logDate, logTime, !currentVerified);
+        overlay.remove();
+        this.refresh();
+      });
+    });
+
+    document.body.appendChild(overlay);
   }
 
   /**

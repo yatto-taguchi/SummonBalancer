@@ -121,6 +121,31 @@ export function isStaffBlocked(staffId, timeVal, tracker) {
 }
 
 /**
+ * 対象アシスタントが水・木のレッスン日（9:00〜10:00）でアサイン遮断対象かを判定する（純粋関数）。
+ * 
+ * @param {string} staffId - スタッフID
+ * @param {string|number} timeVal - 時刻（"HH:MM"文字列 or 9:00基準の相対分数）
+ * @param {Object} state - EngineState
+ * @returns {boolean} レッスン枠中であればtrue（通常アサイン除外）
+ */
+export function isStaffInLesson(staffId, timeVal, state) {
+  if (!state || !state.lessonStaffIds || !state.lessonStaffIds.includes(staffId)) {
+    return false;
+  }
+  let tickMinuteFrom9;
+  if (typeof timeVal === 'number') {
+    tickMinuteFrom9 = timeVal;
+  } else if (typeof timeVal === 'string' && timeVal.match(/^\d{1,2}:\d{2}$/)) {
+    const [h, m] = timeVal.split(':').map(Number);
+    tickMinuteFrom9 = (h - 9) * 60 + m;
+  } else {
+    tickMinuteFrom9 = Math.round(toTimestamp(timeVal) / 60000);
+  }
+  // 9:00〜10:00 (0分〜60分未満)
+  return tickMinuteFrom9 >= 0 && tickMinuteFrom9 < 60;
+}
+
+/**
  * 対象スタッフが指定された時間（Tick）に勤務時間内かどうかを判定する（純粋関数）。
  * 仕様書セクション2「勤務時間外の絶対排除」に基づき、workStartTime〜workEndTime の
  * 範囲外のスタッフはいかなるアサインからも除外する。
