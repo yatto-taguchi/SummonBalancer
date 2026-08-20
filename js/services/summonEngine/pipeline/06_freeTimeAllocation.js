@@ -290,9 +290,12 @@ export function executeFreeTimeAllocation(state) {
     });
   }
 
-  // ─── 1.8. 強制お昼・休憩（forcedFreeTimes）の反映 ───
-  // UIから手動で「今からおにぎり食べます」等の宣言をした時間帯。
+  // ─── 1.8. 強制お昼・休憩・練習・大掃除（forcedFreeTimes）の反映 ───
+  // UIから手動で「今からおにぎり食べます」「練習します」等の宣言をした時間帯。
   // アサインには干渉しないが、ここで取得済みとみなし増殖を防ぐ。
+  const forcedPracticeAssigned = {}; // staffId → boolean
+  const forcedCleaningAssigned = {}; // staffId → boolean
+
   allStaff.forEach(staff => {
     const forced = (nextState.forcedFreeTimes || {})[staff.id];
     if (!forced) return;
@@ -321,6 +324,46 @@ export function executeFreeTimeAllocation(state) {
         activity: 'rest',
         isForced: true // UI側での被せ表示等に利用
       });
+    }
+
+    // 強制練習（オーナー含む全スタッフの手動意思を最優先で配置）
+    if (forced.practice != null) {
+      const startTick = Math.floor(forced.practice / 5);
+      forcedPracticeAssigned[staff.id] = true;
+      // 過去のフリーズで既に復元されていない場合のみ追加（二重生成防止）
+      const alreadyAssignedInFrozen = activities.some(
+        a => a.staffId === staff.id && a.activity === 'practice' && Math.floor(a.startTime / 5) === startTick
+      );
+      if (!alreadyAssignedInFrozen) {
+        markOccupied(staffOccupancies[staff.id], startTick);
+        activities.push({
+          staffId: staff.id,
+          startTime: startTick * 5,
+          endTime: (startTick + BLOCK_TICKS) * 5,
+          activity: 'practice',
+          isForced: true
+        });
+      }
+    }
+
+    // 強制大掃除（オーナー含む全スタッフの手動意思を最優先で配置）
+    if (forced.cleaning != null) {
+      const startTick = Math.floor(forced.cleaning / 5);
+      forcedCleaningAssigned[staff.id] = true;
+      // 過去のフリーズで既に復元されていない場合のみ追加（二重生成防止）
+      const alreadyAssignedInFrozen = activities.some(
+        a => a.staffId === staff.id && a.activity === 'cleaning' && Math.floor(a.startTime / 5) === startTick
+      );
+      if (!alreadyAssignedInFrozen) {
+        markOccupied(staffOccupancies[staff.id], startTick);
+        activities.push({
+          staffId: staff.id,
+          startTime: startTick * 5,
+          endTime: (startTick + BLOCK_TICKS) * 5,
+          activity: 'cleaning',
+          isForced: true
+        });
+      }
     }
   });
 
@@ -414,8 +457,8 @@ export function executeFreeTimeAllocation(state) {
   // ─── 4. その他の活動アサイン（練習・大掃除・空き時間） ───
   allStaff.forEach(staff => {
     const isOwner = isOwnerStaff(staff);
-    let practiceAssigned = !!frozenPracticeAssigned[staff.id]; // 過去に練習済みならtrue
-    let cleaningAssigned = !!frozenCleaningAssigned[staff.id]; // 過去に大掃除済みならtrue
+    let practiceAssigned = !!frozenPracticeAssigned[staff.id] || !!forcedPracticeAssigned[staff.id]; // 過去または手動で練習済みならtrue
+    let cleaningAssigned = !!frozenCleaningAssigned[staff.id] || !!forcedCleaningAssigned[staff.id]; // 過去または手動で大掃除済みならtrue
     const occupied = staffOccupancies[staff.id];
 
     // 【改善】新規計算の開始位置を安定化:

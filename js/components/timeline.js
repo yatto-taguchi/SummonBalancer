@@ -217,30 +217,60 @@ function renderStaffInfoContent(staffInfoEl, staff, rate, stats, type, index, to
 
     staffInfoEl.appendChild(bottomRow);
 
-    // 4行目: 強制お昼・休憩ボタン
-    const actionRow = document.createElement('div');
-    actionRow.style.cssText = 'display: flex; gap: 4px; margin-top: 4px; width: 100%;';
+    // 4行目: 強制フリータイム（お昼・休憩・練習・大掃除）ボタン
+    const actionGrid = document.createElement('div');
+    actionGrid.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin-top: 4px; width: 100%;';
 
-    const createActionButton = (label, type, color) => {
+    // 現在の日付の強制フリータイム状況を取得（アクティブ表示用）
+    const currentDateStr = (window.mainApp && window.mainApp.currentDate)
+      ? `${window.mainApp.currentDate.getFullYear()}-${String(window.mainApp.currentDate.getMonth() + 1).padStart(2, '0')}-${String(window.mainApp.currentDate.getDate()).padStart(2, '0')}`
+      : null;
+    let staffForced = {};
+    try {
+      if (localStorage && currentDateStr) {
+        const raw = localStorage.getItem(`forced_free_time_${currentDateStr}`);
+        if (raw) staffForced = (JSON.parse(raw) || {})[staff.id] || {};
+      }
+    } catch (e) {}
+
+    const createActionButton = (label, type, bgGradient, activeGradient, borderColor, activeBorderColor, shadowColor) => {
+      const isForcedActive = (staffForced[type] != null);
       const btn = document.createElement('button');
       btn.textContent = label;
+      btn.title = isForcedActive ? `${label}（発動中・クリックで解除）` : `${label}（クリックで即時発動）`;
       btn.style.cssText = `
-        flex: 1;
-        padding: 2px 0;
-        font-size: 9px;
-        font-weight: 600;
-        color: #fff;
-        background-color: ${color};
-        border: none;
-        border-radius: 3px;
+        padding: 3px 0;
+        font-size: 8.5px;
+        font-weight: 700;
+        color: #ffffff;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        background: ${isForcedActive ? activeGradient : bgGradient};
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        border: 1px solid ${isForcedActive ? activeBorderColor : borderColor};
+        border-radius: 4px;
         cursor: pointer;
         outline: none;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-        opacity: 0.85;
-        transition: opacity 0.2s;
+        box-shadow: ${isForcedActive ? `inset 0 1px 1px rgba(255,255,255,0.6), 0 0 8px ${shadowColor}, 0 2px 4px rgba(0,0,0,0.3)` : `inset 0 1px 1px rgba(255,255,255,0.35), 0 1px 3px rgba(0,0,0,0.2)`};
+        opacity: ${isForcedActive ? '1' : '0.92'};
+        transform: ${isForcedActive ? 'scale(1.02)' : 'scale(1)'};
+        transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       `;
-      btn.addEventListener('mouseenter', () => btn.style.opacity = '1');
-      btn.addEventListener('mouseleave', () => btn.style.opacity = '0.85');
+      btn.addEventListener('mouseenter', () => {
+        btn.style.opacity = '1';
+        btn.style.border = `1px solid ${isForcedActive ? '#ffffff' : 'rgba(255, 255, 255, 0.65)'}`;
+        btn.style.boxShadow = `inset 0 1px 1px rgba(255,255,255,0.6), 0 0 8px ${shadowColor}, 0 2px 6px rgba(0,0,0,0.25)`;
+        btn.style.transform = 'scale(1.04)';
+      });
+      btn.addEventListener('mouseleave', () => {
+        btn.style.opacity = isForcedActive ? '1' : '0.92';
+        btn.style.border = `1px solid ${isForcedActive ? activeBorderColor : borderColor}`;
+        btn.style.boxShadow = isForcedActive ? `inset 0 1px 1px rgba(255,255,255,0.6), 0 0 8px ${shadowColor}, 0 2px 4px rgba(0,0,0,0.3)` : `inset 0 1px 1px rgba(255,255,255,0.35), 0 1px 3px rgba(0,0,0,0.2)`;
+        btn.style.transform = isForcedActive ? 'scale(1.02)' : 'scale(1)';
+      });
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         if (window.eventBus) {
@@ -250,13 +280,49 @@ function renderStaffInfoContent(staffInfoEl, staff, rate, stats, type, index, to
       return btn;
     };
 
-    const lunchBtn = createActionButton('🍙 お昼', 'lunch', 'rgba(16, 185, 129, 0.55)');
-    const breakBtn = createActionButton('☕ 休憩', 'break', 'rgba(16, 185, 129, 0.45)');
+    const lunchBtn = createActionButton(
+      '🍙 お昼',
+      'lunch',
+      'linear-gradient(135deg, rgba(16, 185, 129, 0.4) 0%, rgba(5, 150, 105, 0.25) 100%)',
+      'linear-gradient(135deg, rgba(52, 211, 153, 0.8) 0%, rgba(16, 185, 129, 0.6) 100%)',
+      'rgba(16, 185, 129, 0.55)',
+      '#ffffff',
+      'rgba(52, 211, 153, 0.7)'
+    );
+    const breakBtn = createActionButton(
+      '☕ 休憩',
+      'break',
+      'linear-gradient(135deg, rgba(20, 184, 166, 0.4) 0%, rgba(13, 148, 136, 0.25) 100%)',
+      'linear-gradient(135deg, rgba(45, 212, 191, 0.8) 0%, rgba(20, 184, 166, 0.6) 100%)',
+      'rgba(20, 184, 166, 0.55)',
+      '#ffffff',
+      'rgba(45, 212, 191, 0.7)'
+    );
+    const practiceBtn = createActionButton(
+      '🎯 練習',
+      'practice',
+      'linear-gradient(135deg, rgba(192, 132, 252, 0.45) 0%, rgba(147, 51, 234, 0.28) 100%)',
+      'linear-gradient(135deg, rgba(232, 121, 249, 0.82) 0%, rgba(168, 85, 247, 0.62) 100%)',
+      'rgba(192, 132, 252, 0.6)',
+      '#ffffff',
+      'rgba(232, 121, 249, 0.75)'
+    );
+    const cleaningBtn = createActionButton(
+      '🧹 大掃除',
+      'cleaning',
+      'linear-gradient(135deg, rgba(251, 191, 36, 0.45) 0%, rgba(217, 119, 6, 0.28) 100%)',
+      'linear-gradient(135deg, rgba(253, 224, 71, 0.85) 0%, rgba(245, 158, 11, 0.65) 100%)',
+      'rgba(251, 191, 36, 0.6)',
+      '#ffffff',
+      'rgba(251, 191, 36, 0.75)'
+    );
 
-    actionRow.appendChild(lunchBtn);
-    actionRow.appendChild(breakBtn);
+    actionGrid.appendChild(lunchBtn);
+    actionGrid.appendChild(breakBtn);
+    actionGrid.appendChild(practiceBtn);
+    actionGrid.appendChild(cleaningBtn);
     
-    staffInfoEl.appendChild(actionRow);
+    staffInfoEl.appendChild(actionGrid);
   }
 }
 

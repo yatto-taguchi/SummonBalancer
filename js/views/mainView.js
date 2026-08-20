@@ -164,7 +164,11 @@ export class MainView {
         // 5分単位にスナップする
         offsetMinutes = Math.floor(offsetMinutes / 5) * 5;
 
-        Storage.saveForcedFreeTime(dateStr, data.staffId, data.type, offsetMinutes);
+        if (Storage.toggleForcedFreeTime) {
+          Storage.toggleForcedFreeTime(dateStr, data.staffId, data.type, offsetMinutes);
+        } else {
+          Storage.saveForcedFreeTime(dateStr, data.staffId, data.type, offsetMinutes);
+        }
         this._runSummon();
       }
     };

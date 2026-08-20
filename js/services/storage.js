@@ -847,13 +847,13 @@ export function clearRestOverrides(dateStr) {
 }
 
 // ──────────────────────────────────────────────
-// 強制フリータイム（お昼・休憩）管理
+// 強制フリータイム（お昼・休憩・練習・大掃除）管理
 // ──────────────────────────────────────────────
 
 /**
  * 日付別の強制フリータイムを読み込む
  * @param {string} dateStr - 日付文字列 (YYYY-MM-DD)
- * @returns {Object.<string, {lunch?: number, break?: number}>} staffId → 強制発動した時間(分)
+ * @returns {Object.<string, {lunch?: number, break?: number, practice?: number, cleaning?: number}>} staffId → 強制発動した時間(分)
  */
 export function loadForcedFreeTimes(dateStr) {
   return loadData(`forced_free_time_${dateStr}`) || {};
@@ -863,7 +863,7 @@ export function loadForcedFreeTimes(dateStr) {
  * 日付別の強制フリータイムを保存する
  * @param {string} dateStr - 日付文字列 (YYYY-MM-DD)
  * @param {string} staffId - スタッフID
- * @param {string} type - 'lunch' または 'break'
+ * @param {string} type - 'lunch' | 'break' | 'practice' | 'cleaning'
  * @param {number} startTimeOffset - 開始時刻（分）
  */
 export function saveForcedFreeTime(dateStr, staffId, type, startTimeOffset) {
@@ -873,6 +873,36 @@ export function saveForcedFreeTime(dateStr, staffId, type, startTimeOffset) {
   }
   overrides[staffId][type] = startTimeOffset;
   saveData(`forced_free_time_${dateStr}`, overrides);
+}
+
+/**
+ * 日付別の強制フリータイムをトグル（発動 / 解除）する
+ * @param {string} dateStr - 日付文字列 (YYYY-MM-DD)
+ * @param {string} staffId - スタッフID
+ * @param {string} type - 'lunch' | 'break' | 'practice' | 'cleaning'
+ * @param {number} startTimeOffset - 開始時刻（分）
+ * @returns {boolean} true: 発動, false: 解除
+ */
+export function toggleForcedFreeTime(dateStr, staffId, type, startTimeOffset) {
+  const overrides = loadForcedFreeTimes(dateStr);
+  if (!overrides[staffId]) {
+    overrides[staffId] = {};
+  }
+
+  if (overrides[staffId][type] != null) {
+    // 既に設定されている場合は解除
+    delete overrides[staffId][type];
+    if (Object.keys(overrides[staffId]).length === 0) {
+      delete overrides[staffId];
+    }
+    saveData(`forced_free_time_${dateStr}`, overrides);
+    return false;
+  } else {
+    // 未設定の場合は発動
+    overrides[staffId][type] = startTimeOffset;
+    saveData(`forced_free_time_${dateStr}`, overrides);
+    return true;
+  }
 }
 
 /**
