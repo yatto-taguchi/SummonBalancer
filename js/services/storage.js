@@ -915,7 +915,7 @@ export function clearForcedFreeTimes(dateStr) {
 
 // ──────────────────────────────────────────────
 // サーバー同期機能（ローカルネット共有用）
-// グローバルSSOT化（window.__sb_storage_state & sessionStorage）
+// グローバルSSOT化（window.__sb_storage_state & localStorage）
 // ──────────────────────────────────────────────
 
 const _SERVER_BASE = (typeof window !== 'undefined' && window.location) ? window.location.origin : 'http://localhost';
@@ -930,13 +930,43 @@ if (typeof window !== 'undefined') {
   }
 }
 
-// 端末ごとに一意なクライアントID（sessionStorage保持: タブ跨ぎ・リロードでも自端末を認識）
+/**
+ * 深い等価比較（Deep Equal）を行う純粋関数
+ * オブジェクトキーの順序や配列の要素を再帰的に比較する
+ * @param {*} a
+ * @param {*} b
+ * @returns {boolean}
+ */
+export function isDeepEqual(a, b) {
+  if (a === b) return true;
+  if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') {
+    return a === b;
+  }
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a)) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (!isDeepEqual(a[i], b[i])) return false;
+    }
+    return true;
+  }
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if (keysA.length !== keysB.length) return false;
+  for (const key of keysA) {
+    if (!Object.prototype.hasOwnProperty.call(b, key)) return false;
+    if (!isDeepEqual(a[key], b[key])) return false;
+  }
+  return true;
+}
+
+// 端末ごとに一意なクライアントID（localStorage保持: 同一ブラウザの全タブで共有しピンポン同期を防止）
 function getClientId() {
-  if (typeof sessionStorage !== 'undefined') {
-    let id = sessionStorage.getItem('sb_client_id');
+  if (typeof localStorage !== 'undefined') {
+    let id = localStorage.getItem('sb_client_id');
     if (!id) {
       id = `client_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      try { sessionStorage.setItem('sb_client_id', id); } catch {}
+      try { localStorage.setItem('sb_client_id', id); } catch {}
     }
     return id;
   }
@@ -1100,10 +1130,18 @@ export function startPolling() {
 
       let hasActualChange = false;
       Object.entries(serverData).forEach(([key, value]) => {
-        const newVal = JSON.stringify(value);
-        const oldVal = localStorage.getItem(key);
-        if (oldVal !== newVal) {
-          localStorage.setItem(key, newVal);
+        let oldParsed = null;
+        const oldStr = localStorage.getItem(key);
+        if (oldStr !== null) {
+          try {
+            oldParsed = JSON.parse(oldStr);
+          } catch {
+            oldParsed = oldStr;
+          }
+        }
+        // Deep Equal による厳格な実質差分判定
+        if (oldStr === null || !isDeepEqual(oldParsed, value)) {
+          localStorage.setItem(key, JSON.stringify(value));
           hasActualChange = true;
         }
       });
@@ -1130,3 +1168,4 @@ export function stopPolling() {
     window.__sb_storage_state.pollingTimer = null;
   }
 }
+

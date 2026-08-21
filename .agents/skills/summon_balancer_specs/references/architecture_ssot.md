@@ -604,10 +604,19 @@ export interface EngineState {
   - ✅ 新ルール:
     1. 【画面描画・計算エンジンの完全副作用排除（Read-Only原則）】: `render()` および `_runSummon()` の実行内部から、いかなるサーバー保存（`saveData`）・API通信・スナップショット書き込みも完全に排除する。
     2. 【Mutation駆動の統計更新】: `StatsTracker.recordDailySnapshot` は、ユーザーによる予約追加・移動・変更・削除、スタッフ設定変更、不在ブロック設定などのデータ変更（Mutation）時のみ実行する。
-    3. 【ストレージ同期状態のグローバルSSOT化（window.__sb_storage_state）】: `storage.js` の `lastServerVersion` や `pollingTimer` は `window.__sb_storage_state` でオンメモリ管理し、`CLIENT_ID` は `sessionStorage` で保持する。これによりモジュールの多重ロードが発生しても単一の同期状態を完全保証する。
+    3. 【ストレージ同期状態のグローバルSSOT化（window.__sb_storage_state）】: `storage.js` の `lastServerVersion` や `pollingTimer` は `window.__sb_storage_state` でオンメモリ管理し、`CLIENT_ID` は `localStorage` で同一ブラウザ内全タブ共有する。これによりモジュールの多重ロードが発生しても単一の同期状態を完全保証する。
     4. 【モジュールインポートバージョンの完全統一】: 全JSファイルにおける `storage.js` のインポートクエリパラメータを完全統一（例: `?v=110`）し、不要なモジュール多重インスタンス化を排除する。
     5. 【自端末更新の自己ループ遮断（ClientId判定）】: 端末ごとに一意な `clientId` を付与し、自端末が発行したバージョン更新はポーリング時にスキップする。他端末からの真のデータ変更時のみ同期を実行する。
     6. 【非破壊差分更新（チラつき防止）】: 他端末からの同期受信時でも、予約表画面は `container.innerHTML = ''` による全画面破棄を行わず、`refresh()` による非破壊差分更新を実行してチラつきを完全にゼロにする。
+
+- [2026-08-22] 【修正箇所】: 画面描画時の暗黙データ保存（副作用）の完全撤廃とマルチタブ間ピンポン同期防止・Deep Equal判定の実装
+  - ❌ 失敗・課題: 練習枠（practice）が存在する時間帯を描画する際、`mainView.js` 内で `PracticeTracker.recordPracticeLog()` が暗黙に実行され、`saveData()`（サーバーへの非同期通信）が自動発火していた。これにより、画面を開いただけでサーバー側のバージョンが更新され、複数タブを開いている環境で各タブの `CLIENT_ID` 不一致（sessionStorage管理）と連動して「タブA保存 → タブB検知・再描画・保存 → タブA検知・再描画……」という5秒ごとの無限ピンポン再描画ループが発生していた。また、`MainView` に `refresh()` が実装されていなかったためフォールバックで `render()`（画面全消去）が走り、激しい画面チラつきとなっていた。
+  - ✅ 新ルール:
+    1. 【描画・計算サイクルにおける副作用の完全排除】: `render()` および `_runSummon()` 内での `recordPracticeLog()` 呼び出しを完全廃止。描画時は既存ログの `verified` 状態を Read-Only で参照するのみとし、ストレージへの書き込みはユーザー操作（手動追加・実施確認ボタン等）時のみに限定する。
+    2. 【クライアントIDのブラウザ一元化（localStorage管理）】: `CLIENT_ID` の保存先を `sessionStorage` から `localStorage`（`sb_client_id`）に変更し、同一PC上の複数タブで同一のクライアントIDを共有。自ブラウザの別タブからの更新を正しく自端末として認識させ、マルチタブ間のピンポン同期を根本遮断する。
+    3. 【厳格なDeep Equalによる変更検知】: `storage.js` のポーリング変更判定に再帰的等価比較（`isDeepEqual`）を導入。JSON文字列のキー順序やフォーマット差異による誤検知を排除し、実質的なデータ差異が存在する場合のみ `serverDataUpdated` を発火させる。
+    4. 【MainViewの安全な差分更新（refresh）実装】: `MainView` クラスに `refresh(date)` メソッドを正式実装。外部同期受信時は `innerHTML = ''` による全破棄を行わず、既存DOMインスタンスを活用して `_runSummon()` のみで差分更新を完了させ、画面のチラつきをゼロにする。
+
 
 
 

@@ -331,6 +331,36 @@ export class MainView {
   }
 
   /**
+   * メイン画面の差分更新を行う（DOM全消去を行わずに最新データを反映）
+   * サーバー同期やデータ変更時、画面チラつきをゼロにするSSOT規約メソッド
+   * @param {Date} [date] - 表示する日付
+   */
+  refresh(date) {
+    if (date) this.currentDate = date;
+
+    // まだ render されていない場合は render を実行
+    if (!this.container || !this.container.querySelector('.main-view')) {
+      this.render(this.currentDate);
+      return;
+    }
+
+    // 日付入力欄の同期
+    const dateInput = this.container.querySelector('.date-input');
+    if (dateInput) {
+      dateInput.value = this._formatDate(this.currentDate);
+    }
+
+    // メニューバーの内容を最新化
+    if (this.menuBar) {
+      const menus = Storage.loadMenus();
+      this.menuBar.render(menus);
+    }
+
+    // 自動配置とタイムライン・ブロックの差分更新を実行
+    this._runSummon();
+  }
+
+  /**
    * メイン画面全体を描画する
    * @param {Date} [date] - 表示する日付
    */
@@ -1804,22 +1834,12 @@ export class MainView {
       const selectionKey = `${act.staffId}-${startMinutes}`;
       const savedSelection = act.activity === 'free_time' ? (freeTimeSelections[selectionKey] || null) : null;
 
-      // practiceブロックの場合、練習ログを取得・記録
+      // practiceブロックの場合、既存の練習ログ状態を確認（暗黙のsaveData副作用は排除）
       let isPracticeVerified = false;
       if (act.activity === 'practice' && startMinutes !== null) {
         const allLogs = PracticeTracker.loadPracticeLogs();
-        let log = allLogs.find(l => l.staffId === act.staffId && l.date === dateStr && l.startTime === startMinutes);
-        if (!log) {
-          log = PracticeTracker.recordPracticeLog({
-            staffId: act.staffId,
-            date: dateStr,
-            startTime: startMinutes,
-            duration: (act.endTime - act.startTime),
-            verified: !!act.isForced,
-            isForced: !!act.isForced
-          });
-        }
-        isPracticeVerified = !!log.verified;
+        const log = allLogs.find(l => l.staffId === act.staffId && l.date === dateStr && l.startTime === startMinutes);
+        isPracticeVerified = log ? !!log.verified : !!act.isForced;
       }
 
       const virtualRes = {
