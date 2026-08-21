@@ -99,10 +99,17 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
             try:
                 payload = json.loads(body.decode('utf-8'))
                 client_id = payload.get('clientId')
+                key = payload.get('key')
+                value = payload.get('value')
+                
                 with _store_lock:
                     data = _read_store()
-                    data[payload['key']] = payload['value']
-                    _write_store(data, client_id)
+                    old_value = data.get(key)
+                    # 実質的な変更がある場合のみファイル保存とバージョン更新を実行
+                    if old_value != value or key not in data:
+                        data[key] = value
+                        _write_store(data, client_id)
+                
                 res_body = json.dumps({
                     "ok": True,
                     "version": _store_version,

@@ -1595,6 +1595,67 @@ export class ReservationBlock {
     }
   }
 
+  /**
+   * 既存のDOM要素を破棄せずに最新の予約データと配置情報を差分更新する（インプレース更新）
+   * @param {import('../models/reservation.js').Reservation} newRes
+   * @param {import('../models/menu.js').MenuItem} newMenu
+   * @param {HTMLElement} [newContainer]
+   * @param {number} [newLane=0]
+   */
+  updateData(newRes, newMenu, newContainer, newLane = 0) {
+    this._reservation = newRes;
+    if (newMenu) this._menuItem = newMenu;
+
+    if (!this._element) {
+      if (newContainer) this._container = newContainer;
+      this.render();
+      return;
+    }
+
+    // 親コンテナ（スタイリスト行）が変更されている場合は移動
+    if (newContainer && this._element.parentNode !== newContainer) {
+      this._container = newContainer;
+      newContainer.appendChild(this._element);
+    }
+
+    const startMin = timeToMinutes(newRes.startTime);
+    const endMin = timeToMinutes(newRes.endTime);
+
+    // アコーディオン対応の重み付きパーセンテージ位置更新
+    const leftPct = accordionManager.getWeightedPosition(startMin);
+    const endPct = accordionManager.getWeightedPosition(endMin);
+    const widthPct = endPct - leftPct;
+
+    this._element.dataset.startMin = String(startMin);
+    this._element.dataset.endMin = String(endMin);
+    this._element.style.left = `${leftPct}%`;
+    this._element.style.width = `${widthPct}%`;
+
+    // レーンとtop / heightの更新
+    this._element.dataset.lane = newLane;
+    this._element.style.top = `${newLane * CELL_HEIGHT + 2}px`;
+    this._element.style.height = `${CELL_HEIGHT - 4}px`;
+
+    // メモ状態の同期
+    const memoIcon = this._element.querySelector('.memo-icon');
+    if (memoIcon) {
+      memoIcon.dataset.memo = newRes.memo || '';
+      if (newRes.memo) {
+        memoIcon.classList.add('has-memo');
+      } else {
+        memoIcon.classList.remove('has-memo');
+      }
+    }
+
+    // 時間テキストの更新
+    const timeEl = this._element.querySelector('.reservation-time');
+    if (timeEl) {
+      const startDisplay = typeof newRes.startTime === 'number' ? minutesToTime(newRes.startTime) : newRes.startTime;
+      const endDisplay = typeof newRes.endTime === 'number' ? minutesToTime(newRes.endTime) : newRes.endTime;
+      timeEl.textContent = `${startDisplay}-${endDisplay}`;
+    }
+  }
+
   updateAssistants(assignments, blockAlerts, isInManncell = false, gapHelpsMap = {}) {
     this._reservation.assignedAssistants = assignments;
     if (this._element) {

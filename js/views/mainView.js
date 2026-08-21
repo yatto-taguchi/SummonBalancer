@@ -327,7 +327,51 @@ export class MainView {
     // ドラッグ中にDOMが再構築されてdragendが発火しないバグへの対策
     document.addEventListener('dragend', () => {
       document.body.classList.remove('is-dragging-item');
+      if (this._pendingRefresh) {
+        this._pendingRefresh = false;
+        setTimeout(() => { this.refresh(); }, 50);
+      }
     });
+
+    // 入力フォーカスが外れた時に保留中の更新があれば安全に実行
+    document.addEventListener('focusout', () => {
+      setTimeout(() => {
+        if (this._pendingRefresh && !this.isUserInteracting()) {
+          this._pendingRefresh = false;
+          this.refresh();
+        }
+      }, 100);
+    });
+  }
+
+  /**
+   * ユーザーが操作中（ドラッグ中、モーダル/ポップオーバー展開中、入力中等）かを判定する
+   * @returns {boolean}
+   */
+  isUserInteracting() {
+    // 1. ドラッグ操作中
+    if (document.body.classList.contains('is-dragging-item')) return true;
+    if (document.querySelector('.is-being-dragged')) return true;
+
+    // 2. モーダル表示中
+    const visibleModal = document.querySelector(
+      '.modal.show, .modal.active, .modal-backdrop, .free-time-modal, .stats-modal.show, .practice-modal.show, .block-manager-modal, .staff-holiday-modal'
+    );
+    if (visibleModal && visibleModal.style.display !== 'none') return true;
+
+    // 3. 詳細ポップアップ、メモポップオーバー、コンテキストメニュー表示中
+    const visiblePopup = document.querySelector(
+      '.reservation-detail-popup, .memo-popover.show, .memo-popover:not([style*="display: none"]), .context-menu'
+    );
+    if (visiblePopup) return true;
+
+    // 4. 入力フォームにフォーカス中
+    const activeEl = document.activeElement;
+    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT')) {
+      return true;
+    }
+
+    return false;
   }
 
   /**
@@ -337,6 +381,13 @@ export class MainView {
    */
   refresh(date) {
     if (date) this.currentDate = date;
+
+    // ユーザー操作中の場合は即時更新せず保留（Pending）
+    if (this.isUserInteracting()) {
+      this._pendingRefresh = true;
+      return;
+    }
+    this._pendingRefresh = false;
 
     // まだ render されていない場合は render を実行
     if (!this.container || !this.container.querySelector('.main-view')) {
@@ -356,7 +407,7 @@ export class MainView {
       this.menuBar.render(menus);
     }
 
-    // 自動配置とタイムライン・ブロックの差分更新を実行
+    // 自動配置とタイムライン・ブロックのインプレース差分更新を実行
     this._runSummon();
   }
 
@@ -1010,7 +1061,7 @@ export class MainView {
   }
 
   /**
-   * 予約ブロックを描画する
+   * 予約ブロックを描画・差分更新する（インプレース更新によりDOM再生成を防止）
    * @param {import('../models/reservation.js').Reservation[]} reservations
    * @param {import('../models/menu.js').MenuItem[]} menus
    * @private
@@ -1022,9 +1073,17 @@ export class MainView {
     const timelineArea = this.container.querySelector('#timeline-area');
     if (!timelineArea) return;
 
-    // 既存ブロックを破棄
-    this.reservationBlocks.forEach(rb => rb.destroy());
-    this.reservationBlocks = [];
+    // 既存の通常予約ブロック（バーチャル以外）をマップ化
+    const existingBlockMap = new Map();
+    const virtualBlocks = [];
+    this.reservationBlocks.forEach(rb => {
+      const res = rb.reservation;
+      if (res && !res.isVirtualActivity && !res.isVirtualSummon) {
+        existingBlockMap.set(res.id, rb);
+      } else {
+        virtualBlocks.push(rb);
+      }
+    });
 
     // スタイリストごとにレーン（段）を計算して重なりを下にずらす
     const CELL_HEIGHT = 60;
@@ -1086,7 +1145,16 @@ export class MainView {
       }
     });
 
-    // ブロックを描画
+    // 削除された予約のブロックのみを破棄
+    const activeResIds = new Set(reservations.map(r => r.id));
+    existingBlockMap.forEach((block, id) => {
+      if (!activeResIds.has(id)) {
+        block.destroy();
+      }
+    });
+
+    // 各予約に対してブロックを更新または新設
+    const updatedBlocks = [];
     reservations.forEach(res => {
       const menu = menuMap.get(res.menuItemId);
       if (!menu) return;
@@ -1096,20 +1164,30 @@ export class MainView {
         `.timeline-row[data-stylist-id="${res.stylistId}"] .timeline-cells`
       );
       const container = cellsContainer || timelineArea;
-
-      const block = new ReservationBlock(res, menu, container);
-      block.render();
-
-      // レーンに応じてtopを設定
       const lane = laneMap.get(res.id) || 0;
-      if (block._element) {
-        block._element.dataset.lane = lane;
-        block._element.style.top = `${lane * CELL_HEIGHT + 2}px`;
-        block._element.style.height = `${CELL_HEIGHT - 4}px`;
-      }
 
-      this.reservationBlocks.push(block);
+      const existingBlock = existingBlockMap.get(res.id);
+      if (existingBlock && existingBlock._element) {
+        // 既存ブロックをインプレース更新（DOM再生成なし）
+        existingBlock.updateData(res, menu, container, lane);
+        updatedBlocks.push(existingBlock);
+      } else {
+        // 新規予約ブロックを作成
+        if (existingBlock) existingBlock.destroy();
+        const block = new ReservationBlock(res, menu, container);
+        block.render();
+
+        if (block._element) {
+          block._element.dataset.lane = lane;
+          block._element.style.top = `${lane * CELL_HEIGHT + 2}px`;
+          block._element.style.height = `${CELL_HEIGHT - 4}px`;
+        }
+        updatedBlocks.push(block);
+      }
     });
+
+    // バーチャルブロックと通常予約ブロックを結合して保持
+    this.reservationBlocks = [...updatedBlocks, ...virtualBlocks];
   }
 
   /**
