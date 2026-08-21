@@ -21,6 +21,7 @@ import { blockManager } from '../components/blockManager.js';
 import { memoPopover } from '../components/memoPopover.js';
 import { Reservation } from '../models/reservation.js';
 import * as PracticeTracker from '../services/practiceTracker.js?v=2';
+import * as StatsTracker from '../services/statsTracker.js?v=1';
 
 export class MainView {
   /**
@@ -2069,6 +2070,24 @@ export class MainView {
         sosManager.applySOSMarkToReservation(block.reservation, block._element);
       }
     });
+
+    // 📊 日次統計サマリーの自動記録（SSOT規約: Read-Only非干渉）
+    try {
+      const sosLogs = (sosManager && typeof sosManager.getSOSLogs === 'function')
+        ? sosManager.getSOSLogs(dateStr)
+        : (Storage.loadSOS ? Storage.loadSOS(dateStr) : []);
+      StatsTracker.recordDailySnapshot(
+        dateStr,
+        result,
+        reservations,
+        stylists,
+        assistants,
+        menus,
+        { sosLogs }
+      );
+    } catch (statsErr) {
+      console.warn('[StatsTracker] 日次統計の自動記録でエラー（計算自体には影響なし）:', statsErr);
+    }
   }
 
   /**

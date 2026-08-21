@@ -1,0 +1,98 @@
+﻿param(
+    [switch]$AutoYes
+)
+
+# Summon Balancer Deploy Script
+# data/ フォルダ（予約・スタッフデータ）を保護して、コードだけを同期する
+
+$ErrorActionPreference = "Stop"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
+
+$DeployTarget = "F:\Dropbox\1.litt\2.Litt共有ファイル\Summon Balancer"
+$DevSource = Split-Path -Parent $MyInvocation.MyCommand.Path
+
+Write-Host ""
+Write-Host "  ============================================================" -ForegroundColor Cyan
+Write-Host "   Summon Balancer - Deploy" -ForegroundColor Cyan
+Write-Host "  ============================================================" -ForegroundColor Cyan
+Write-Host ""
+
+# デプロイ先の存在確認
+if (-not (Test-Path $DeployTarget)) {
+    Write-Host "  [!] Deploy target not found:" -ForegroundColor Red
+    Write-Host "      $DeployTarget" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "  deploy.ps1 を編集して DeployTarget を正しく設定してください。"
+    Read-Host "  Press Enter to exit"
+    exit 1
+}
+
+Write-Host "  FROM: $DevSource"
+Write-Host "  TO:   $DeployTarget"
+Write-Host ""
+
+# data/store.json の保護確認
+if (Test-Path "$DeployTarget\data\store.json") {
+    Write-Host "  [OK] data/store.json detected - PROTECTED" -ForegroundColor Green
+} else {
+    Write-Host "  [INFO] No data/store.json at target" -ForegroundColor Yellow
+}
+Write-Host ""
+
+Write-Host "  --- SYNC ---" -ForegroundColor White
+Write-Host "   + index.html, server.py"
+Write-Host "   + css/ (style)"
+Write-Host "   + js/  (app logic)"
+Write-Host "   + bat files"
+Write-Host ""
+Write-Host "  --- PROTECTED ---" -ForegroundColor White
+Write-Host "   x data/  (reservations, staff, settings)"
+Write-Host "   x .git/, .agents/, docs/"
+Write-Host "   x test files, scratch files"
+Write-Host ""
+
+if (-not $AutoYes) {
+    $confirm = Read-Host "  Deploy? (y/n)"
+    if ($confirm -ne "y") {
+        Write-Host "  Cancelled." -ForegroundColor Yellow
+        Read-Host "  Press Enter to exit"
+        exit 0
+    }
+}
+
+Write-Host ""
+Write-Host "  Deploying..." -ForegroundColor Cyan
+Write-Host ""
+
+# robocopy: /E=サブディレクトリ含む, /PURGE=ソースにないファイルを削除, /XD=除外ディレクトリ, /XF=除外ファイル
+$robocopyArgs = @(
+    "`"$DevSource`""
+    "`"$DeployTarget`""
+    "/E"
+    "/PURGE"
+    "/XD", "data", ".git", ".agents", "node_modules", "docs", "ui_reference", "__pycache__"
+    "/XF", "browser_logs.txt", "server_log.txt", "*.md", "test_*.js", "scratch*.js", "pdf_content.txt", "*.pdf"
+    "/R:3"
+    "/W:1"
+)
+
+$process = Start-Process -FilePath "robocopy" -ArgumentList $robocopyArgs -NoNewWindow -Wait -PassThru
+$exitCode = $process.ExitCode
+
+if ($exitCode -le 7) {
+    Write-Host ""
+    Write-Host "  ============================================================" -ForegroundColor Green
+    Write-Host "   [OK] Deploy complete!" -ForegroundColor Green
+    Write-Host "  ============================================================" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "  - Code files synced safely"
+    Write-Host "  - Reservation/staff data NOT affected"
+    Write-Host ""
+} else {
+    Write-Host ""
+    Write-Host "  [!] Error occurred (code: $exitCode)" -ForegroundColor Red
+    Write-Host ""
+}
+
+Read-Host "  Press Enter to exit"

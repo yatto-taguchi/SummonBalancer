@@ -18,6 +18,7 @@ export function executePrimaryAssign(state) {
   
   if (!nextState.ongoingTasks) nextState.ongoingTasks = {};
   if (!nextState.lockedUnassignedTasks) nextState.lockedUnassignedTasks = {};
+  if (!nextState.reservationSlotAssignees) nextState.reservationSlotAssignees = {};
 
   const assistants = (nextState.master?.staff || []).filter(s => s.type === 'assistant');
   const stylists = (nextState.master?.staff || []).filter(s => s.type === 'stylist');
@@ -116,6 +117,10 @@ export function executePrimaryAssign(state) {
           // tracker 更新
           const taskKey = `${req.reservationId}_${req.slotIndex}`;
           nextState.ongoingTasks[taskKey] = fixedId;
+          if (!nextState.reservationSlotAssignees[req.reservationId]) {
+            nextState.reservationSlotAssignees[req.reservationId] = {};
+          }
+          nextState.reservationSlotAssignees[req.reservationId][req.slotIndex] = fixedId;
           const currentTracker = nextState.tracker[fixedId] || { totalAssignedSlots: 0, hasLunch: false, hasBreak: false };
           nextState.tracker = {
             ...nextState.tracker,
@@ -144,6 +149,10 @@ export function executePrimaryAssign(state) {
           assistantId: req.designatedStaffId,
           badges: []
         });
+        if (!nextState.reservationSlotAssignees[req.reservationId]) {
+          nextState.reservationSlotAssignees[req.reservationId] = {};
+        }
+        nextState.reservationSlotAssignees[req.reservationId][req.slotIndex] = req.designatedStaffId;
         const currentTracker = nextState.tracker[req.designatedStaffId] || { totalAssignedSlots: 0, hasLunch: false, hasBreak: false };
         nextState.tracker = {
           ...nextState.tracker,
@@ -195,23 +204,57 @@ export function executePrimaryAssign(state) {
         return false;
       }
 
+      // === 同一顧客（同一予約）の担当履歴を算出 ===
+      const resAssignees = nextState.reservationSlotAssignees[req.reservationId] || {};
+      let prevSlotAssistantId = null;
+      if (req.slotIndex > 0) {
+        // 直前スロット (slotIndex - 1) を最優先で確認
+        if (resAssignees[req.slotIndex - 1]) {
+          prevSlotAssistantId = resAssignees[req.slotIndex - 1];
+        } else {
+          // req.slotIndex より前で最新のスロット担当者を探索
+          const pastSlotIndices = Object.keys(resAssignees)
+            .map(Number)
+            .filter(idx => idx < req.slotIndex)
+            .sort((a, b) => b - a);
+          if (pastSlotIndices.length > 0) {
+            prevSlotAssistantId = resAssignees[pastSlotIndices[0]];
+          }
+        }
+      }
+      const pastAssigneeIds = Object.values(resAssignees).filter(id => id && id !== '__none__' && id !== 'MANNCELL_STANDBY');
+
       candidates.sort((a, b) => {
-        // 1. 直前Tickからの継続性（最優先・細切れ防止）
+        // 1. 同一スロット内の継続性（同一Tick間での細切れ防止・最優先）
         if (ongoingAssistantId) {
           if (a.id === ongoingAssistantId) return -1;
           if (b.id === ongoingAssistantId) return 1;
         }
-        // 2. 累計アサイン数の少ない順（空いている人を優先的に使う＝お客様ファースト）
-        const aCount = nextState.tracker[a.id]?.totalAssignedSlots || 0;
-        const bCount = nextState.tracker[b.id]?.totalAssignedSlots || 0;
-        if (aCount !== bCount) return aCount - bCount;
 
-        // 3. スキルレベル低い順（タイブレーカー: 高スキル温存は副次的な目的に留める）
+        // 2. 同一顧客（同一予約）の直前スロット担当者の継続（顧客一貫性ファースト）
+        if (prevSlotAssistantId) {
+          if (a.id === prevSlotAssistantId) return -1;
+          if (b.id === prevSlotAssistantId) return 1;
+        }
+
+        // 3. 同一顧客（同一予約）の過去スロット担当者の復帰
+        const aWasInReservation = pastAssigneeIds.includes(a.id);
+        const bWasInReservation = pastAssigneeIds.includes(b.id);
+        if (aWasInReservation !== bWasInReservation) {
+          return aWasInReservation ? -1 : 1;
+        }
+
+        // 4. スキルレベル低い順（タイブレーカー: 高スキル温存）
         const aLevel = getSkillLevel(a, req.requiredSkill);
         const bLevel = getSkillLevel(b, req.requiredSkill);
         if (aLevel !== bLevel) return aLevel - bLevel;
 
-        // 4. UI表示リストの下から（配列インデックス降順）
+        // 5. 累計アサイン数の少ない順（新規アサインや交代時の疲労度均等化）
+        const aCount = nextState.tracker[a.id]?.totalAssignedSlots || 0;
+        const bCount = nextState.tracker[b.id]?.totalAssignedSlots || 0;
+        if (aCount !== bCount) return aCount - bCount;
+
+        // 6. UI表示リストの下から（配列インデックス降順・決定論的ソート）
         const staffIndexMap = nextState.master?.staffIndexMap || {};
         const idxA = staffIndexMap[a.id] ?? 0;
         const idxB = staffIndexMap[b.id] ?? 0;
@@ -227,6 +270,10 @@ export function executePrimaryAssign(state) {
       });
 
       nextState.ongoingTasks[taskKey] = selected.id;
+      if (!nextState.reservationSlotAssignees[req.reservationId]) {
+        nextState.reservationSlotAssignees[req.reservationId] = {};
+      }
+      nextState.reservationSlotAssignees[req.reservationId][req.slotIndex] = selected.id;
 
       timeSlot.freePoolStaffIds = timeSlot.freePoolStaffIds.filter(id => id !== selected.id);
 

@@ -13,6 +13,7 @@ import { MainView } from './views/mainView.js?v=105';
 import { StaffSettingsView } from './views/staffSettings.js?v=3';
 import { MenuSettingsView } from './views/menuSettings.js';
 import { HelpModal } from './components/helpModal.js';
+import { statsModal } from './components/statsModal.js?v=1';
 
 // ──────────────────────────────────────────────
 // ユーティリティ: UUID生成
@@ -450,6 +451,20 @@ function setupHelpModal() {
   }
 }
 
+/**
+ * サロン統計モーダルをセットアップする
+ */
+function setupStatsModal() {
+  const statsBtn = document.getElementById('btn-global-stats');
+  if (statsBtn) {
+    statsBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const currentDate = dateManager.getCurrentDate();
+      statsModal.show(currentDate);
+    });
+  }
+}
+
 // ──────────────────────────────────────────────
 // アプリケーション初期化
 // ──────────────────────────────────────────────
@@ -487,6 +502,7 @@ async function initApp() {
     setupNavigation();
     setupDateNavigation();
     setupHelpModal();
+    setupStatsModal();
 
     // 5. 保存された日付があれば復元、なければ今日の日付で初期化
     const savedDate = sessionStorage.getItem('selected_date');

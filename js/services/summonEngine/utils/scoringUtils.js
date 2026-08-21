@@ -48,7 +48,7 @@ export function scoreAssistant(staff, state, previousAssigneeId = null, currentT
 
   // --- 評価軸B（お客様への連続性）---
   if (previousAssigneeId && staff.id === previousAssigneeId) {
-    score += 200; // +200ボーナス（最優先の継続）
+    score += 2000; // +2000ボーナス（疲労度やスキル温存に負けない最優先の継続）
   }
 
   // --- 評価軸C（スタイリスト専属性・チーム化）---
