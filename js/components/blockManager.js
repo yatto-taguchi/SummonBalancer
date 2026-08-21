@@ -5,7 +5,7 @@
  * そのデータの保存・バリデーションを担当します。
  */
 
-import * as Storage from '../services/storage.js?v=20';
+import * as Storage from '../services/storage.js?v=110';
 
 export const blockManager = {
   mainView: null,

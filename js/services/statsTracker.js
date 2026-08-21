@@ -12,7 +12,7 @@
  * @module services/statsTracker
  */
 
-import { loadData, saveData } from './storage.js?v=20';
+import { loadData, saveData } from './storage.js?v=110';
 
 /** @constant {string} 日次統計データのストレージプレフィックス */
 export const KEY_DAILY_STATS_PREFIX = 'sb_daily_stats_';

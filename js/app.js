@@ -8,12 +8,12 @@
  * @module app
  */
 
-import { initializeDefaults, importMenusFromDefaults, initFromServer, startPolling } from './services/storage.js';
-import { MainView } from './views/mainView.js?v=105';
-import { StaffSettingsView } from './views/staffSettings.js?v=3';
-import { MenuSettingsView } from './views/menuSettings.js';
-import { HelpModal } from './components/helpModal.js';
-import { statsModal } from './components/statsModal.js?v=1';
+import { initializeDefaults, importMenusFromDefaults, initFromServer, startPolling } from './services/storage.js?v=110';
+import { MainView } from './views/mainView.js?v=110';
+import { StaffSettingsView } from './views/staffSettings.js?v=110';
+import { MenuSettingsView } from './views/menuSettings.js?v=110';
+import { HelpModal } from './components/helpModal.js?v=110';
+import { statsModal } from './components/statsModal.js?v=110';
 
 // ──────────────────────────────────────────────
 // ユーティリティ: UUID生成
@@ -512,14 +512,13 @@ async function initApp() {
     // 6. デフォルトビューを表示
     switchView('reservation');
 
-    // 7. 他のPCの変更を受信したときに現在のビューを再描画する
-    //    予約表だけでなくスタッフ設定・メニュー設定画面も対象にする。
+    // 7. 他のPCの変更を受信したときに現在のビューを更新する
+    //    予約表画面では DOM 全消去 (render) による画面チラつきを防ぐため refresh() による差分更新を優先
     window.addEventListener('serverDataUpdated', () => {
-      if (currentViewInstance && typeof currentViewInstance.render === 'function') {
-        if (currentView === 'reservation') {
-          const dateStr = dateManager.getCurrentDate();
-          currentViewInstance.render(dateStr ? new Date(dateStr + 'T00:00:00') : new Date());
-        } else {
+      if (currentViewInstance) {
+        if (currentView === 'reservation' && typeof currentViewInstance.refresh === 'function') {
+          currentViewInstance.refresh();
+        } else if (typeof currentViewInstance.render === 'function') {
           currentViewInstance.render();
         }
       }

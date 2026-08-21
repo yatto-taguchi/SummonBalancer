@@ -8,7 +8,7 @@
  */
 
 import * as StatsTracker from '../services/statsTracker.js?v=1';
-import * as Storage from '../services/storage.js?v=20';
+import * as Storage from '../services/storage.js?v=110';
 
 export class StatsModal {
   constructor() {

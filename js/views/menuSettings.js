@@ -7,8 +7,8 @@
  */
 
 import { SKILLS } from '../models/staff.js';
-import * as Storage from '../services/storage.js';
-import { importMenusFromDefaults } from '../services/storage.js';
+import * as Storage from '../services/storage.js?v=110';
+import { importMenusFromDefaults } from '../services/storage.js?v=110';
 
 export class MenuSettingsView {
   /**

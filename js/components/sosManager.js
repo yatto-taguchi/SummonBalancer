@@ -3,7 +3,7 @@
  * 計算エンジン（SSOT）への干渉を防ぐため、完全に独立した機能として実装。
  */
 
-import * as Storage from '../services/storage.js?v=12';
+import * as Storage from '../services/storage.js?v=110';
 
 class SOSManager {
   constructor() {

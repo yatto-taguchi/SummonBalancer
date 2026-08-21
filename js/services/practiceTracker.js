@@ -9,7 +9,7 @@
  * @module services/practiceTracker
  */
 
-import { loadData, saveData } from './storage.js?v=2';
+import { loadData, saveData } from './storage.js?v=110';
 
 /** @constant {string} 練習ログのストレージキー */
 export const KEY_PRACTICE_LOGS = 'sb_practice_logs';

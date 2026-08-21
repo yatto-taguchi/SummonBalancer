@@ -7,7 +7,7 @@
  */
 
 import { RANKS, SKILLS, Staff } from '../models/staff.js?v=13';
-import * as Storage from '../services/storage.js?v=13';
+import * as Storage from '../services/storage.js?v=110';
 import { StaffCalendar } from '../components/staffCalendar.js';
 
 export class StaffSettingsView {

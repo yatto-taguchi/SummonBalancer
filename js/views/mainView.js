@@ -5,7 +5,7 @@
  * 召喚エンジンと疲労管理の結果を画面に反映するメインビュー。
  */
 
-import * as Storage from '../services/storage.js?v=18';
+import * as Storage from '../services/storage.js?v=110';
 import { summonEngine as SummonEngineInstance } from '../services/summonEngine/engineShadowRunner.js?v=36';
 import { FatigueManager } from '../services/fatigueManager.js';
 import { Timeline } from '../components/timeline.js?v=32';
@@ -118,6 +118,7 @@ export class MainView {
           res.proficiencyOverrides[data.slotIndex] = data.proficiency;
           Storage.saveReservation(dateStr, res);
           this._runSummon();
+          this._triggerStatsSnapshot();
           return;
         }
       }
@@ -140,15 +141,17 @@ export class MainView {
           }
           Storage.saveReservation(dateStr, res);
           this._runSummon();
+          this._triggerStatsSnapshot();
           return;
         }
       }
 
       this.refresh();
+      this._triggerStatsSnapshot();
     };
 
-    this._eventHandlers.staffChanged = () => this.refresh();
-    this._eventHandlers.menuChanged = () => this.refresh();
+    this._eventHandlers.staffChanged = () => { this.refresh(); this._triggerStatsSnapshot(); };
+    this._eventHandlers.menuChanged = () => { this.refresh(); this._triggerStatsSnapshot(); };
     this._eventHandlers.reservationDropped = (data) => this.handleReservationDrop(data);
     this._eventHandlers.reservationMoved = (data) => this.handleReservationMove(data);
     this._eventHandlers.reservationDeleted = (data) => this.handleReservationDelete(data);
@@ -172,6 +175,7 @@ export class MainView {
           Storage.saveForcedFreeTime(dateStr, data.staffId, data.type, offsetMinutes);
         }
         this._runSummon();
+        this._triggerStatsSnapshot();
       }
     };
 
@@ -204,11 +208,13 @@ export class MainView {
       const dateStr = this._formatDate(this.currentDate);
       Storage.saveLunchOverride(dateStr, data.staffId, data.startTimeOffset);
       this._runSummon();
+      this._triggerStatsSnapshot();
     };
     this._eventHandlers.convertActivityToRest = (data) => {
       const dateStr = this._formatDate(this.currentDate);
       Storage.saveRestOverride(dateStr, data.staffId, data.startTimeOffset);
       this._runSummon(); // 再計算
+      this._triggerStatsSnapshot();
     };
     this._eventHandlers.moveStaffOrder = (data) => {
       const isStylist = data.type === 'stylist';
@@ -234,6 +240,7 @@ export class MainView {
         Storage.saveAssistants(list);
       }
       this.refresh();
+      this._triggerStatsSnapshot();
     };
 
     // 空き時間モーダルイベント
@@ -1357,46 +1364,23 @@ export class MainView {
           if (res.menuItemId === 'cut_color_cut_first' && res.autoSwitchedVariant && !res.manualVariantSelection) {
             res.menuItemId = 'cut_color_color_first';
             res.autoSwitchedVariant = false;
-            hasSwitchUpdate = true;
           }
         }
       });
     });
 
-    if (hasSwitchUpdate) {
-      reservations.forEach(r => Storage.saveReservation(dateStr, r));
-    }
-
-    // 存在しない（スタッフ設定から削除された）アシスタント/スタイリストの固定を自動クリーンアップ
+    // 存在しない（スタッフ設定から削除された）アシスタント/スタイリストの固定を計算用に一時除外
     const registeredIds = new Set([...allAssistants.map(a => a.id), ...allStylists.map(s => s.id)]);
-    
-    // 全アシスタントの情報を診断ログとして送信
-    fetch(`/log?msg=${encodeURIComponent(`ALL_ASSISTANTS: ${JSON.stringify(allAssistants.map(a => ({id: a.id, name: a.name})))}`)}`).catch(() => {});
-    
-    // 全予約の情報を診断ログとして送信
-    fetch(`/log?msg=${encodeURIComponent(`ALL_RESERVATIONS: ${JSON.stringify(reservations.map(r => ({id: r.id, fixed: r.fixedAssistants, assigned: r.assignedAssistants})))}`)}`).catch(() => {});
-
-    let hasCleanup = false;
-
     reservations.forEach(res => {
       if (res.fixedAssistants) {
         for (const [slotIdx, astId] of Object.entries(res.fixedAssistants)) {
           const hasIt = astId === '__none__' || registeredIds.has(astId);
-          // 診断ログをサーバーに送信
-          fetch(`/log?msg=${encodeURIComponent(`FIXED_CHECK: res=${res.id} slot=${slotIdx} astId=${astId} registered=${hasIt}`)}`).catch(() => {});
           if (!hasIt) {
             delete res.fixedAssistants[slotIdx];
-            hasCleanup = true;
           }
         }
       }
     });
-
-    if (hasCleanup) {
-      reservations.forEach(res => {
-        Storage.saveReservation(dateStr, res);
-      });
-    }
 
     // 召喚エンジン実行（手動お昼ご飯位置・休憩オーバーライドを反映）
     const lunchOverrides = Storage.loadLunchOverrides ? Storage.loadLunchOverrides(dateStr) : {};
@@ -2070,12 +2054,29 @@ export class MainView {
         sosManager.applySOSMarkToReservation(block.reservation, block._element);
       }
     });
+  }
 
-    // 📊 日次統計サマリーの自動記録（SSOT規約: Read-Only非干渉）
+  /**
+   * ユーザー操作によるデータ変更時（Mutation）にのみ日次統計スナップショットを記録する
+   * （画面描画・計算エンジンからの副作用完全排除SSOT規約）
+   * @private
+   */
+  _triggerStatsSnapshot() {
     try {
+      const dateStr = this._formatDate(this.currentDate);
+      const allStylists = Storage.loadStylists();
+      const stylists = allStylists.filter(s => s.isWorkingOn(dateStr));
+      const allAssistants = Storage.loadAssistants();
+      const assistants = allAssistants.filter(a => a.isWorkingOn(dateStr));
+      const reservations = Storage.loadReservations(dateStr);
+      const menus = Storage.loadMenus();
+      const result = this.lastSummonResult;
+      if (!result) return;
+
       const sosLogs = (sosManager && typeof sosManager.getSOSLogs === 'function')
         ? sosManager.getSOSLogs(dateStr)
         : (Storage.loadSOS ? Storage.loadSOS(dateStr) : []);
+
       StatsTracker.recordDailySnapshot(
         dateStr,
         result,
@@ -2086,7 +2087,7 @@ export class MainView {
         { sosLogs }
       );
     } catch (statsErr) {
-      console.warn('[StatsTracker] 日次統計の自動記録でエラー（計算自体には影響なし）:', statsErr);
+      console.warn('[StatsTracker] 日次統計の記録でエラー:', statsErr);
     }
   }
 
@@ -2550,6 +2551,7 @@ export class MainView {
 
     // 画面をリフレッシュして召喚エンジンを再実行
     this.refresh();
+    this._triggerStatsSnapshot();
 
     if (window.eventBus) {
       window.eventBus.emit('reservationChanged', { reservation, action: 'add' });
@@ -2610,6 +2612,7 @@ export class MainView {
     // 移動後: 表示更新 + 召喚再計算
     this.refresh();
     this._runSummon();
+    this._triggerStatsSnapshot();
 
     if (window.eventBus) {
       window.eventBus.emit('reservationChanged', { reservation, action: 'move' });
@@ -2627,6 +2630,7 @@ export class MainView {
     const dateStr = this._formatDate(this.currentDate);
     Storage.deleteReservation(dateStr, reservationId);
     this.refresh();
+    this._triggerStatsSnapshot();
 
     if (window.eventBus) {
       window.eventBus.emit('reservationChanged', { reservationId, action: 'delete' });
@@ -2695,6 +2699,7 @@ export class MainView {
 
         // 隠れエラーで中断しないよう保護した上で _runSummon を発火
         this._runSummon();
+        this._triggerStatsSnapshot();
       } catch (error) {
         console.error('[SummonBalancer] アシスタント配置一括ON/OFF処理でエラーが発生しました:', error);
       }
@@ -2707,6 +2712,7 @@ export class MainView {
 
     // 再計算（召喚ロジックを再実行）
     this._runSummon();
+    this._triggerStatsSnapshot();
   }
 
   /**
@@ -2771,6 +2777,7 @@ export class MainView {
     Storage.saveReservation(dateStr, res);
     this.refresh();
     this._runSummon();
+    this._triggerStatsSnapshot();
   }
 
   /**
@@ -3097,6 +3104,7 @@ export class MainView {
       if (block) block._reservation = res;
       
       this._runSummon(); // 再計算
+      this._triggerStatsSnapshot();
       return;
     }
 
@@ -3109,6 +3117,7 @@ export class MainView {
       if (block) block._reservation = res;
       
       this._runSummon(); // 再計算
+      this._triggerStatsSnapshot();
       return;
     }
 
@@ -3223,6 +3232,7 @@ export class MainView {
     if (block) block._reservation = res;
     
     this._runSummon(); // 再計算
+    this._triggerStatsSnapshot();
   }
 
   /**
@@ -3383,6 +3393,7 @@ export class MainView {
 
     // スタッフタイムラインのバーチャルブロックも再描画
     this._renderGanbareVirtualBlocks();
+    this._triggerStatsSnapshot();
   }
 
   /**
@@ -4319,6 +4330,7 @@ export class MainView {
       }
       overlay.remove();
       this.refresh();
+      this._triggerStatsSnapshot();
     });
 
     btnRow.appendChild(cancelBtn);
@@ -4411,6 +4423,7 @@ export class MainView {
       }
       overlay.remove();
       this.refresh();
+      this._triggerStatsSnapshot();
     });
     btnContainer.appendChild(closeBtn);
     modal.appendChild(btnContainer);
@@ -4425,6 +4438,7 @@ export class MainView {
         }
         overlay.remove();
         this.refresh();
+        this._triggerStatsSnapshot();
       }
     });
 

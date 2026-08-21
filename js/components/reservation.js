@@ -7,7 +7,7 @@
  */
 
 import { AlertBadge } from './alertBadge.js';
-import * as Storage from '../services/storage.js';
+import * as Storage from '../services/storage.js?v=110';
 import { getFreeTimeLabel } from './freeTimeModal.js';
 import accordionManager from './accordionManager.js';
 import { sosManager } from './sosManager.js';

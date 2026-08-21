@@ -13,6 +13,7 @@ STORE_FILE = os.path.join("data", "store.json")
 
 _store_lock = threading.Lock()
 _store_version = str(time.time())
+_last_client_id = None
 
 
 def _read_store():
@@ -25,13 +26,14 @@ def _read_store():
     return {}
 
 
-def _write_store(data):
-    global _store_version
+def _write_store(data, client_id=None):
+    global _store_version, _last_client_id
     tmp = STORE_FILE + '.tmp'
     with open(tmp, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     shutil.move(tmp, STORE_FILE)
     _store_version = str(time.time())
+    _last_client_id = client_id
 
 
 class MyHandler(http.server.SimpleHTTPRequestHandler):
@@ -67,9 +69,10 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(body)
 
         elif parsed.path == '/api/store/version':
-            body = _store_version.encode()
+            res_obj = {"version": _store_version, "lastClientId": _last_client_id}
+            body = json.dumps(res_obj).encode('utf-8')
             self.send_response(200)
-            self.send_header('Content-Type', 'text/plain')
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
             self.send_header('Content-Length', str(len(body)))
             self.end_headers()
             self.wfile.write(body)
@@ -95,14 +98,21 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
             body = self.rfile.read(length)
             try:
                 payload = json.loads(body.decode('utf-8'))
+                client_id = payload.get('clientId')
                 with _store_lock:
                     data = _read_store()
                     data[payload['key']] = payload['value']
-                    _write_store(data)
+                    _write_store(data, client_id)
+                res_body = json.dumps({
+                    "ok": True,
+                    "version": _store_version,
+                    "lastClientId": _last_client_id
+                }).encode('utf-8')
                 self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.send_header('Content-Length', str(len(res_body)))
                 self.end_headers()
-                self.wfile.write(b'{"ok":true}')
+                self.wfile.write(res_body)
             except Exception as e:
                 self.send_response(500)
                 self.end_headers()

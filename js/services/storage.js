@@ -915,11 +915,48 @@ export function clearForcedFreeTimes(dateStr) {
 
 // ──────────────────────────────────────────────
 // サーバー同期機能（ローカルネット共有用）
+// グローバルSSOT化（window.__sb_storage_state & sessionStorage）
 // ──────────────────────────────────────────────
 
 const _SERVER_BASE = (typeof window !== 'undefined' && window.location) ? window.location.origin : 'http://localhost';
-let _lastServerVersion = null;
-let _pollingTimer = null;
+
+// グローバル同期状態の初期化（モジュールが複数ロードされても完全単一SSOTを維持）
+if (typeof window !== 'undefined') {
+  if (!window.__sb_storage_state) {
+    window.__sb_storage_state = {
+      lastServerVersion: null,
+      pollingTimer: null
+    };
+  }
+}
+
+// 端末ごとに一意なクライアントID（sessionStorage保持: タブ跨ぎ・リロードでも自端末を認識）
+function getClientId() {
+  if (typeof sessionStorage !== 'undefined') {
+    let id = sessionStorage.getItem('sb_client_id');
+    if (!id) {
+      id = `client_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      try { sessionStorage.setItem('sb_client_id', id); } catch {}
+    }
+    return id;
+  }
+  return `client_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+const _CLIENT_ID = getClientId();
+
+function getLastServerVersion() {
+  if (typeof window !== 'undefined' && window.__sb_storage_state) {
+    return window.__sb_storage_state.lastServerVersion;
+  }
+  return null;
+}
+
+function setLastServerVersion(ver) {
+  if (typeof window !== 'undefined' && window.__sb_storage_state) {
+    window.__sb_storage_state.lastServerVersion = ver;
+  }
+}
 
 /**
  * キーと値をサーバーの store.json に非同期で保存する（fire-and-forget）
@@ -930,7 +967,17 @@ function _syncToServer(key, value) {
   fetch(`${_SERVER_BASE}/api/store`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ key, value })
+    body: JSON.stringify({ key, value, clientId: _CLIENT_ID })
+  }).then(async res => {
+    if (res.ok) {
+      try {
+        const data = await res.json();
+        if (data && data.version) {
+          // 自端末が更新した最新バージョンを即座に記録（ポーリングでの誤検知・自己ループを遮断）
+          setLastServerVersion(data.version);
+        }
+      } catch {}
+    }
   }).catch(err => {
     console.warn('[Storage] サーバー同期失敗:', err.message);
   });
@@ -959,7 +1006,7 @@ async function _migrateLocalStorageToServer() {
     await fetch(`${_SERVER_BASE}/api/store`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key, value })
+      body: JSON.stringify({ key, value, clientId: _CLIENT_ID })
     }).catch(() => {});
   }
   if (entries.length > 0) {
@@ -992,7 +1039,12 @@ export async function initFromServer() {
     // 現在バージョンを記録
     const verRes = await fetch(`${_SERVER_BASE}/api/store/version`, { cache: 'no-store' });
     if (verRes.ok) {
-      _lastServerVersion = await verRes.text();
+      try {
+        const verData = await verRes.json();
+        setLastServerVersion(verData.version || verData);
+      } catch {
+        setLastServerVersion(await verRes.text());
+      }
     }
   } catch (err) {
     console.warn('[Storage] サーバー初期化をスキップ（ローカルモードで継続）:', err.message);
@@ -1001,46 +1053,80 @@ export async function initFromServer() {
 
 /**
  * サーバーポーリングを開始する（5秒ごとに変更チェック）。
- * 変更を検出したら localStorage を更新し serverDataUpdated イベントを発火する。
+ * 他端末からの変更のみを検出し localStorage を更新し serverDataUpdated イベントを発火する。
  */
 export function startPolling() {
-  if (_pollingTimer) clearInterval(_pollingTimer);
+  if (typeof window !== 'undefined' && window.__sb_storage_state) {
+    if (window.__sb_storage_state.pollingTimer) {
+      clearInterval(window.__sb_storage_state.pollingTimer);
+    }
+  }
 
-  _pollingTimer = setInterval(async () => {
+  const timer = setInterval(async () => {
     try {
       const verRes = await fetch(`${_SERVER_BASE}/api/store/version`, { cache: 'no-store' });
       if (!verRes.ok) return;
-      const version = await verRes.text();
 
-      if (!_lastServerVersion) {
-        _lastServerVersion = version;
+      let version = null;
+      let lastClientId = null;
+
+      try {
+        const verData = await verRes.json();
+        version = verData.version;
+        lastClientId = verData.lastClientId;
+      } catch {
+        version = await verRes.text();
+      }
+
+      const currentKnownVersion = getLastServerVersion();
+
+      if (!currentKnownVersion) {
+        setLastServerVersion(version);
         return;
       }
 
-      if (version !== _lastServerVersion) {
-        _lastServerVersion = version;
+      // 自端末が保存したバージョン、またはバージョンが変わっていない場合は再描画をスキップ
+      if (lastClientId === _CLIENT_ID || version === currentKnownVersion) {
+        setLastServerVersion(version);
+        return;
+      }
 
-        const dataRes = await fetch(`${_SERVER_BASE}/api/store`, { cache: 'no-store' });
-        if (!dataRes.ok) return;
-        const serverData = await dataRes.json();
+      // 他端末からの変更を検知
+      setLastServerVersion(version);
 
-        Object.entries(serverData).forEach(([key, value]) => {
-          localStorage.setItem(key, JSON.stringify(value));
-        });
+      const dataRes = await fetch(`${_SERVER_BASE}/api/store`, { cache: 'no-store' });
+      if (!dataRes.ok) return;
+      const serverData = await dataRes.json();
 
+      let hasActualChange = false;
+      Object.entries(serverData).forEach(([key, value]) => {
+        const newVal = JSON.stringify(value);
+        const oldVal = localStorage.getItem(key);
+        if (oldVal !== newVal) {
+          localStorage.setItem(key, newVal);
+          hasActualChange = true;
+        }
+      });
+
+      // 実際にデータに変更があった場合のみイベントを発火
+      if (hasActualChange) {
         window.dispatchEvent(new CustomEvent('serverDataUpdated'));
         console.info('[Storage] 他のPCの変更を受信して画面を更新しました');
       }
     } catch { /* サーバー接続失敗は無視 */ }
   }, 5000);
+
+  if (typeof window !== 'undefined' && window.__sb_storage_state) {
+    window.__sb_storage_state.pollingTimer = timer;
+  }
 }
 
 /**
  * ポーリングを停止する
  */
 export function stopPolling() {
-  if (_pollingTimer) {
-    clearInterval(_pollingTimer);
-    _pollingTimer = null;
+  if (typeof window !== 'undefined' && window.__sb_storage_state && window.__sb_storage_state.pollingTimer) {
+    clearInterval(window.__sb_storage_state.pollingTimer);
+    window.__sb_storage_state.pollingTimer = null;
   }
 }
