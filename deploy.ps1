@@ -1,4 +1,4 @@
-﻿param(
+param(
     [switch]$AutoYes
 )
 
@@ -81,13 +81,26 @@ $process = Start-Process -FilePath "robocopy" -ArgumentList $robocopyArgs -NoNew
 $exitCode = $process.ExitCode
 
 if ($exitCode -le 7) {
+    # デプロイ日時の記録（初回リロード時の通知用）
+    $now = Get-Date
+    $deployedAt = $now.ToString("yyyy-MM-ddTHH:mm:sszzz")
+    $displayTime = $now.ToString("M月d日 H:mm")
+    $versionContent = @{
+        deployedAt = $deployedAt
+        displayTime = $displayTime
+    } | ConvertTo-Json
+
+    Set-Content -Path "$DevSource\version.json" -Value $versionContent -Encoding UTF8
+    Set-Content -Path "$DeployTarget\version.json" -Value $versionContent -Encoding UTF8
+
     Write-Host ""
     Write-Host "  ============================================================" -ForegroundColor Green
-    Write-Host "   [OK] Deploy complete!" -ForegroundColor Green
+    Write-Host "   [OK] Deploy complete! ($displayTime)" -ForegroundColor Green
     Write-Host "  ============================================================" -ForegroundColor Green
     Write-Host ""
     Write-Host "  - Code files synced safely"
     Write-Host "  - Reservation/staff data NOT affected"
+    Write-Host "  - version.json updated ($displayTime)"
     Write-Host ""
 } else {
     Write-Host ""

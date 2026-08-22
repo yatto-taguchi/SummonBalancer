@@ -512,7 +512,10 @@ async function initApp() {
     // 6. デフォルトビューを表示
     switchView('reservation');
 
-    // 7. 他のPCの変更を受信したときに現在のビューを更新する
+    // 7. デプロイ後の初回リロード時に通知アラートを表示
+    checkDeployNotification();
+
+    // 8. 他のPCの変更を受信したときに現在のビューを更新する
     //    予約表画面では DOM 全消去 (render) による画面チラつきを防ぐため refresh() による差分更新を優先
     window.addEventListener('serverDataUpdated', () => {
       if (currentViewInstance) {
@@ -546,3 +549,81 @@ async function initApp() {
 
 // DOM読み込み完了時にアプリを初期化
 document.addEventListener('DOMContentLoaded', initApp);
+
+/**
+ * デプロイ後の初回リロード時に通知トーストを表示する
+ */
+async function checkDeployNotification() {
+  try {
+    const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data || !data.deployedAt) return;
+
+    const lastSeen = localStorage.getItem('sb_last_seen_deploy');
+    if (data.deployedAt !== lastSeen) {
+      localStorage.setItem('sb_last_seen_deploy', data.deployedAt);
+      showDeployToast(data.displayTime || '最新');
+    }
+  } catch {
+    /* version.json がない場合は静かに無視 */
+  }
+}
+
+/**
+ * デプロイ完了トーストアラートを表示する
+ * @param {string} displayTime - 表示用日時文字列（例: "8月22日 09:58"）
+ */
+function showDeployToast(displayTime) {
+  const toast = document.createElement('div');
+  toast.className = 'deploy-notification-toast';
+  toast.style.cssText = `
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
+    color: #ffffff;
+    padding: 10px 20px;
+    border-radius: 8px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 0 15px rgba(16, 185, 129, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    font-size: 13px;
+    font-weight: 700;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+    pointer-events: auto;
+    cursor: default;
+  `;
+
+  toast.innerHTML = `
+    <span style="font-size: 16px;">🚀</span>
+    <span><strong>【最新版ロード完了】</strong> ${displayTime} にデプロイされた最新バージョンを読み込みました</span>
+    <span style="cursor: pointer; opacity: 0.8; font-size: 14px; margin-left: 8px; padding: 2px;" title="閉じる">✕</span>
+  `;
+
+  const closeBtn = toast.querySelector('span:last-child');
+  const dismiss = () => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(-50%) translateY(-20px)';
+    setTimeout(() => { toast.remove(); }, 300);
+  };
+
+  closeBtn.addEventListener('click', dismiss);
+
+  document.body.appendChild(toast);
+
+  requestAnimationFrame(() => {
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateX(-50%) translateY(0)';
+  });
+
+  // 6秒後に自動消去
+  setTimeout(dismiss, 6000);
+}
