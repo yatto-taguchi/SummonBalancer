@@ -14,6 +14,7 @@ import { StaffSettingsView } from './views/staffSettings.js?v=110';
 import { MenuSettingsView } from './views/menuSettings.js?v=110';
 import { HelpModal } from './components/helpModal.js?v=110';
 import { statsModal } from './components/statsModal.js?v=110';
+import { healthModal } from './components/healthModal.js?v=110';
 
 // ──────────────────────────────────────────────
 // ユーティリティ: UUID生成
@@ -503,6 +504,7 @@ async function initApp() {
     setupDateNavigation();
     setupHelpModal();
     setupStatsModal();
+    setupHealthModal();
 
     // 5. 保存された日付があれば復元、なければ今日の日付で初期化
     const savedDate = sessionStorage.getItem('selected_date');
@@ -512,7 +514,7 @@ async function initApp() {
     // 6. デフォルトビューを表示
     switchView('reservation');
 
-    // 7. デプロイ後の初回リロード時に通知アラートを表示
+    // 7. デプロイ後の初回リロード時にシステム診断＆通知アラートを表示
     checkDeployNotification();
 
     // 8. 他のPCの変更を受信したときに現在のビューを更新する
@@ -547,11 +549,24 @@ async function initApp() {
   }
 }
 
+/**
+ * システム診断モーダルをセットアップする
+ */
+function setupHealthModal() {
+  const healthBtn = document.getElementById('btn-global-health');
+  if (healthBtn) {
+    healthBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      healthModal.show();
+    });
+  }
+}
+
 // DOM読み込み完了時にアプリを初期化
 document.addEventListener('DOMContentLoaded', initApp);
 
 /**
- * デプロイ後の初回リロード時に通知トーストを表示する
+ * デプロイ後の初回リロード時にセルフヘルスチェックを実行して通知トーストを表示する
  */
 async function checkDeployNotification() {
   try {
@@ -563,7 +578,10 @@ async function checkDeployNotification() {
     const lastSeen = localStorage.getItem('sb_last_seen_deploy');
     if (data.deployedAt !== lastSeen) {
       localStorage.setItem('sb_last_seen_deploy', data.deployedAt);
-      showDeployToast(data.displayTime || '最新');
+      
+      // システム診断を実行
+      const diag = await healthModal.runDiagnostics();
+      showDeployToast(data.displayTime || '最新', diag);
     }
   } catch {
     /* version.json がない場合は静かに無視 */
@@ -571,10 +589,13 @@ async function checkDeployNotification() {
 }
 
 /**
- * デプロイ完了トーストアラートを表示する
+ * デプロイ完了＆診断トーストアラートを表示する（正常時は3秒で自動消去）
  * @param {string} displayTime - 表示用日時文字列（例: "8月22日 09:58"）
+ * @param {Object} [diag] - 診断結果
  */
-function showDeployToast(displayTime) {
+function showDeployToast(displayTime, diag = { ok: true, items: [] }) {
+  const isOk = diag ? diag.ok : true;
+
   const toast = document.createElement('div');
   toast.className = 'deploy-notification-toast';
   toast.style.cssText = `
@@ -582,29 +603,39 @@ function showDeployToast(displayTime) {
     top: 16px;
     left: 50%;
     transform: translateX(-50%) translateY(-20px);
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
+    background: ${isOk 
+      ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95))' 
+      : 'linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(220, 38, 38, 0.95))'};
     color: #ffffff;
-    padding: 10px 20px;
+    padding: 10px 18px;
     border-radius: 8px;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 0 15px rgba(16, 185, 129, 0.5);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 0 15px ${isOk ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.5)'};
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     border: 1px solid rgba(255, 255, 255, 0.3);
-    font-size: 13px;
-    font-weight: 700;
+    font-size: 12.5px;
+    font-weight: 600;
     z-index: 10000;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     opacity: 0;
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
     pointer-events: auto;
     cursor: default;
+    max-width: 90vw;
   `;
 
+  const diagText = isOk
+    ? '✅ 診断: エラーなし・正常稼働中'
+    : '⚠️ 診断: 一部警告あり';
+
   toast.innerHTML = `
-    <span style="font-size: 16px;">🚀</span>
-    <span><strong>【最新版ロード完了】</strong> ${displayTime} にデプロイされた最新バージョンを読み込みました</span>
+    <span style="font-size: 16px;">${isOk ? '🚀' : '⚠️'}</span>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <span><strong>【最新版ロード完了】</strong> ${displayTime} デプロイを読み込みました</span>
+      <span style="font-size: 11px; opacity: 0.95;">${diagText} <a href="#" id="toast-view-diag" style="color: #fff; text-decoration: underline; margin-left: 6px; font-weight: 700;">[詳細を見る]</a></span>
+    </div>
     <span style="cursor: pointer; opacity: 0.8; font-size: 14px; margin-left: 8px; padding: 2px;" title="閉じる">✕</span>
   `;
 
@@ -617,6 +648,15 @@ function showDeployToast(displayTime) {
 
   closeBtn.addEventListener('click', dismiss);
 
+  const diagLink = toast.querySelector('#toast-view-diag');
+  if (diagLink) {
+    diagLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      dismiss();
+      healthModal.show();
+    });
+  }
+
   document.body.appendChild(toast);
 
   requestAnimationFrame(() => {
@@ -624,6 +664,7 @@ function showDeployToast(displayTime) {
     toast.style.transform = 'translateX(-50%) translateY(0)';
   });
 
-  // 6秒後に自動消去
-  setTimeout(dismiss, 6000);
+  // 正常時は3秒で自動消去、警告時は手動または8秒で消去
+  const autoDismissTime = isOk ? 3000 : 8000;
+  setTimeout(dismiss, autoDismissTime);
 }
