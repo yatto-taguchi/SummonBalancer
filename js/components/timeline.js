@@ -207,11 +207,13 @@ function renderStaffInfoContent(staffInfoEl, staff, rate, stats, type, index, to
     const gapMinutesVal = stats.gapMinutes || 0;
 
     const freeSpan = document.createElement('span');
+    freeSpan.className = 'staff-free-time';
     freeSpan.textContent = `空き時間合計 ${freeMinutesVal}分`;
     freeSpan.style.cssText = 'color: #cbd5e1; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;';
     bottomRow.appendChild(freeSpan);
 
     const gapSpan = document.createElement('span');
+    gapSpan.className = 'staff-gap-time';
     gapSpan.textContent = `隙間時間 ${gapMinutesVal}分`;
     gapSpan.style.cssText = 'color: #94a3b8; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;';
     bottomRow.appendChild(gapSpan);
@@ -1147,6 +1149,125 @@ export class Timeline {
 
     // 現在時刻線
     this.addCurrentTimeLine();
+  }
+
+  /**
+   * タイムラインのDOMを破棄せずに、稼働率・空き人数サブヘッダー・隙間時間を差分更新する（チラつき防止SSOT規約）
+   * @param {import('../models/staff.js').Staff[]} stylists
+   * @param {import('../models/reservation.js').Reservation[]} reservations
+   * @param {Date} date
+   * @param {import('../models/staff.js').Staff[]} [activeAssistants]
+   * @param {Object<string, number>} [utilizationRates={}]
+   * @param {Object<string, Object>} [staffStats={}]
+   */
+  updateRatesAndOccupancy(stylists, reservations, date, activeAssistants = null, utilizationRates = {}, staffStats = {}) {
+    const grid = this._container.querySelector('.timeline-grid');
+    if (!grid) {
+      this.render(stylists, reservations, date, activeAssistants, utilizationRates, staffStats);
+      return;
+    }
+
+    // 占有スロットの再計算
+    this._calcOccupiedSlots(reservations);
+
+    // 日付文字列
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
+    const assistants = activeAssistants || (Storage.loadAssistants ? Storage.loadAssistants().filter(a => a.isWorkingOn(dateStr)) : []);
+
+    // 1. 空き状況サブヘッダー（timeline-header-sub-cell）の差分更新
+    const subCells = grid.querySelectorAll('.timeline-header-sub-cell');
+    subCells.forEach((cell) => {
+      const slotIndex = parseInt(cell.dataset.slotIndex, 10);
+      if (isNaN(slotIndex)) return;
+      const minutes = slotIndex * SLOT_MINUTES;
+
+      // 空きスタイリスト数
+      let freeStylists = 0;
+      stylists.forEach(s => {
+        const occupied = this._occupiedSlots.get(s.id);
+        if (!occupied || !occupied.has(minutes)) {
+          freeStylists++;
+        }
+      });
+
+      // 空きアシスタント数
+      const busyAssistants = new Set();
+      reservations.forEach(res => {
+        const resStart = this._timeToMinutes(res.startTime);
+        const resEnd = this._timeToMinutes(res.endTime);
+        if (resStart === null || resEnd === null) return;
+        if (minutes >= resStart && minutes < resEnd) {
+          const slotIdx = Math.floor((minutes - resStart) / SLOT_MINUTES);
+          const assistantVal = res.assignedAssistants ? res.assignedAssistants[slotIdx] : null;
+          if (assistantVal) {
+            const assistantId = assistantVal.id || assistantVal;
+            if (assistantId) busyAssistants.add(assistantId);
+          }
+        }
+      });
+      const freeAssistants = assistants.filter(a => !busyAssistants.has(a.id)).length;
+
+      // テキストとカラーの更新
+      if (freeStylists === 0 && freeAssistants === 0) {
+        cell.style.color = 'var(--accent-danger)';
+      } else if (freeStylists === 0 || freeAssistants === 0) {
+        cell.style.color = 'var(--accent-warning)';
+      } else {
+        cell.style.color = 'var(--text-secondary)';
+      }
+      cell.textContent = `${freeStylists}/${freeAssistants}`;
+    });
+
+    // 2. スタッフ行（スタイリスト・アシスタント）の稼働率・空き時間の差分更新
+    const allStaff = [...(stylists || []), ...(assistants || [])];
+    allStaff.forEach(staff => {
+      const row = grid.querySelector(`.timeline-row[data-stylist-id="${staff.id}"]`);
+      if (!row) return;
+      const staffInfo = row.querySelector('.timeline-staff-info');
+      if (!staffInfo) return;
+
+      const rate = utilizationRates[staff.id] !== undefined ? utilizationRates[staff.id] : 0;
+      const stats = staffStats[staff.id] || { freeMinutes: 0, gapMinutes: 0 };
+      const utilColor = getUtilizationColor(rate);
+
+      // 稼働率テキスト
+      const rateSpan = staffInfo.querySelector('.staff-util');
+      if (rateSpan) {
+        rateSpan.textContent = `${rate}%`;
+        rateSpan.style.color = utilColor;
+      }
+
+      // 稼働率ゲージ
+      const gaugeFill = staffInfo.querySelector('.staff-util-gauge-fill');
+      if (gaugeFill) {
+        const fillWidth = Math.min(100, Math.max(0, rate));
+        gaugeFill.style.width = `${fillWidth}%`;
+        gaugeFill.style.background = utilColor;
+      }
+      const gaugeTrack = staffInfo.querySelector('.staff-util-gauge-track');
+      if (gaugeTrack) {
+        gaugeTrack.title = `稼働率: ${rate}%`;
+      }
+
+      // 空き時間合計
+      const freeSpan = staffInfo.querySelector('.staff-free-time');
+      if (freeSpan) {
+        freeSpan.textContent = `空き時間合計 ${stats.freeMinutes || 0}分`;
+      }
+
+      // 隙間時間
+      const gapSpan = staffInfo.querySelector('.staff-gap-time');
+      if (gapSpan) {
+        gapSpan.textContent = `隙間時間 ${stats.gapMinutes || 0}分`;
+      }
+    });
+
+    // 3. 掛け持ちハイライトの再適用
+    this.highlightOverlaps(reservations);
   }
 
   /**

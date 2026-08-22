@@ -1650,16 +1650,16 @@ export class MainView {
           }
         }
       }
-
-      staffStats[staffId] = {
-        freeMinutes: Math.round(freeMinutes),
-        gapMinutes: Math.round(gapMinutes)
-      };
     });
 
-    // タイムラインと通常予約ブロックの再描画（アシスタント行と稼働率を反映）
+    // タイムラインの差分更新（DOM全破棄を防止しチラつきゼロにする）
     if (this.timeline) {
-      this.timeline.render(stylists, reservations, this.currentDate, assistants, result.utilizationRates, staffStats, offStylists, offAssistants, result.manncells);
+      const hasGrid = this.container.querySelector('.timeline-grid');
+      if (hasGrid) {
+        this.timeline.updateRatesAndOccupancy(stylists, reservations, this.currentDate, assistants, result.utilizationRates, staffStats);
+      } else {
+        this.timeline.render(stylists, reservations, this.currentDate, assistants, result.utilizationRates, staffStats, offStylists, offAssistants, result.manncells);
+      }
     }
     this._renderReservationBlocks(reservations, menus);
 
@@ -1733,36 +1733,46 @@ export class MainView {
       block.updateGanbare();  // 頑張れ配置の表示も更新
     });
 
-    // 既存のバーチャルブロックをクリーンアップ（DOMおよび配列から完全に除去）
-    const virtualEls = this.container.querySelectorAll('.reservation-block.summon-virtual-block, .reservation-block.activity-virtual-block');
-    virtualEls.forEach(el => el.remove());
-
-    this.reservationBlocks = this.reservationBlocks.filter(b => {
-      const el = b._element;
-      if (el && (el.classList.contains('summon-virtual-block') || el.classList.contains('activity-virtual-block') || el.classList.contains('helper-virtual-block') || el.classList.contains('gap-help-block'))) {
-        b.destroy(); // DOMからの削除とイベントリスナー解除
-        return false;
+    // 既存のバーチャルブロックをマップ化（一意IDトラッキング）
+    const existingVirtualMap = new Map();
+    const normalReservationBlocks = [];
+    this.reservationBlocks.forEach(b => {
+      const res = b.reservation;
+      if (res && (res.isVirtualActivity || res.isVirtualSummon)) {
+        existingVirtualMap.set(res.id, b);
+      } else {
+        normalReservationBlocks.push(b);
       }
-      return true;
     });
 
-    // 1. スタイリスト召喚用バーチャルブロックの描画
-    const virtualMenus = [
-      {
-        id: "summon-menu",
-        name: "召喚",
-        colorCode: "#ef4444", // RED
-        duration: 30
-      }
-    ];
+    const activeVirtualIds = new Set();
+    const newVirtualBlocks = [];
 
+    // バーチャルブロックのインプレース更新／新設ヘルパー
+    const upsertVirtualBlock = (virtualRes, menu, container, extraClasses = [], customBadgeFn = null) => {
+      activeVirtualIds.add(virtualRes.id);
+      const existing = existingVirtualMap.get(virtualRes.id);
+      if (existing && existing._element) {
+        existing.updateData(virtualRes, menu, container, 0);
+        newVirtualBlocks.push(existing);
+      } else {
+        if (existing) existing.destroy();
+        const block = new ReservationBlock(virtualRes, menu, container);
+        block.render();
+        if (block._element) {
+          extraClasses.forEach(cls => block._element.classList.add(cls));
+          if (customBadgeFn) customBadgeFn(block._element);
+        }
+        newVirtualBlocks.push(block);
+      }
+    };
+
+    // 1. スタイリスト召喚用バーチャルブロックの描画
     result.stylistSummons.forEach((summon, idx) => {
       // === 【修正C】UI描画層の最終防御: 不在ブロック重複チェック ===
-      // エンジン・UIアダプター層で除外済みのはずだが、最終安全策として描画前にも不在チェックする
       const drawBlockedTimes = Storage.loadBlockedTimes ? Storage.loadBlockedTimes(dateStr) : [];
       const staffBlocks = drawBlockedTimes.filter(b => b.staffId === summon.stylistId);
       if (staffBlocks.length > 0) {
-        // 召喚の開始/終了を9:00基準の分数に変換
         let sStartMin, sEndMin;
         if (typeof summon.startTime === 'string' && summon.startTime.includes(':')) {
           const [sh, sm] = summon.startTime.split(':').map(Number);
@@ -1780,13 +1790,12 @@ export class MainView {
           const hasBlockConflict = staffBlocks.some(b => sStartMin < b.endTime && sEndMin > b.startTime);
           if (hasBlockConflict) {
             console.warn(`[MainView] 描画層防御: スタッフ ${summon.stylistId} の召喚(${summon.startTime}-${summon.endTime})が不在ブロックと重複するため描画スキップ`);
-            return; // forEachの次のアイテムへ（描画をスキップ）
+            return;
           }
         }
       }
 
       // === 勤務時間外チェック（最終防御） ===
-      // 仕様書セクション2「勤務時間外の絶対排除」: 勤務時間外のスタッフへの召喚を描画しない
       const summonStaffObj = staffMap.get(summon.stylistId);
       if (summonStaffObj && typeof summonStaffObj.isWorkingAtTime === 'function') {
         let summonAbsMinute;
@@ -1798,7 +1807,7 @@ export class MainView {
         }
         if (summonAbsMinute !== undefined && !summonStaffObj.isWorkingAtTime(summonAbsMinute)) {
           console.warn(`[MainView] 勤務時間外防御: スタッフ ${summon.stylistId} の召喚(${summon.startTime})が勤務時間外のため描画スキップ`);
-          return; // forEachの次のアイテムへ（描画をスキップ）
+          return;
         }
       }
 
@@ -1814,9 +1823,8 @@ export class MainView {
         requiredSkill = menu.assistantSlots[summon.slotIndex].requiredSkill || 'shampoo';
       }
 
-      // 特殊召喚の場合はメニュー名を「救援」に変更
       const summonMenuName = '救援';
-      const summonColor = summon.isSpecialSummon ? '#f59e0b' : '#ef4444'; // 特殊=金色、通常=赤
+      const summonColor = summon.isSpecialSummon ? '#f59e0b' : '#ef4444';
 
       const virtualRes = {
         id: `summon-virtual-${summon.stylistId}-${idx}`,
@@ -1830,7 +1838,7 @@ export class MainView {
         isSpecialSummon: summon.isSpecialSummon || false,
         specialSummonReason: summon.specialSummonReason || null,
         summonTargetName: targetName,
-        summonSkill: requiredSkill // 追加: 要求スキル
+        summonSkill: requiredSkill
       };
 
       const timelineArea = this.container.querySelector('#timeline-area');
@@ -1838,10 +1846,9 @@ export class MainView {
       const cellsContainer = timelineArea.querySelector(
         `.timeline-row[data-staff-type="stylist"][data-stylist-id="${summon.stylistId}"] .timeline-cells`
       );
-      if (!cellsContainer) return; // 描画先の行が存在しない場合は安全にスキップ（timelineAreaへのフォールバックを廃止）
+      if (!cellsContainer) return;
       const container = cellsContainer;
 
-      // 特殊召喚用メニューを個別作成
       const summonMenu = {
         id: "summon-menu",
         name: summonMenuName,
@@ -1849,26 +1856,16 @@ export class MainView {
         duration: 30
       };
 
-      const block = new ReservationBlock(virtualRes, summonMenu, container);
-      block.render();
-      
-      if (block._element) {
-        block._element.classList.add('summon-virtual-block');
-        if (summon.isSpecialSummon) {
-          block._element.classList.add('special-summon-block');
-        }
-      }
+      const extraClasses = ['summon-virtual-block'];
+      if (summon.isSpecialSummon) extraClasses.push('special-summon-block');
 
-      this.reservationBlocks.push(block);
+      upsertVirtualBlock(virtualRes, summonMenu, container, extraClasses);
     });
 
     // 2. 空き時間活動用バーチャルブロックの描画
     const freeTimeSelections = Storage.loadFreeTimeSelections(dateStr);
 
-    // 召喚・ヘルプブロックとの時間重複チェック用ヘルパー
     const busyTimeRanges = {};
-
-    // 1. 自動スタイリスト召喚
     result.stylistSummons.forEach(summon => {
       if (!busyTimeRanges[summon.stylistId]) busyTimeRanges[summon.stylistId] = [];
       busyTimeRanges[summon.stylistId].push({
@@ -1877,7 +1874,6 @@ export class MainView {
       });
     });
 
-    // 2. ヘルプ配置の時間帯（helperBlocks: 5分Tickマージ済み）
     if (result.helperBlocks) {
       result.helperBlocks.forEach(hb => {
         if (!busyTimeRanges[hb.staffId]) busyTimeRanges[hb.staffId] = [];
@@ -1885,7 +1881,6 @@ export class MainView {
       });
     }
 
-    // フリーズ境界（当日の過去活動は重複チェックをスキップして必ず描画する）
     const nowForFreeze = new Date();
     const todayStrForFreeze = this._formatDate(new Date());
     const isTodayForFreeze = (dateStr === todayStrForFreeze);
@@ -1894,11 +1889,9 @@ export class MainView {
       : null;
 
     result.freeTimeActivities.forEach((act, idx) => {
-      // 召喚・ヘルプブロックとの重複チェック: 重なっていたらスキップ
       const actStart = typeof act.startTime === 'number' ? act.startTime : new Date(act.startTime).getTime();
       const actEnd = typeof act.endTime === 'number' ? act.endTime : new Date(act.endTime).getTime();
       
-      // フリーズ境界以前（過去）の活動は重複チェックをバイパスして必ず描画する
       const isPastActivity = (freezeBoundaryMin !== null && actStart < freezeBoundaryMin);
       
       if (!isPastActivity) {
@@ -1942,19 +1935,13 @@ export class MainView {
       const cellsContainer = timelineArea.querySelector(
         `.timeline-row[data-stylist-id="${act.staffId}"] .timeline-cells`
       );
-      const container = cellsContainer || timelineArea;
+      if (!cellsContainer) return;
+      const container = cellsContainer;
 
-      const block = new ReservationBlock(virtualRes, null, container);
-      block.render();
+      const extraClasses = ['activity-virtual-block'];
+      if (act.isForced) extraClasses.push('forced-activity-block');
 
-      if (block._element) {
-        block._element.classList.add('activity-virtual-block');
-        if (act.isForced) {
-          block._element.classList.add('forced-activity-block');
-        }
-      }
-
-      this.reservationBlocks.push(block);
+      upsertVirtualBlock(virtualRes, null, container, extraClasses);
     });
 
     // 3. アシスタントヘルプ用バーチャルブロックの描画（helperBlocks: 5分Tickマージ済み）
@@ -1978,7 +1965,6 @@ export class MainView {
         const isStylist = helperStaff && helperStaff.type === 'stylist';
 
         // マンセル（チーム対応）時間帯に含まれるか判定
-        // 注意: hb.startMin は 9:00基準の分数, m.startMin は 0:00基準の絶対分数
         const isManncell = result.manncells && result.manncells.some(m => {
           const mRelativeStart = m.startMin - (9 * 60);
           const mRelativeEnd = m.endMin - (9 * 60);
@@ -1998,7 +1984,6 @@ export class MainView {
           activityLabel = `🤝${stylistName}`;
         }
 
-        // startMin/endMin は9:00基準の分数なので、そのまま使える
         const virtualRes = {
           id: `helper-virtual-${hb.staffId}-${hb.resId}-${hb.slotIndex}-${hb.startMin}`,
           menuItemId: res.menuItemId,
@@ -2011,7 +1996,7 @@ export class MainView {
           activityType: 'helper',
           colorCode: isStylist ? '#f59e0b' : (isManncell ? '#eab308' : colorCode),
           activityLabel: activityLabel,
-          summonSkill: requiredSkill, // 追加: 要求スキル
+          summonSkill: requiredSkill,
           isManncell: isManncell
         };
 
@@ -2019,7 +2004,6 @@ export class MainView {
         let cellsContainer = null;
 
         if (timelineArea) {
-          // 【厳守事項2】スタイリスト行を優先して検索し、無ければアシスタント行を検索
           cellsContainer = timelineArea.querySelector(
             `.timeline-row[data-staff-type="stylist"][data-stylist-id="${hb.staffId}"] .timeline-cells`
           );
@@ -2030,27 +2014,21 @@ export class MainView {
           }
         }
 
-        // 行が存在しない場合は、無駄な迷子ブロックを作らないようスキップ（厳守事項2）
         if (!cellsContainer) {
           console.warn(`[HelperBlocks] Target row for ${hb.staffId} not found. Skipping virtual block.`);
           return;
         }
         
         const container = cellsContainer;
+        const extraClasses = ['activity-virtual-block'];
 
-        const block = new ReservationBlock(virtualRes, null, container);
-        block.render();
-
-        if (block._element) {
-          block._element.classList.add('activity-virtual-block');
+        const customBadgeFn = (el) => {
           if (hb.isGapHelp) {
-            // === 隙間ヘルプ（Phase 5.5 gap_help）: 黄色点線 + ☆ + 「隙間」バッジ ===
-            block._element.classList.add('gap-help-block');
-            block._element.style.setProperty('border', '2px dashed #FFD700', 'important');
-            block._element.style.setProperty('background-color', 'rgba(255, 215, 0, 0.15)', 'important');
-            block._element.style.setProperty('box-shadow', '0 0 6px rgba(255, 215, 0, 0.3)', 'important');
+            el.classList.add('gap-help-block');
+            el.style.setProperty('border', '2px dashed #FFD700', 'important');
+            el.style.setProperty('background-color', 'rgba(255, 215, 0, 0.15)', 'important');
+            el.style.setProperty('box-shadow', '0 0 6px rgba(255, 215, 0, 0.3)', 'important');
 
-            // 「隙間」バッジを物理的に追加（視認性フェイルセーフ）
             const gapBadge = document.createElement('div');
             gapBadge.textContent = '隙間';
             gapBadge.style.cssText = `
@@ -2060,15 +2038,13 @@ export class MainView {
               border-radius: 2px; z-index: 20;
               pointer-events: none;
             `;
-            block._element.appendChild(gapBadge);
+            el.appendChild(gapBadge);
           } else if (isManncell) {
-            // === マンセル（チーム対応）: 実線黄色枠 + 🤝バッジ + 名前 ===
-            block._element.classList.add('manncell-help-block');
-            block._element.style.setProperty('border', '2px solid #eab308', 'important');
-            block._element.style.setProperty('background-color', 'rgba(234, 179, 8, 0.15)', 'important');
-            block._element.style.setProperty('box-shadow', 'none', 'important');
+            el.classList.add('manncell-help-block');
+            el.style.setProperty('border', '2px solid #eab308', 'important');
+            el.style.setProperty('background-color', 'rgba(234, 179, 8, 0.15)', 'important');
+            el.style.setProperty('box-shadow', 'none', 'important');
             
-            // 「チーム」バッジを追加
             const teamBadge = document.createElement('div');
             teamBadge.textContent = 'チーム';
             teamBadge.style.cssText = `
@@ -2078,19 +2054,28 @@ export class MainView {
               border-radius: 2px; z-index: 20;
               pointer-events: none;
             `;
-            block._element.appendChild(teamBadge);
+            el.appendChild(teamBadge);
           } else {
-            // === 通常ヘルプ（Phase 2/3 正規アサイン）: 実線オレンジ枠 + 名前のみ ===
-            block._element.classList.add('normal-help-block');
-            block._element.style.setProperty('border', '2px solid var(--accent-warning)', 'important');
-            block._element.style.setProperty('background-color', 'rgba(245, 158, 11, 0.15)', 'important');
-            block._element.style.setProperty('box-shadow', 'none', 'important');
+            el.classList.add('normal-help-block');
+            el.style.setProperty('border', '2px solid var(--accent-warning)', 'important');
+            el.style.setProperty('background-color', 'rgba(245, 158, 11, 0.15)', 'important');
+            el.style.setProperty('box-shadow', 'none', 'important');
           }
-        }
+        };
 
-        this.reservationBlocks.push(block);
+        upsertVirtualBlock(virtualRes, null, container, extraClasses, customBadgeFn);
       });
     }
+
+    // 今回の計算で消滅した古いバーチャルブロックを確実にクリーンアップ（ゴーストバグ防止）
+    existingVirtualMap.forEach((block, id) => {
+      if (!activeVirtualIds.has(id)) {
+        block.destroy();
+      }
+    });
+
+    // 通常予約ブロックと新バーチャルブロックを結合して保持
+    this.reservationBlocks = [...normalReservationBlocks, ...newVirtualBlocks];
 
     // === 頑張れ配置バーチャルブロック ===
     this._renderGanbareVirtualBlocks();

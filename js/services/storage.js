@@ -1152,7 +1152,7 @@ export function startPolling() {
         console.info('[Storage] 他のPCの変更を受信して画面を更新しました');
       }
     } catch { /* サーバー接続失敗は無視 */ }
-  }, 5000);
+  }, 30000);
 
   if (typeof window !== 'undefined' && window.__sb_storage_state) {
     window.__sb_storage_state.pollingTimer = timer;
