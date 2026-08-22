@@ -1,4 +1,4 @@
-param(
+﻿param(
     [switch]$AutoYes
 )
 
@@ -7,7 +7,6 @@ param(
 
 $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-
 
 $DeployTarget = "F:\Dropbox\1.litt\2.Litt共有ファイル\Summon Balancer"
 $DevSource = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -81,17 +80,33 @@ $process = Start-Process -FilePath "robocopy" -ArgumentList $robocopyArgs -NoNew
 $exitCode = $process.ExitCode
 
 if ($exitCode -le 7) {
-    # デプロイ日時の記録（初回リロード時の通知用）
+    # デプロイ日時の記録（初回リロード時の通知用 & フォルダ内目印用）
     $now = Get-Date
     $deployedAt = $now.ToString("yyyy-MM-ddTHH:mm:sszzz")
     $displayTime = $now.ToString("M月d日 H:mm")
+    $fullDisplayTime = $now.ToString("yyyy年M月d日 HH:mm:ss")
+
     $versionContent = @{
         deployedAt = $deployedAt
         displayTime = $displayTime
+        fullTime = $fullDisplayTime
     } | ConvertTo-Json
 
     Set-Content -Path "$DevSource\version.json" -Value $versionContent -Encoding UTF8
     Set-Content -Path "$DeployTarget\version.json" -Value $versionContent -Encoding UTF8
+
+    # フォルダ内でひと目で同期確認できる目印テキストファイルを作成
+    $indicatorLines = @(
+        "============================================================",
+        " Summon Balancer - デプロイ完了情報",
+        "============================================================",
+        "最終デプロイ日時: $fullDisplayTime",
+        "同期状態: 正常完了 (Code: $exitCode)",
+        "対象フォルダ: $DeployTarget",
+        "============================================================"
+    )
+    Set-Content -Path "$DeployTarget\_最終デプロイ日時.txt" -Value $indicatorLines -Encoding UTF8
+    Set-Content -Path "$DevSource\_最終デプロイ日時.txt" -Value $indicatorLines -Encoding UTF8
 
     Write-Host ""
     Write-Host "  ============================================================" -ForegroundColor Green
@@ -100,6 +115,7 @@ if ($exitCode -le 7) {
     Write-Host ""
     Write-Host "  - Code files synced safely"
     Write-Host "  - Reservation/staff data NOT affected"
+    Write-Host "  - 目印ファイル作成: _最終デプロイ日時.txt ($fullDisplayTime)"
     Write-Host "  - version.json updated ($displayTime)"
     Write-Host ""
 } else {
@@ -108,4 +124,6 @@ if ($exitCode -le 7) {
     Write-Host ""
 }
 
-Read-Host "  Press Enter to exit"
+if (-not $AutoYes) {
+    Read-Host "  Press Enter to exit"
+}
